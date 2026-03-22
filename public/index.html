@@ -202,6 +202,16 @@
 
 <div class="top-nav">
     <div class="glass-card header-nav">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 4px; font-size: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">👤</span>
+                <span id="current-user-name-display" style="font-weight: 600; color: var(--text-primary);"></span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button style="background: transparent; color: var(--sys-red); border: none; font-size: 13px; font-weight: 500; cursor: pointer; padding: 0;" onclick="deleteProfile()">Удалить профиль</button>
+                <button style="background: rgba(0,0,0,0.06); color: var(--text-primary); border: none; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; margin-left: 10px;" onclick="logout()">Выйти</button>
+            </div>
+        </div>
         <div class="year-selector">
             <button class="year-btn" onclick="changeYear(-1)">❮</button>
             <span id="display-year">2026</span>
@@ -382,9 +392,47 @@
     </div>
 </div>
 
+<div id="auth-overlay" class="modal-overlay active" style="background: rgba(242, 242, 247, 1); backdrop-filter: none; z-index: 9999; opacity: 1; visibility: visible;">
+    <div class="init-card" style="width: 340px;">
+        <div class="init-icon">👋</div>
+        <div class="init-title">Вход</div>
+        <div class="init-subtitle">Введите 6-значный PIN для входа</div>
+        
+        <input type="password" id="login-pin" class="input-name" style="width: 100%; text-align: center; letter-spacing: 8px; font-size: 24px; margin-bottom: 20px; box-sizing: border-box; background: var(--input-bg); border: none; border-radius: 12px; padding: 12px;" maxlength="6" placeholder="------" oninput="checkLoginPin(this.value)">
+        <div id="login-error" style="color: var(--sys-red); font-size: 14px; margin-bottom: 15px; display: none;">ПИН-код не найден</div>
+        
+        <div style="text-align: left; margin-bottom: 24px;">
+            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: var(--text-secondary);">Существующие профили:</h4>
+            <div id="existing-users-list" style="font-size: 15px; font-weight: 500; color: var(--text-primary); display: flex; flex-direction: column; gap: 8px;">
+            </div>
+        </div>
+
+        <button class="btn-init-secondary" onclick="showCreateProfile()">+ Создать новый профиль</button>
+    </div>
+</div>
+
+<div id="create-profile-overlay" class="modal-overlay" style="background: rgba(242, 242, 247, 1); backdrop-filter: none; z-index: 10000;">
+    <div class="init-card" style="width: 340px;">
+        <div class="init-title" style="margin-bottom: 20px;">Новый профиль</div>
+        
+        <input type="text" id="new-user-name" class="input-name" style="width: 100%; margin-bottom: 12px; box-sizing: border-box; background: var(--input-bg); border: none; border-radius: 12px; padding: 14px;" placeholder="Имя">
+        <input type="text" id="new-user-surname" class="input-name" style="width: 100%; margin-bottom: 12px; box-sizing: border-box; background: var(--input-bg); border: none; border-radius: 12px; padding: 14px;" placeholder="Фамилия">
+        <input type="text" id="new-user-pin" class="input-name" style="width: 100%; text-align: center; letter-spacing: 4px; font-size: 20px; margin-bottom: 20px; box-sizing: border-box; background: var(--input-bg); border: none; border-radius: 12px; padding: 14px;" maxlength="6" placeholder="PIN (6 цифр)">
+        
+        <div id="create-error" style="color: var(--sys-red); font-size: 14px; margin-bottom: 15px; display: none;"></div>
+
+        <button class="btn-init-primary" onclick="createProfile()">Создать и войти</button>
+        <button class="btn-init-secondary" onclick="hideCreateProfile()">Отмена</button>
+    </div>
+</div>
+
 <script>
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     
+    // ДОБАВЛЕНЫ ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ПОЛЬЗОВАТЕЛЕЙ
+    let globalData = { users: [], appData: {}, initialSavings: {} };
+    let currentUser = null;
+
     let defaultCategories = []; 
     let appData = {}; 
     let initialSavings = 0; 
@@ -402,27 +450,63 @@
     const appleColors = [ '#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#5ac8fa', '#007aff', '#5856d6', '#af52de', '#ff2d55', '#32ade6' ];
 
 async function init() {
-    // Начальные сбережения пока оставим в localStorage для простоты
-    initialSavings = parseFloat(localStorage.getItem('budget_initial_savings_v1')) || 0;
-    
-    await loadAppData(); // Ждем загрузки данных из Cloudflare
-    
+    await fetchGlobalData();
     fetchExchangeRate();
     initChart();
-    updateSavingsDisplay();
+    showAuthScreen();
 }
 
-async function loadAppData() {
+// НОВЫЕ ФУНКЦИИ АВТОРИЗАЦИИ
+async function fetchGlobalData() {
     try {
-        const response = await fetch('/api/data'); // Путь к вашему файлу в functions
+        const response = await fetch('/api/data');
         const saved = await response.json();
         
-        if (saved && Object.keys(saved).length > 0) {
-            appData = saved;
+        if (saved) {
+            if (saved.users) {
+                globalData = saved;
+            } else {
+                // Если данные остались от старой версии без профилей
+                globalData.appData['legacy'] = saved;
+            }
         }
     } catch (e) {
         console.error("Ошибка загрузки из KV:", e);
     }
+}
+
+function showAuthScreen() {
+    document.getElementById('auth-overlay').classList.add('active');
+    document.getElementById('login-pin').value = '';
+    document.getElementById('login-error').style.display = 'none';
+    
+    const list = document.getElementById('existing-users-list');
+    if (globalData.users.length === 0) {
+        list.innerHTML = '<span style="color: var(--text-tertiary); font-weight: normal;">Нет зарегистрированных профилей</span>';
+    } else {
+        list.innerHTML = globalData.users.map(u => `<div style="padding: 8px; background: rgba(0,0,0,0.03); border-radius: 10px;">👤 ${u.name} ${u.surname}</div>`).join('');
+    }
+}
+
+function checkLoginPin(pin) {
+    document.getElementById('login-error').style.display = 'none';
+    if (pin.length === 6) {
+        const user = globalData.users.find(u => u.pin === pin);
+        if (user) {
+            login(user);
+        } else {
+            document.getElementById('login-error').style.display = 'block';
+        }
+    }
+}
+
+function login(user) {
+    currentUser = user;
+    document.getElementById('auth-overlay').classList.remove('active');
+    document.getElementById('current-user-name-display').innerText = `${user.name} ${user.surname}`;
+    
+    appData = globalData.appData[user.id] || {};
+    initialSavings = globalData.initialSavings[user.id] || 0;
 
     if (!appData[currentYear]) appData[currentYear] = {};
     if (!appData[currentYear][currentMonth]) {
@@ -436,7 +520,93 @@ async function loadAppData() {
 
     renderCalendar();
     applyMonthData();
+    updateSavingsDisplay();
 }
+
+function showCreateProfile() {
+    document.getElementById('create-profile-overlay').classList.add('active');
+    document.getElementById('new-user-name').value = '';
+    document.getElementById('new-user-surname').value = '';
+    document.getElementById('new-user-pin').value = '';
+    document.getElementById('create-error').style.display = 'none';
+}
+
+function hideCreateProfile() {
+    document.getElementById('create-profile-overlay').classList.remove('active');
+}
+
+async function createProfile() {
+    const name = document.getElementById('new-user-name').value.trim();
+    const surname = document.getElementById('new-user-surname').value.trim();
+    const pin = document.getElementById('new-user-pin').value.trim();
+    const errorDiv = document.getElementById('create-error');
+    
+    if (!name || !surname) {
+        errorDiv.innerText = 'Введите имя и фамилию';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (!/^\d{6}$/.test(pin)) {
+        errorDiv.innerText = 'PIN должен состоять из 6 цифр';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (globalData.users.some(u => u.pin === pin)) {
+        errorDiv.innerText = 'Этот PIN уже используется другим пользователем';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    const newUser = {
+        id: Date.now().toString(),
+        name: name,
+        surname: surname,
+        pin: pin
+    };
+
+    globalData.users.push(newUser);
+    globalData.appData[newUser.id] = {};
+    globalData.initialSavings[newUser.id] = 0;
+
+    await saveGlobalData();
+    
+    hideCreateProfile();
+    login(newUser);
+}
+
+function logout() {
+    currentUser = null;
+    appData = {};
+    initialSavings = 0;
+    showAuthScreen();
+}
+
+function deleteProfile() {
+    showConfirm("Удалить профиль?", "Все ваши данные будут безвозвратно удалены. Вы уверены?", async () => {
+        globalData.users = globalData.users.filter(u => u.id !== currentUser.id);
+        delete globalData.appData[currentUser.id];
+        delete globalData.initialSavings[currentUser.id];
+        await saveGlobalData();
+        logout();
+    });
+}
+
+async function saveGlobalData() {
+    if (currentUser) {
+        globalData.appData[currentUser.id] = appData;
+        globalData.initialSavings[currentUser.id] = initialSavings;
+    }
+    try {
+        await fetch('/api/data', {
+            method: 'POST',
+            body: JSON.stringify(globalData),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (e) {
+        console.error("Ошибка сохранения в KV:", e);
+    }
+}
+// КОНЕЦ БЛОКА НОВЫХ ФУНКЦИЙ
 
     function getLastInitializedData() {
         let checkYear = currentYear;
@@ -538,17 +708,8 @@ async function saveData() {
         appData[currentYear][currentMonth].expenses = expenses;
     }
     
-    // Сохраняем в Cloudflare KV через ваш новый код
-    try {
-        await fetch('/api/data', {
-            method: 'POST',
-            body: JSON.stringify(appData),
-            headers: { 'Content-Type': 'application/json' }
-        });
-    } catch (e) {
-        console.error("Ошибка сохранения в KV:", e);
-    }
-    
+    // Используем новую функцию сохранения, чтобы не ломать логику юзеров
+    await saveGlobalData();
     updateSavingsDisplay(); 
 }
 
@@ -891,7 +1052,6 @@ async function saveData() {
         if (stats.history.length === 0) {
             list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 24px 0;">Вы пока не откладывали сбережения через приложение</div>';
         } else {
-            // Сортировка по убыванию (сначала новые)
             stats.history.sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month));
             
             stats.history.forEach(item => {
@@ -913,14 +1073,14 @@ async function saveData() {
         document.getElementById('history-modal').classList.remove('active');
     }
 
-    // Сохранение начального капитала по кнопке "ОК"
     function saveInitialSavings() {
         const val = document.getElementById('initial-savings-input').value;
         initialSavings = parseFloat(val) || 0;
-        localStorage.setItem('budget_initial_savings_v1', initialSavings);
+        
+        // Сохраняем глобально для текущего пользователя
+        saveGlobalData(); 
         updateSavingsDisplay();
         
-        // Маленький эффект подтверждения (кнопка становится зеленой на секунду)
         const btn = document.querySelector('.btn-ok-small');
         const oldBg = btn.style.background;
         btn.style.background = 'var(--sys-green)';
