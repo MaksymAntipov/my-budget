@@ -58,11 +58,6 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 0 0 var(--sys-blue-glow); }
-            70% { box-shadow: 0 0 0 10px rgba(0, 122, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
-        }
         @keyframes flowVertical {
             0% { top: -100%; opacity: 0; }
             50% { opacity: 1; }
@@ -94,19 +89,19 @@
         .month-pill.filled.active { background: var(--sys-green); color: white; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); }
 
         /* --- СТИЛИ ДЛЯ АВТОРИЗАЦИИ IOS GLASSMORPHISM --- */
-.auth-glass-overlay {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(242, 242, 247, 0.6) !important;
-    -webkit-backdrop-filter: blur(30px) saturate(150%) !important;
-    backdrop-filter: blur(30px) saturate(150%) !important;
-    z-index: 9999;
-    opacity: 0; visibility: hidden; transition: all 0.4s ease;
-}
+        .auth-glass-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(242, 242, 247, 0.6) !important;
+            -webkit-backdrop-filter: blur(30px) saturate(150%) !important;
+            backdrop-filter: blur(30px) saturate(150%) !important;
+            z-index: 9999;
+            opacity: 0; visibility: hidden; transition: all 0.4s ease;
+        }
         .auth-glass-overlay.active { opacity: 1; visibility: visible; }
 
         .auth-card {
@@ -145,26 +140,26 @@
         .auth-title { font-size: 24px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px 0; letter-spacing: -0.5px;}
         .auth-subtitle { font-size: 15px; color: var(--text-secondary); margin: 0; }
 
-.users-list { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 12px; 
-    flex: 1; 
-    overflow-y: auto; 
-    margin-bottom: 16px; 
-    padding-bottom: 12px; /* Добавили отступ снизу, чтобы скролл был мягче */
-    scrollbar-width: none; 
-}       
-.users-list::-webkit-scrollbar { display: none; }
+        .users-list { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            flex: 1; 
+            overflow-y: auto; 
+            margin-bottom: 16px; 
+            padding-bottom: 12px;
+            scrollbar-width: none; 
+        }       
+        .users-list::-webkit-scrollbar { display: none; }
 
-.user-item {
-    flex-shrink: 0; /* Главный фикс: запрещаем карточкам сплющиваться! */
-    display: flex; align-items: center; gap: 16px; padding: 14px 18px;
-    background: rgba(255,255,255,0.7); border-radius: 20px;
-    cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.9);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    animation: fadeInUp 0.4s ease forwards; opacity: 0;
-}
+        .user-item {
+            flex-shrink: 0;
+            display: flex; align-items: center; gap: 16px; padding: 14px 18px;
+            background: rgba(255,255,255,0.7); border-radius: 20px;
+            cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            animation: fadeInUp 0.4s ease forwards; opacity: 0;
+        }
         .user-item:nth-child(1) { animation-delay: 0.1s; }
         .user-item:nth-child(2) { animation-delay: 0.2s; }
         .user-item:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
@@ -230,19 +225,13 @@
         .container.blurred { filter: blur(14px) grayscale(40%); opacity: 0.5; pointer-events: none; user-select: none; }
 
         /* АНИМАЦИИ ПОТОКА (FLOW) */
-        .flow-container {
-            display: flex; justify-content: center; margin: 16px 0; height: 30px; position: relative;
-        }
-        .flow-track-vertical {
-            width: 4px; height: 100%; background: rgba(0,0,0,0.03); border-radius: 2px; position: relative; overflow: hidden;
-        }
+        .flow-container { display: flex; justify-content: center; margin: 16px 0; height: 30px; position: relative; }
+        .flow-track-vertical { width: 4px; height: 100%; background: rgba(0,0,0,0.03); border-radius: 2px; position: relative; overflow: hidden; }
         .flow-particle-vertical {
             position: absolute; top: 0; left: 0; right: 0; height: 20px;
             background: linear-gradient(to bottom, transparent, var(--sys-blue), transparent);
-            animation: flowVertical 1.5s infinite linear;
-            border-radius: 2px;
+            animation: flowVertical 1.5s infinite linear; border-radius: 2px;
         }
-        /* Горизонтальный поток для десктопа (между колонками) */
         .flow-track-horizontal {
             display: none; position: absolute; top: 150px; left: 50%; transform: translateX(-50%);
             width: 40px; height: 4px; background: rgba(0,0,0,0.03); border-radius: 2px; overflow: hidden; z-index: 0;
@@ -250,13 +239,10 @@
         .flow-particle-horizontal {
             position: absolute; top: 0; bottom: 0; width: 20px; left: 0;
             background: linear-gradient(to right, transparent, var(--sys-blue), transparent);
-            animation: flowHorizontal 1.5s infinite linear;
-            border-radius: 2px;
+            animation: flowHorizontal 1.5s infinite linear; border-radius: 2px;
         }
 
-        @media (min-width: 901px) {
-            .flow-track-horizontal { display: block; }
-        }
+        @media (min-width: 901px) { .flow-track-horizontal { display: block; } }
 
         /* ЭКРАН ИНИЦИАЛИЗАЦИИ */
         .init-overlay { position: absolute; top: 15vh; left: 50%; transform: translateX(-50%) scale(0.95) translateY(10px); z-index: 100; display: flex; flex-direction: column; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; width: 90%; max-width: 340px;}
@@ -277,7 +263,7 @@
         /* Обычные карточки */
         .glass-card { background: var(--glass-bg); -webkit-backdrop-filter: blur(40px) saturate(200%); backdrop-filter: blur(40px) saturate(200%); border: 1px solid var(--glass-border); border-radius: 28px; padding: 28px; box-shadow: var(--glass-shadow); opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; position: relative; z-index: 1;}
         .left-panel .glass-card:nth-child(1) { animation-delay: 0.1s; }
-        .left-panel .glass-card:nth-child(3) { animation-delay: 0.2s; } /* skip flow container */
+        .left-panel .glass-card:nth-child(3) { animation-delay: 0.2s; } 
         .right-panel .glass-card { animation-delay: 0.3s; }
 
         h1, h2 { margin-top: 0; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary); }
@@ -303,22 +289,22 @@
         .value-main { font-size: 20px; color: var(--sys-green); }
 
         .expenses-container { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
-.expense-item { 
-    display: flex; gap: 12px; 
-    padding: 24px 16px 16px 16px; /* Увеличили верхний отступ, чтобы влез текст */
-    border-radius: 20px; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03); 
-    align-items: center; transition: all 0.3s ease; 
-}
+        .expense-item { 
+            display: flex; gap: 12px; 
+            padding: 24px 16px 16px 16px; 
+            border-radius: 20px; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03); 
+            align-items: center; transition: all 0.3s ease; 
+        }
         .expense-item:hover { background: rgba(0,0,0,0.04); transform: scale(1.01); }
         
         .expense-item input.input-name { background: transparent; border: 1px solid transparent; padding: 0 10px; height: 44px; border-radius: 12px; font-size: 16px; font-weight: 500; color: var(--text-primary); transition: 0.2s; outline: none; flex: 1; min-width: 100px; }
         .expense-item input.input-name:focus { background: white; border-color: rgba(0, 122, 255, 0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-.amount-column { 
-    position: relative; 
-    flex: 0 0 auto; 
-}
-      .calculated-amount-btn { min-width: 120px; height: 44px; background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: flex-end; padding: 0 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.2s; font-variant-numeric: tabular-nums; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+        .amount-column { 
+            position: relative; 
+            flex: 0 0 auto; 
+        }
+        .calculated-amount-btn { min-width: 120px; height: 44px; background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: flex-end; padding: 0 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.2s; font-variant-numeric: tabular-nums; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
         .calculated-amount-btn:hover { background: #f8f8f8; border-color: rgba(0,0,0,0.15); }
         
         .preview-tooltip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%) translateY(10px) scale(0.95); background: rgba(28, 28, 30, 0.85); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: white; padding: 14px 18px; border-radius: 16px; font-size: 14px; font-weight: 500; z-index: 50; opacity: 0; visibility: hidden; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 12px 32px rgba(0,0,0,0.2); pointer-events: none; width: max-content; max-width: 240px; text-align: left; }
@@ -329,13 +315,13 @@
         .preview-item-name { opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .preview-item-amount { font-weight: 600; }
 
-.expense-10y { 
-    position: absolute; 
-    bottom: calc(100% + 6px); /* Текст теперь всегда ровно над кнопкой */
-    right: 0; 
-    font-size: 12px; color: var(--text-tertiary); 
-    text-align: right; white-space: nowrap; 
-}
+        .expense-10y { 
+            position: absolute; 
+            bottom: calc(100% + 6px); 
+            right: 0; 
+            font-size: 12px; color: var(--text-tertiary); 
+            text-align: right; white-space: nowrap; 
+        }
         .val-10y { font-weight: 600; color: var(--text-secondary); }
         
         .expense-info { font-size: 16px; color: var(--sys-blue); min-width: 64px; text-align: right; font-weight: 600; flex: 0 0 auto; height: 44px; display: flex; align-items: center; justify-content: flex-end; }
@@ -408,28 +394,24 @@
         @media (max-width: 900px) { 
             .container { grid-template-columns: 1fr; gap: 20px;} 
             body { padding: 16px 12px; } 
-            .flow-track-horizontal { display: none; } /* Отключаем горизонтальный поток на мобилках */
+            .flow-track-horizontal { display: none; } 
         }
 
         @media (max-width: 600px) {
             body { padding: 12px 8px; }
             
-            /* Уменьшаем отступы в карточках */
             .glass-card { padding: 20px 16px; border-radius: 24px; }
             h1 { font-size: 22px; margin-bottom: 16px; }
             h2 { font-size: 20px; margin-bottom: 16px; }
             
-            /* Шапка и навигация */
             .header-nav { padding: 12px 16px; }
             .user-nav-row { flex-wrap: wrap; gap: 12px; }
             .user-nav-actions { width: 100%; justify-content: space-between; }
             .savings-container { flex-direction: column; gap: 10px; align-items: flex-start; }
             
-            /* Инфо-блок с доходами */
             .info-block { padding: 0 16px; border-radius: 16px; }
             .info-row { font-size: 15px; flex-wrap: wrap;}
             
-            /* РАСХОДЫ: Мобильный Layout */
             .expenses-container { gap: 16px; }
             .expense-item { 
                 flex-wrap: wrap; 
@@ -446,22 +428,21 @@
             }
             .amount-column { flex: 1 1 auto; min-width: 120px; }
             .calculated-amount-btn { height: 48px; width: 100%; justify-content: center; background: rgba(0,122,255,0.05); color: var(--sys-blue); border-color: transparent;}
-.expense-10y { 
-    position: relative; 
-    bottom: auto; 
-    margin-bottom: 6px; 
-    text-align: left; 
-}
+            
+            .expense-10y { 
+                position: relative; 
+                bottom: auto; 
+                margin-bottom: 6px; 
+                text-align: left; 
+            }
 
             .expense-info { flex: 0 0 auto; height: 48px; font-size: 18px; }
             .btn-delete { height: 48px; width: 48px; background: rgba(255,59,48,0.05); color: var(--sys-red); border: none;}
             
-            /* Сводка */
             .summary-box { flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px; }
             .summary-content { flex-direction: column; align-items: flex-start; gap: 8px; }
             .summary-yearly { flex-direction: column; align-items: flex-start; gap: 8px; }
             
-            /* Модальные окна */
             .modal-content { padding: 24px 20px; width: 95%; border-radius: 28px;}
             .sub-item { flex-wrap: wrap; gap: 8px; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 16px;}
             .sub-item input { height: 44px; background: white;}
@@ -469,7 +450,6 @@
             .sub-item-amount { flex: 1 1 auto; }
             .btn-sub-delete { height: 44px; padding: 0 15px; background: transparent; border: none;}
             
-            /* Окна авторизации */
             .auth-card { padding: 32px 20px; border-radius: 28px; min-height: 400px; }
             .auth-step { left: 20px; right: 20px; top: 32px; bottom: 32px;}
             .pin-dots { gap: 12px; }
@@ -611,6 +591,11 @@
                         Всего расходов: <b class="tabular"><span id="total-expenses">0</span><span class="currency-symbol">₴</span></b>
                     </div>
                     
+                    <button class="btn-init-secondary" style="margin-bottom: 16px; background: white; border: 1px solid rgba(0,0,0,0.05); color: var(--sys-blue); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="openAnalyticsModal()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                        Динамика по месяцам
+                    </button>
+
                     <div class="chart-container">
                         <canvas id="budgetChart"></canvas>
                     </div>
@@ -688,6 +673,24 @@
         
         <h4 style="margin: 0 0 16px 0; font-size: 18px; color: var(--text-primary); font-weight: 700;">Пополнения по месяцам</h4>
         <div id="savings-history-list" class="modal-items-container" style="max-height: 40vh; background: rgba(0,0,0,0.02); border-radius: 20px; padding: 12px; border: 1px solid rgba(0,0,0,0.03);"></div>
+    </div>
+</div>
+
+<div id="analytics-modal" class="modal-overlay" onclick="closeAnalyticsModal(event)">
+    <div class="modal-content" style="max-width: 800px; width: 95%;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 style="margin: 0;">Аналитика бюджета</h3>
+            <button class="btn-close-modal" onclick="closeAnalyticsModal()">✕</button>
+        </div>
+        
+        <div class="chart-container" style="height: 40vh; min-height: 350px; width: 100%; margin: 0; transition: none;">
+            <canvas id="analyticsChartCanvas"></canvas>
+        </div>
+        
+        <div style="display:flex; justify-content: center; flex-wrap: wrap; gap: 16px; margin-top: 24px; font-size: 13px; color: var(--text-secondary); background: rgba(0,0,0,0.03); padding: 12px; border-radius: 16px;">
+            <span style="display: flex; align-items: center; gap: 6px;"><div style="width:10px; height:10px; border-radius:50%; background:var(--sys-green);"></div> <b>Отличный месяц</b> (>20% свободных средств)</span>
+            <span style="display: flex; align-items: center; gap: 6px;"><div style="width:10px; height:10px; border-radius:50%; background:var(--sys-red);"></div> <b>Убыток</b> (расходы превысили доходы)</span>
+        </div>
     </div>
 </div>
 
@@ -774,6 +777,7 @@
     
     let expenses = []; 
     let myChart = null;
+    let analyticsChart = null; // Переменная для нового графика
     let currentExchangeRate = 0;
     let currentIncomeUah = 0; 
     let activeCategoryId = null;
@@ -799,14 +803,12 @@
     }
 
     async function fetchGlobalData() {
-        // Симуляция загрузки для демо (или ваш реальный API)
         try {
             const response = await fetch('/api/data').catch(() => null);
             if(response) {
                 const saved = await response.json();
                 if (saved && saved.users) globalData = saved;
             } else {
-                // Фоллбэк на LocalStorage если нет сети/бекенда
                 const local = localStorage.getItem('budget_global_data');
                 if(local) globalData = JSON.parse(local);
             }
@@ -886,7 +888,6 @@
         if (pinLength === 6) {
             if (input.value === selectedAuthUser.pin) {
                 document.getElementById('hidden-pin').blur();
-                // Успешный вход - красивый сброс
                 const dots = document.querySelectorAll('#pin-dots .pin-dot');
                 dots.forEach(dot => { dot.style.background = 'var(--sys-green)'; dot.style.borderColor = 'var(--sys-green)'; });
                 setTimeout(() => login(selectedAuthUser), 300);
@@ -906,7 +907,7 @@
         const dots = document.querySelectorAll('#pin-dots .pin-dot');
         dots.forEach((dot, index) => {
             dot.classList.remove('error');
-            dot.style.background = ''; dot.style.borderColor = ''; // Сброс зеленых если были
+            dot.style.background = ''; dot.style.borderColor = '';
             if (index < filledCount) {
                 dot.classList.add('filled');
             } else {
@@ -1001,7 +1002,6 @@
         globalData.appData[newUser.id] = {};
         globalData.initialSavings[newUser.id] = 0;
 
-        // Определяем цвет для нового аватара сразу
         const color = appleColors[(globalData.users.length - 1) % appleColors.length];
         document.getElementById('nav-avatar').innerText = newUser.name.charAt(0).toUpperCase();
         document.getElementById('nav-avatar').style.background = color;
@@ -1605,6 +1605,175 @@
         myChart.data.labels = labels;
         myChart.data.datasets[0].data = data;
         myChart.update();
+    }
+
+    function openAnalyticsModal() {
+        document.getElementById('analytics-modal').classList.add('active');
+        renderAnalyticsChart();
+    }
+
+    function closeAnalyticsModal(e) {
+        if (e && e.target.id !== 'analytics-modal' && e.target.className !== 'btn-close-modal') return;
+        document.getElementById('analytics-modal').classList.remove('active');
+    }
+
+    function renderAnalyticsChart() {
+        const labels = [];
+        const incomeData = [];
+        const expenseData = [];
+        const savingsData = [];
+        const freeMoneyData = [];
+        const pointColors = [];
+        const pointRadiuses = [];
+
+        const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
+        
+        years.forEach(year => {
+            const months = Object.keys(appData[year]).map(Number).sort((a, b) => a - b);
+            months.forEach(month => {
+                const data = appData[year][month];
+                if (data && data.initialized) {
+                    labels.push(`${monthNames[month].substring(0,3)} ${year}`);
+                    
+                    const income = (data.usd || 0) * currentExchangeRate;
+                    incomeData.push(income);
+                    
+                    let expensesTotal = 0;
+                    let savingsTotal = 0;
+                    
+                    if (data.expenses) {
+                        data.expenses.forEach(exp => {
+                            const catTotal = exp.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                            expensesTotal += catTotal;
+                            if (exp.isSavings) {
+                                savingsTotal += catTotal;
+                            }
+                        });
+                    }
+                    
+                    expenseData.push(expensesTotal);
+                    savingsData.push(savingsTotal);
+                    
+                    const freeMoney = income - expensesTotal;
+                    freeMoneyData.push(freeMoney);
+                    
+                    if (freeMoney < 0) {
+                        pointColors.push('rgba(255, 59, 48, 1)'); 
+                        pointRadiuses.push(6);
+                    } else if (income > 0 && (freeMoney / income) >= 0.2) {
+                        pointColors.push('rgba(52, 199, 89, 1)'); 
+                        pointRadiuses.push(6);
+                    } else {
+                        pointColors.push('rgba(0, 122, 255, 1)'); 
+                        pointRadiuses.push(4);
+                    }
+                }
+            });
+        });
+
+        const ctx = document.getElementById('analyticsChartCanvas').getContext('2d');
+        
+        if (analyticsChart) {
+            analyticsChart.destroy();
+        }
+        
+        analyticsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        type: 'line',
+                        label: 'Свободные деньги',
+                        data: freeMoneyData,
+                        borderColor: 'rgba(0, 122, 255, 0.6)',
+                        borderWidth: 2,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: pointRadiuses,
+                        pointHoverRadius: 8,
+                        tension: 0.3, 
+                        order: 1 
+                    },
+                    {
+                        type: 'line',
+                        label: 'Отложено',
+                        data: savingsData,
+                        borderColor: 'rgba(52, 199, 89, 1)',
+                        backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5], 
+                        pointRadius: 3,
+                        fill: true,
+                        tension: 0.3,
+                        order: 2
+                    },
+                    {
+                        type: 'bar',
+                        label: 'Доход',
+                        data: incomeData,
+                        backgroundColor: 'rgba(0, 122, 255, 0.15)',
+                        borderColor: 'rgba(0, 122, 255, 0.4)',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        order: 3
+                    },
+                    {
+                        type: 'bar',
+                        label: 'Расходы',
+                        data: expenseData,
+                        backgroundColor: 'rgba(255, 59, 48, 0.15)',
+                        borderColor: 'rgba(255, 59, 48, 0.4)',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        order: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true, font: {family: '-apple-system'} } },
+                    tooltip: {
+                        backgroundColor: 'rgba(28, 28, 30, 0.95)',
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 14 },
+                        padding: 14,
+                        cornerRadius: 16,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('ru-RU') + ' ₴';
+                            },
+                            afterBody: function(context) {
+                                const idx = context[0].dataIndex;
+                                const freeMoney = freeMoneyData[idx];
+                                const income = incomeData[idx];
+                                
+                                if (freeMoney < 0) {
+                                    return '\n⚠️ Внимание: Расходы превысили доходы!';
+                                } else if (income > 0 && (freeMoney / income) >= 0.2) {
+                                    return '\n🌟 Отличный результат!\nСохранено более 20% дохода.';
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: {display: false} },
+                    y: { 
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.04)' }
+                    }
+                }
+            }
+        });
     }
 
 </script>
