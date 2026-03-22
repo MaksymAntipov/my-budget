@@ -58,6 +58,11 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 0 0 var(--sys-blue-glow); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 122, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
+        }
         @keyframes flowVertical {
             0% { top: -100%; opacity: 0; }
             50% { opacity: 1; }
@@ -677,19 +682,14 @@
 </div>
 
 <div id="analytics-modal" class="modal-overlay" onclick="closeAnalyticsModal(event)">
-    <div class="modal-content" style="max-width: 800px; width: 95%;" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h3 style="margin: 0;">Аналитика бюджета</h3>
+    <div class="modal-content" style="max-width: 800px; width: 95%; padding: 24px;" onclick="event.stopPropagation()">
+        <div class="modal-header" style="margin-bottom: 16px;">
+            <h3 style="margin: 0;">Динамика бюджета</h3>
             <button class="btn-close-modal" onclick="closeAnalyticsModal()">✕</button>
         </div>
         
-        <div class="chart-container" style="height: 40vh; min-height: 350px; width: 100%; margin: 0; transition: none;">
+        <div class="chart-container" style="height: 45vh; min-height: 350px; width: 100%; margin: 0; transition: none;">
             <canvas id="analyticsChartCanvas"></canvas>
-        </div>
-        
-        <div style="display:flex; justify-content: center; flex-wrap: wrap; gap: 16px; margin-top: 24px; font-size: 13px; color: var(--text-secondary); background: rgba(0,0,0,0.03); padding: 12px; border-radius: 16px;">
-            <span style="display: flex; align-items: center; gap: 6px;"><div style="width:10px; height:10px; border-radius:50%; background:var(--sys-green);"></div> <b>Отличный месяц</b> (>20% свободных средств)</span>
-            <span style="display: flex; align-items: center; gap: 6px;"><div style="width:10px; height:10px; border-radius:50%; background:var(--sys-red);"></div> <b>Убыток</b> (расходы превысили доходы)</span>
         </div>
     </div>
 </div>
@@ -777,7 +777,7 @@
     
     let expenses = []; 
     let myChart = null;
-    let analyticsChart = null; // Переменная для нового графика
+    let analyticsChart = null; // Переменная для графика
     let currentExchangeRate = 0;
     let currentIncomeUah = 0; 
     let activeCategoryId = null;
@@ -1107,6 +1107,8 @@
     }
 
     function initializeMonth(usePrev) {
+        if (!appData[currentYear]) appData[currentYear] = {};
+        
         if (usePrev) {
             const prev = getLastInitializedData();
             if (prev) {
@@ -1124,7 +1126,7 @@
             };
         }
         
-        saveData();
+        // Сначала обновляем интерфейс, затем сохраняем (чтобы не перезаписать старыми пустыми данными)
         renderCalendar(); 
         applyMonthData(); 
     }
@@ -1619,12 +1621,9 @@
 
     function renderAnalyticsChart() {
         const labels = [];
+        const freeMoneyData = [];
         const incomeData = [];
         const expenseData = [];
-        const savingsData = [];
-        const freeMoneyData = [];
-        const pointColors = [];
-        const pointRadiuses = [];
 
         const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
         
@@ -1639,34 +1638,12 @@
                     incomeData.push(income);
                     
                     let expensesTotal = 0;
-                    let savingsTotal = 0;
-                    
                     if (data.expenses) {
-                        data.expenses.forEach(exp => {
-                            const catTotal = exp.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-                            expensesTotal += catTotal;
-                            if (exp.isSavings) {
-                                savingsTotal += catTotal;
-                            }
-                        });
+                        expensesTotal = data.expenses.reduce((sum, exp) => sum + exp.items.reduce((s, item) => s + (parseFloat(item.amount) || 0), 0), 0);
                     }
-                    
                     expenseData.push(expensesTotal);
-                    savingsData.push(savingsTotal);
                     
-                    const freeMoney = income - expensesTotal;
-                    freeMoneyData.push(freeMoney);
-                    
-                    if (freeMoney < 0) {
-                        pointColors.push('rgba(255, 59, 48, 1)'); 
-                        pointRadiuses.push(6);
-                    } else if (income > 0 && (freeMoney / income) >= 0.2) {
-                        pointColors.push('rgba(52, 199, 89, 1)'); 
-                        pointRadiuses.push(6);
-                    } else {
-                        pointColors.push('rgba(0, 122, 255, 1)'); 
-                        pointRadiuses.push(4);
-                    }
+                    freeMoneyData.push(income - expensesTotal);
                 }
             });
         });
@@ -1677,8 +1654,13 @@
             analyticsChart.destroy();
         }
         
+        // Создаем градиент для "трейдерского" графика
+        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(0, 122, 255, 0.4)'); // Мягкий синий цвет
+        gradient.addColorStop(1, 'rgba(0, 122, 255, 0.0)');
+
         analyticsChart = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: labels,
                 datasets: [
@@ -1686,48 +1668,37 @@
                         type: 'line',
                         label: 'Свободные деньги',
                         data: freeMoneyData,
-                        borderColor: 'rgba(0, 122, 255, 0.6)',
-                        borderWidth: 2,
-                        pointBackgroundColor: pointColors,
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: pointRadiuses,
-                        pointHoverRadius: 8,
-                        tension: 0.3, 
-                        order: 1 
-                    },
-                    {
-                        type: 'line',
-                        label: 'Отложено',
-                        data: savingsData,
-                        borderColor: 'rgba(52, 199, 89, 1)',
-                        backgroundColor: 'rgba(52, 199, 89, 0.1)',
-                        borderWidth: 2,
-                        borderDash: [5, 5], 
-                        pointRadius: 3,
+                        borderColor: '#007aff',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
                         fill: true,
-                        tension: 0.3,
-                        order: 2
+                        tension: 0.4, // Плавные изгибы
+                        pointRadius: 0, // Убираем точки, пока не наведешь мышку (как у трейдеров)
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#007aff',
+                        pointBorderWidth: 2,
+                        order: 1
                     },
                     {
                         type: 'bar',
                         label: 'Доход',
                         data: incomeData,
-                        backgroundColor: 'rgba(0, 122, 255, 0.15)',
-                        borderColor: 'rgba(0, 122, 255, 0.4)',
-                        borderWidth: 1,
+                        backgroundColor: 'rgba(52, 199, 89, 0.15)',
+                        hoverBackgroundColor: 'rgba(52, 199, 89, 0.3)',
                         borderRadius: 6,
-                        order: 3
+                        borderWidth: 0,
+                        order: 2
                     },
                     {
                         type: 'bar',
-                        label: 'Расходы',
+                        label: 'Расход',
                         data: expenseData,
                         backgroundColor: 'rgba(255, 59, 48, 0.15)',
-                        borderColor: 'rgba(255, 59, 48, 0.4)',
-                        borderWidth: 1,
+                        hoverBackgroundColor: 'rgba(255, 59, 48, 0.3)',
                         borderRadius: 6,
-                        order: 4
+                        borderWidth: 0,
+                        order: 3
                     }
                 ]
             },
@@ -1736,40 +1707,45 @@
                 maintainAspectRatio: false,
                 interaction: {
                     mode: 'index',
-                    intersect: false,
+                    intersect: false, // Эффект перекрестия по всей вертикали
                 },
                 plugins: {
-                    legend: { position: 'top', labels: { usePointStyle: true, font: {family: '-apple-system'} } },
+                    legend: { 
+                        display: true, 
+                        position: 'top', 
+                        labels: { usePointStyle: true, boxWidth: 10, font: {family: '-apple-system', size: 13} } 
+                    },
                     tooltip: {
                         backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                        titleFont: { size: 14 },
-                        bodyFont: { size: 14 },
-                        padding: 14,
+                        titleColor: '#a1a1a6',
+                        titleFont: { size: 13, weight: '500' },
+                        bodyFont: { size: 15, weight: 'bold' },
+                        padding: 16,
                         cornerRadius: 16,
                         callbacks: {
                             label: function(context) {
                                 return context.dataset.label + ': ' + context.parsed.y.toLocaleString('ru-RU') + ' ₴';
-                            },
-                            afterBody: function(context) {
-                                const idx = context[0].dataIndex;
-                                const freeMoney = freeMoneyData[idx];
-                                const income = incomeData[idx];
-                                
-                                if (freeMoney < 0) {
-                                    return '\n⚠️ Внимание: Расходы превысили доходы!';
-                                } else if (income > 0 && (freeMoney / income) >= 0.2) {
-                                    return '\n🌟 Отличный результат!\nСохранено более 20% дохода.';
-                                }
-                                return '';
                             }
                         }
                     }
                 },
                 scales: {
-                    x: { grid: {display: false} },
+                    x: { 
+                        grid: { display: false },
+                        ticks: { font: { size: 12, family: '-apple-system' } }
+                    },
                     y: { 
                         beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.04)' }
+                        grid: { color: 'rgba(0,0,0,0.04)', borderDash: [5, 5] },
+                        ticks: { 
+                            font: { size: 12, family: '-apple-system' },
+                            callback: function(value) {
+                                // Короткий формат цифр по оси Y (например, 100k, 1M)
+                                if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                                if (value >= 1000) return (value / 1000).toFixed(0) + 'k';
+                                return value;
+                            }
+                        }
                     }
                 }
             }
