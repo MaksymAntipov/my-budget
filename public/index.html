@@ -1624,6 +1624,7 @@
         const freeMoneyData = [];
         const incomeData = [];
         const expenseData = [];
+        const barColors = [];
 
         const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
         
@@ -1643,7 +1644,14 @@
                     }
                     expenseData.push(expensesTotal);
                     
-                    freeMoneyData.push(income - expensesTotal);
+                    const freeMoney = income - expensesTotal;
+                    freeMoneyData.push(freeMoney);
+
+                    if (freeMoney < 0) {
+                        barColors.push('rgba(255, 59, 48, 0.85)'); 
+                    } else {
+                        barColors.push('rgba(52, 199, 89, 0.85)'); 
+                    }
                 }
             });
         });
@@ -1653,52 +1661,53 @@
         if (analyticsChart) {
             analyticsChart.destroy();
         }
-        
-        // Создаем градиент для "трейдерского" графика
-        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(0, 122, 255, 0.4)'); // Мягкий синий цвет
-        gradient.addColorStop(1, 'rgba(0, 122, 255, 0.0)');
 
+        const maxTurnover = Math.max(...incomeData, ...expenseData, 0);
+        
         analyticsChart = new Chart(ctx, {
-            type: 'line',
             data: {
                 labels: labels,
                 datasets: [
                     {
-                        type: 'line',
-                        label: 'Свободные деньги',
-                        data: freeMoneyData,
-                        borderColor: '#007aff',
-                        backgroundColor: gradient,
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4, // Плавные изгибы
-                        pointRadius: 0, // Убираем точки, пока не наведешь мышку (как у трейдеров)
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#007aff',
-                        pointBorderWidth: 2,
-                        order: 1
-                    },
-                    {
                         type: 'bar',
-                        label: 'Доход',
-                        data: incomeData,
-                        backgroundColor: 'rgba(52, 199, 89, 0.15)',
-                        hoverBackgroundColor: 'rgba(52, 199, 89, 0.3)',
+                        label: 'Чистый остаток',
+                        data: freeMoneyData,
+                        backgroundColor: barColors,
                         borderRadius: 6,
                         borderWidth: 0,
+                        yAxisID: 'y',
                         order: 2
                     },
                     {
-                        type: 'bar',
+                        type: 'line',
+                        label: 'Доход',
+                        data: incomeData,
+                        borderColor: 'rgba(0, 122, 255, 0.6)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: 'rgba(0, 122, 255, 1)',
+                        pointBorderWidth: 2,
+                        yAxisID: 'y1',
+                        order: 1
+                    },
+                    {
+                        type: 'line',
                         label: 'Расход',
                         data: expenseData,
-                        backgroundColor: 'rgba(255, 59, 48, 0.15)',
-                        hoverBackgroundColor: 'rgba(255, 59, 48, 0.3)',
-                        borderRadius: 6,
-                        borderWidth: 0,
-                        order: 3
+                        borderColor: 'rgba(255, 149, 0, 0.6)', 
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: 'rgba(255, 149, 0, 1)',
+                        pointBorderWidth: 2,
+                        yAxisID: 'y1',
+                        order: 1
                     }
                 ]
             },
@@ -1707,7 +1716,7 @@
                 maintainAspectRatio: false,
                 interaction: {
                     mode: 'index',
-                    intersect: false, // Эффект перекрестия по всей вертикали
+                    intersect: false,
                 },
                 plugins: {
                     legend: { 
@@ -1724,7 +1733,8 @@
                         cornerRadius: 16,
                         callbacks: {
                             label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('ru-RU') + ' ₴';
+                                let prefix = context.dataset.label === 'Чистый остаток' && context.parsed.y > 0 ? '+' : '';
+                                return context.dataset.label + ': ' + prefix + context.parsed.y.toLocaleString('ru-RU') + ' ₴';
                             }
                         }
                     }
@@ -1735,17 +1745,24 @@
                         ticks: { font: { size: 12, family: '-apple-system' } }
                     },
                     y: { 
-                        beginAtZero: true,
+                        type: 'linear',
+                        position: 'left',
                         grid: { color: 'rgba(0,0,0,0.04)', borderDash: [5, 5] },
                         ticks: { 
                             font: { size: 12, family: '-apple-system' },
                             callback: function(value) {
-                                // Короткий формат цифр по оси Y (например, 100k, 1M)
-                                if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
-                                if (value >= 1000) return (value / 1000).toFixed(0) + 'k';
+                                if (value >= 1000000 || value <= -1000000) return (value / 1000000).toFixed(1) + 'M';
+                                if (value >= 1000 || value <= -1000) return (value / 1000).toFixed(0) + 'k';
                                 return value;
                             }
                         }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        display: false, 
+                        suggestedMin: 0,
+                        suggestedMax: maxTurnover * 1.3 
                     }
                 }
             }
