@@ -637,6 +637,17 @@
         await fetchGlobalData();
         fetchExchangeRate();
         initChart();
+        
+        // --- АВТОМАТИЧЕСКИЙ ВХОД, ЕСЛИ СОХРАНЕНА СЕССИЯ ---
+        const savedUserId = localStorage.getItem('budget_saved_user_id');
+        if (savedUserId && globalData.users && globalData.users.length > 0) {
+            const user = globalData.users.find(u => u.id === savedUserId);
+            if (user) {
+                login(user);
+                return; // Пропускаем окно авторизации
+            }
+        }
+        
         showAuthScreen();
     }
 
@@ -755,10 +766,13 @@
 
     function login(user) {
         currentUser = user;
+        
+        // --- СОХРАНЯЕМ В ЛОКАЛ СТОРЕДЖ ДЛЯ АВТОВХОДА ---
+        localStorage.setItem('budget_saved_user_id', user.id);
+        
         document.getElementById('auth-overlay').classList.remove('active');
         document.getElementById('current-user-name-display').innerText = `${user.name} ${user.surname}`;
         
-        // ПОКАЗЫВАЕМ ПРИЛОЖЕНИЕ
         document.getElementById('app-container').style.opacity = '1';
         document.getElementById('app-container').style.pointerEvents = 'auto';
         
@@ -839,7 +853,9 @@
         appData = {};
         initialSavings = 0;
         
-        // СКРЫВАЕМ ПРИЛОЖЕНИЕ
+        // --- УДАЛЯЕМ АВТОВХОД ПРИ ВЫХОДЕ ИЗ ПРОФИЛЯ ---
+        localStorage.removeItem('budget_saved_user_id');
+        
         document.getElementById('app-container').style.opacity = '0';
         document.getElementById('app-container').style.pointerEvents = 'none';
         
@@ -909,7 +925,7 @@
             expenses = [];
             renderExpenses(); 
             currentIncomeUah = 0;
-            updateAll(); 
+            updateAll();
             
             const prev = getLastInitializedData();
             const copyBtn = document.getElementById('btn-copy-prev');
@@ -1239,6 +1255,17 @@
         } else {
             summaryCard.classList.remove('danger');
         }
+
+        // --- БЫСТРОЕ ОБНОВЛЕНИЕ ПРОЦЕНТОВ (решает баг с зависанием процентов) ---
+        const percentElements = document.querySelectorAll('.expense-info.tabular');
+        expenses.forEach((exp, index) => {
+            const totalAmount = getCategoryTotal(exp);
+            const catPercent = currentIncomeUah > 0 ? ((totalAmount / currentIncomeUah) * 100).toFixed(1) : 0;
+            if (percentElements[index]) {
+                percentElements[index].innerText = catPercent + '%';
+            }
+        });
+        // ------------------------------------------------------------------------
 
         updateChart();
     }
