@@ -61,6 +61,99 @@
         .month-pill.filled:hover { background: rgba(52, 199, 89, 0.25); color: #1e7031; }
         .month-pill.filled.active { background: var(--sys-green); color: white; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); }
 
+        /* --- СТИЛИ ДЛЯ НОВОЙ АВТОРИЗАЦИИ IOS GLASSMORPHISM --- */
+        .auth-glass-overlay {
+            background: rgba(242, 242, 247, 0.45) !important;
+            -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+            backdrop-filter: blur(24px) saturate(150%) !important;
+            z-index: 9999;
+        }
+
+        .auth-card {
+            background: rgba(255, 255, 255, 0.75);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 28px;
+            padding: 36px 24px;
+            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0,0,0,0.04);
+            width: 100%;
+            max-width: 320px;
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+        }
+
+        .auth-step {
+            position: absolute;
+            top: 36px; left: 24px; right: 24px; bottom: 36px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+        }
+
+        .step-users { transform: translateX(0); opacity: 1; z-index: 2; }
+        .step-pin { transform: translateX(120%); opacity: 0; z-index: 1; pointer-events: none; }
+
+        .auth-card.show-pin .step-users { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .auth-card.show-pin .step-pin { transform: translateX(0); opacity: 1; pointer-events: auto; }
+
+        .auth-header { text-align: center; margin-bottom: 24px; }
+        .auth-icon { font-size: 42px; margin-bottom: 12px; line-height: 1; }
+        .auth-title { font-size: 22px; font-weight: 600; color: var(--text-primary); margin: 0 0 6px 0; letter-spacing: -0.5px;}
+        .auth-subtitle { font-size: 14px; color: var(--text-secondary); margin: 0; }
+
+        .users-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; margin-bottom: 16px; scrollbar-width: none; }
+        .users-list::-webkit-scrollbar { display: none; }
+
+        .user-item {
+            display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+            background: rgba(255,255,255,0.6); border-radius: 16px;
+            cursor: pointer; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+        .user-item:hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+        .user-item:active { transform: scale(0.97); }
+
+        .user-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            color: white; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 600; flex-shrink: 0;
+            box-shadow: inset 0 -2px 6px rgba(0,0,0,0.1);
+        }
+        .user-name { font-size: 16px; font-weight: 500; color: var(--text-primary); }
+
+        .btn-back {
+            position: absolute; top: -14px; left: -14px;
+            background: transparent; border: none; padding: 10px;
+            color: var(--sys-blue); display: flex; align-items: center; gap: 4px;
+            font-size: 15px; font-weight: 500; cursor: pointer; border-radius: 12px;
+        }
+        .btn-back:hover { background: rgba(0, 122, 255, 0.1); }
+
+        .selected-user-display { display: flex; flex-direction: column; align-items: center; margin-top: 10px; margin-bottom: 24px; }
+        .selected-user-display .user-avatar { width: 64px; height: 64px; font-size: 28px; margin-bottom: 16px; }
+
+        .pin-input-wrapper { position: relative; margin: 20px auto; width: max-content; }
+        .pin-dots { display: flex; gap: 16px; justify-content: center; }
+        .pin-dot {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: rgba(0,0,0,0.1); transition: background 0.2s, transform 0.1s;
+        }
+        .pin-dot.filled { background: var(--sys-blue); transform: scale(1.1); }
+        .pin-dot.error { background: var(--sys-red); animation: shake 0.4s; }
+
+        .hidden-pin-input {
+            position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0;
+            cursor: text; font-size: 16px; 
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
         /* БЛОК СБЕРЕЖЕНИЙ */
         .savings-container { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.05); font-size: 16px; font-weight: 500; color: var(--text-secondary); }
         .savings-amount { color: var(--sys-green); font-weight: 600; cursor: pointer; padding: 6px 12px; border-radius: 12px; transition: background 0.2s; background: rgba(52, 199, 89, 0.08); display: flex; align-items: center; gap: 6px;}
@@ -200,140 +293,142 @@
 </head>
 <body onload="init()">
 
-<div class="top-nav">
-    <div class="glass-card header-nav">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 4px; font-size: 14px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 18px;">👤</span>
-                <span id="current-user-name-display" style="font-weight: 600; color: var(--text-primary);"></span>
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <button style="background: transparent; color: var(--sys-red); border: none; font-size: 13px; font-weight: 500; cursor: pointer; padding: 0;" onclick="deleteProfile()">Удалить профиль</button>
-                <button style="background: rgba(0,0,0,0.06); color: var(--text-primary); border: none; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; margin-left: 10px;" onclick="logout()">Выйти</button>
-            </div>
-        </div>
-        <div class="year-selector">
-            <button class="year-btn" onclick="changeYear(-1)">❮</button>
-            <span id="display-year">2026</span>
-            <button class="year-btn" onclick="changeYear(1)">❯</button>
-        </div>
-        <div class="months-carousel" id="months-container"></div>
-        <div class="savings-container">
-            <span>Мои сбережения:</span>
-            <span class="savings-amount tabular" onclick="openSavingsHistory()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
-                <span id="total-savings-display">0</span> ₴
-            </span>
-        </div>
-    </div>
-</div>
+<div id="app-container" style="opacity: 0; pointer-events: none; transition: opacity 0.5s ease; width: 100%; display: flex; flex-direction: column; align-items: center;">
 
-<div class="dashboard-wrapper">
-    
-    <div id="init-overlay" class="init-overlay">
-        <div class="init-card">
-            <div class="init-icon">🗓️</div>
-            <div class="init-title">Новый месяц</div>
-            <div class="init-subtitle" id="init-subtitle-text">В этом месяце еще нет записей. Как вы хотите начать?</div>
-            
-            <button id="btn-copy-prev" class="btn-init-primary" onclick="initializeMonth(true)">
-                Перенести данные
-            </button>
-            <button class="btn-init-secondary" onclick="initializeMonth(false)">
-                Начать с чистого листа
-            </button>
+    <div class="top-nav">
+        <div class="glass-card header-nav">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 4px; font-size: 14px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">👤</span>
+                    <span id="current-user-name-display" style="font-weight: 600; color: var(--text-primary);"></span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button style="background: transparent; color: var(--sys-red); border: none; font-size: 13px; font-weight: 500; cursor: pointer; padding: 0;" onclick="deleteProfile()">Удалить профиль</button>
+                    <button style="background: rgba(0,0,0,0.06); color: var(--text-primary); border: none; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; margin-left: 10px;" onclick="logout()">Выйти</button>
+                </div>
+            </div>
+            <div class="year-selector">
+                <button class="year-btn" onclick="changeYear(-1)">❮</button>
+                <span id="display-year">2026</span>
+                <button class="year-btn" onclick="changeYear(1)">❯</button>
+            </div>
+            <div class="months-carousel" id="months-container"></div>
+            <div class="savings-container">
+                <span>Мои сбережения:</span>
+                <span class="savings-amount tabular" onclick="openSavingsHistory()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
+                    <span id="total-savings-display">0</span> ₴
+                </span>
+            </div>
         </div>
     </div>
 
-    <div class="container" id="main-dashboard">
-        <div class="left-panel">
-            <div class="glass-card" style="margin-bottom: 24px;">
-                <div class="converter-header">
-                    <h2>Доход в USD</h2>
-                    <div class="rate-badge" id="rate-info">Загрузка...</div>
-                </div>
-                <div class="usd-input-wrapper">
-                    <span>$</span>
-                    <input type="number" id="usd-input" placeholder="0" oninput="convertCurrency()">
-                </div>
-            </div>
-
-            <div class="glass-card" style="margin-bottom: 24px;">
-                <h1>Доходы</h1>
-                <div class="info-block">
-                    <div class="info-row">
-                        <span class="text-label">В месяц:</span>
-                        <span class="text-value value-main tabular"><span id="income-display">0</span><span class="currency-symbol">₴</span></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="text-label">За год:</span>
-                        <span class="text-value tabular"><span id="yearly-income-display">0</span><span class="currency-symbol">₴</span> <span style="color: var(--text-tertiary); font-weight: normal; font-size: 14px; margin-left: 4px;">($<span id="yearly-income-usd">0</span>)</span></span>
-                    </div>
-                </div>
-                <div class="info-block">
-                    <div class="info-row">
-                        <span class="text-label">В рабочий день:</span>
-                        <span class="text-value tabular">$<span id="daily-rate-usd">0</span> <span style="color: var(--text-tertiary); font-weight: normal; margin: 0 4px;">/</span> <span id="daily-rate-uah">0</span><span class="currency-symbol">₴</span></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="text-label">Стоимость 1 часа:</span>
-                        <span class="text-value tabular">$<span id="hourly-rate-usd">0</span> <span style="color: var(--text-tertiary); font-weight: normal; margin: 0 4px;">/</span> <span id="hourly-rate-uah">0</span><span class="currency-symbol">₴</span></span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="glass-card">
-                <h2>Расходы</h2>
-                <div class="expenses-container" id="expenses-list"></div>
-                <button class="btn-add" onclick="addCategory()">+ Добавить категорию</button>
-            </div>
-        </div>
-
-        <div class="right-panel">
-            <div class="glass-card">
-                <h2>Сводка</h2>
+    <div class="dashboard-wrapper">
+        
+        <div id="init-overlay" class="init-overlay">
+            <div class="init-card">
+                <div class="init-icon">🗓️</div>
+                <div class="init-title">Новый месяц</div>
+                <div class="init-subtitle" id="init-subtitle-text">В этом месяце еще нет записей. Как вы хотите начать?</div>
                 
-                <div id="summary-card" class="summary-box summary-main">
-                    <div id="summary-progress" class="summary-progress" style="width: 0%;"></div>
-                    <div class="summary-content">
-                        <div>Остается в мес:</div>
-                        <div class="tabular" style="font-size: 18px; font-weight: 600;">
-                            <span id="remaining-money">0</span><span class="currency-symbol" style="opacity: 0.8;">₴</span> 
-                            <span style="opacity: 0.9; font-weight: 500; font-size: 15px; margin-left: 4px;">(<span id="remaining-percent">0</span>%)</span>
+                <button id="btn-copy-prev" class="btn-init-primary" onclick="initializeMonth(true)">
+                    Перенести данные
+                </button>
+                <button class="btn-init-secondary" onclick="initializeMonth(false)">
+                    Начать с чистого листа
+                </button>
+            </div>
+        </div>
+
+        <div class="container" id="main-dashboard">
+            <div class="left-panel">
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <div class="converter-header">
+                        <h2>Доход в USD</h2>
+                        <div class="rate-badge" id="rate-info">Загрузка...</div>
+                    </div>
+                    <div class="usd-input-wrapper">
+                        <span>$</span>
+                        <input type="number" id="usd-input" placeholder="0" oninput="convertCurrency()">
+                    </div>
+                </div>
+
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <h1>Доходы</h1>
+                    <div class="info-block">
+                        <div class="info-row">
+                            <span class="text-label">В месяц:</span>
+                            <span class="text-value value-main tabular"><span id="income-display">0</span><span class="currency-symbol">₴</span></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="text-label">За год:</span>
+                            <span class="text-value tabular"><span id="yearly-income-display">0</span><span class="currency-symbol">₴</span> <span style="color: var(--text-tertiary); font-weight: normal; font-size: 14px; margin-left: 4px;">($<span id="yearly-income-usd">0</span>)</span></span>
+                        </div>
+                    </div>
+                    <div class="info-block">
+                        <div class="info-row">
+                            <span class="text-label">В рабочий день:</span>
+                            <span class="text-value tabular">$<span id="daily-rate-usd">0</span> <span style="color: var(--text-tertiary); font-weight: normal; margin: 0 4px;">/</span> <span id="daily-rate-uah">0</span><span class="currency-symbol">₴</span></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="text-label">Стоимость 1 часа:</span>
+                            <span class="text-value tabular">$<span id="hourly-rate-usd">0</span> <span style="color: var(--text-tertiary); font-weight: normal; margin: 0 4px;">/</span> <span id="hourly-rate-uah">0</span><span class="currency-symbol">₴</span></span>
                         </div>
                     </div>
                 </div>
-                
-                <button class="btn-savings-transfer" onclick="openTransferModal()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    Перенести в сбережения
-                </button>
 
-                <div id="yearly-summary-card" class="summary-box summary-yearly" style="margin-top: 12px;">
-                    <div>Чистыми за год:</div>
-                    <div class="tabular" style="font-weight: 600; font-size: 18px;">
-                        <span id="yearly-remaining">0</span><span class="currency-symbol" style="opacity: 0.5;">₴</span>
+                <div class="glass-card">
+                    <h2>Расходы</h2>
+                    <div class="expenses-container" id="expenses-list"></div>
+                    <button class="btn-add" onclick="addCategory()">+ Добавить категорию</button>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="glass-card">
+                    <h2>Сводка</h2>
+                    
+                    <div id="summary-card" class="summary-box summary-main">
+                        <div id="summary-progress" class="summary-progress" style="width: 0%;"></div>
+                        <div class="summary-content">
+                            <div>Остается в мес:</div>
+                            <div class="tabular" style="font-size: 18px; font-weight: 600;">
+                                <span id="remaining-money">0</span><span class="currency-symbol" style="opacity: 0.8;">₴</span> 
+                                <span style="opacity: 0.9; font-weight: 500; font-size: 15px; margin-left: 4px;">(<span id="remaining-percent">0</span>%)</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                    
+                    <button class="btn-savings-transfer" onclick="openTransferModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        Перенести в сбережения
+                    </button>
 
-                <div class="total-expenses-label">
-                    Всего расходов: <b class="tabular"><span id="total-expenses">0</span><span class="currency-symbol">₴</span></b>
+                    <div id="yearly-summary-card" class="summary-box summary-yearly" style="margin-top: 12px;">
+                        <div>Чистыми за год:</div>
+                        <div class="tabular" style="font-weight: 600; font-size: 18px;">
+                            <span id="yearly-remaining">0</span><span class="currency-symbol" style="opacity: 0.5;">₴</span>
+                        </div>
+                    </div>
+
+                    <div class="total-expenses-label">
+                        Всего расходов: <b class="tabular"><span id="total-expenses">0</span><span class="currency-symbol">₴</span></b>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                    
+                    <button class="btn-clear-month" onclick="clearCurrentMonth()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        Очистить этот месяц
+                    </button>
                 </div>
-                
-                <div class="chart-container">
-                    <canvas id="budgetChart"></canvas>
-                </div>
-                
-                <button class="btn-clear-month" onclick="clearCurrentMonth()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    Очистить этот месяц
-                </button>
             </div>
         </div>
     </div>
-</div>
 
-<div id="category-modal" class="modal-overlay" onclick="closeModal(event)">
+</div> <div id="category-modal" class="modal-overlay" onclick="closeModal(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
             <div class="modal-title-group">
@@ -392,44 +487,76 @@
     </div>
 </div>
 
-<div id="auth-overlay" class="modal-overlay active" style="background: rgba(242, 242, 247, 1); backdrop-filter: none; z-index: 9999; opacity: 1; visibility: visible;">
-    <div class="init-card" style="width: 340px;">
-        <div class="init-icon">👋</div>
-        <div class="init-title">Вход</div>
-        <div class="init-subtitle">Введите 6-значный PIN для входа</div>
+<div id="auth-overlay" class="modal-overlay auth-glass-overlay">
+    <div id="auth-card" class="auth-card">
         
-        <input type="password" id="login-pin" class="input-name" style="width: 100%; text-align: center; letter-spacing: 8px; font-size: 24px; margin-bottom: 20px; box-sizing: border-box; background: var(--input-bg); border: none; border-radius: 12px; padding: 12px;" maxlength="6" placeholder="------" oninput="checkLoginPin(this.value)">
-        <div id="login-error" style="color: var(--sys-red); font-size: 14px; margin-bottom: 15px; display: none;">ПИН-код не найден</div>
-        
-        <div style="text-align: left; margin-bottom: 24px;">
-            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: var(--text-secondary);">Существующие профили:</h4>
-            <div id="existing-users-list" style="font-size: 15px; font-weight: 500; color: var(--text-primary); display: flex; flex-direction: column; gap: 8px;">
+        <div class="auth-step step-users">
+            <div class="auth-header">
+                <div class="auth-icon">👋</div>
+                <h2 class="auth-title">Вход</h2>
+                <p class="auth-subtitle">Выберите ваш профиль</p>
+            </div>
+            
+            <div class="users-list" id="users-list">
+                </div>
+            
+            <button class="btn-init-secondary" onclick="showCreateProfileFromAuth()">
+                + Создать новый профиль
+            </button>
+        </div>
+
+        <div class="auth-step step-pin">
+            <button class="btn-back" onclick="showUsersStep()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                Назад
+            </button>
+            
+            <div class="selected-user-display">
+                <div id="selected-avatar" class="user-avatar"></div>
+                <h2 id="selected-name" class="auth-title" style="font-size: 18px;"></h2>
+                <p class="auth-subtitle">Введите 6-значный PIN</p>
+            </div>
+
+            <div class="pin-input-wrapper">
+                <div class="pin-dots" id="pin-dots">
+                    <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+                    <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+                </div>
+                <input type="tel" id="hidden-pin" class="hidden-pin-input" maxlength="6" pattern="[0-9]*" inputmode="numeric" oninput="handlePinInput(this)">
             </div>
         </div>
 
-        <button class="btn-init-secondary" onclick="showCreateProfile()">+ Создать новый профиль</button>
     </div>
 </div>
 
-<div id="create-profile-overlay" class="modal-overlay" style="background: rgba(242, 242, 247, 1); backdrop-filter: none; z-index: 10000;">
-    <div class="init-card" style="width: 340px;">
-        <div class="init-title" style="margin-bottom: 20px;">Новый профиль</div>
+<div id="create-profile-overlay" class="modal-overlay auth-glass-overlay">
+    <div class="auth-card" style="min-height: auto;">
         
-        <input type="text" id="new-user-name" class="input-name" style="width: 100%; margin-bottom: 12px; box-sizing: border-box; background: var(--input-bg); border: none; border-radius: 12px; padding: 14px;" placeholder="Имя">
-        <input type="text" id="new-user-surname" class="input-name" style="width: 100%; margin-bottom: 12px; box-sizing: border-box; background: var(--input-bg); border: none; border-radius: 12px; padding: 14px;" placeholder="Фамилия">
-        <input type="text" id="new-user-pin" class="input-name" style="width: 100%; text-align: center; letter-spacing: 4px; font-size: 20px; margin-bottom: 20px; box-sizing: border-box; background: var(--input-bg); border: none; border-radius: 12px; padding: 14px;" maxlength="6" placeholder="PIN (6 цифр)">
+        <div class="auth-header">
+            <div class="auth-icon">✨</div>
+            <h2 class="auth-title">Новый профиль</h2>
+            <p class="auth-subtitle">Заполните данные для входа</p>
+        </div>
         
-        <div id="create-error" style="color: var(--sys-red); font-size: 14px; margin-bottom: 15px; display: none;"></div>
+        <input type="text" id="new-user-name" style="width: 100%; margin-bottom: 12px; box-sizing: border-box; background: rgba(0,0,0,0.04); border: 1px solid rgba(255,255,255,0.5); border-radius: 14px; padding: 14px; font-size: 16px; outline: none; transition: 0.2s;" placeholder="Имя">
+        
+        <input type="text" id="new-user-surname" style="width: 100%; margin-bottom: 20px; box-sizing: border-box; background: rgba(0,0,0,0.04); border: 1px solid rgba(255,255,255,0.5); border-radius: 14px; padding: 14px; font-size: 16px; outline: none; transition: 0.2s;" placeholder="Фамилия">
+        
+        <div style="text-align: center; margin-bottom: 8px; color: var(--text-secondary); font-size: 14px; font-weight: 500;">Придумайте 6-значный PIN</div>
+        
+        <input type="tel" id="new-user-pin" style="width: 100%; text-align: center; letter-spacing: 8px; font-size: 22px; font-weight: 600; margin-bottom: 24px; box-sizing: border-box; background: rgba(0,0,0,0.04); border: 1px solid rgba(255,255,255,0.5); border-radius: 14px; padding: 14px; outline: none; transition: 0.2s;" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="••••••" oninput="this.value = this.value.replace(/\D/g, '')">
+        
+        <div id="create-error" style="color: var(--sys-red); font-size: 14px; margin-bottom: 16px; text-align: center; display: none; font-weight: 500; background: rgba(255, 59, 48, 0.1); padding: 8px; border-radius: 8px;"></div>
 
         <button class="btn-init-primary" onclick="createProfile()">Создать и войти</button>
         <button class="btn-init-secondary" onclick="hideCreateProfile()">Отмена</button>
+        
     </div>
 </div>
 
 <script>
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     
-    // ДОБАВЛЕНЫ ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ПОЛЬЗОВАТЕЛЕЙ
     let globalData = { users: [], appData: {}, initialSavings: {} };
     let currentUser = null;
 
@@ -449,164 +576,244 @@
 
     const appleColors = [ '#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#5ac8fa', '#007aff', '#5856d6', '#af52de', '#ff2d55', '#32ade6' ];
 
-async function init() {
-    await fetchGlobalData();
-    fetchExchangeRate();
-    initChart();
-    showAuthScreen();
-}
+    async function init() {
+        await fetchGlobalData();
+        fetchExchangeRate();
+        initChart();
+        showAuthScreen();
+    }
 
-// НОВЫЕ ФУНКЦИИ АВТОРИЗАЦИИ
-async function fetchGlobalData() {
-    try {
-        const response = await fetch('/api/data');
-        const saved = await response.json();
+    async function fetchGlobalData() {
+        try {
+            const response = await fetch('/api/data');
+            const saved = await response.json();
+            
+            if (saved) {
+                if (saved.users) {
+                    globalData = saved;
+                } else {
+                    globalData.appData['legacy'] = saved;
+                }
+            }
+        } catch (e) {
+            console.error("Ошибка загрузки из KV:", e);
+        }
+    }
+
+    let selectedAuthUser = null;
+
+    function showAuthScreen() {
+        document.getElementById('auth-overlay').classList.add('active');
+        document.getElementById('auth-card').classList.remove('show-pin');
+        document.getElementById('hidden-pin').value = '';
+        updatePinDots(0);
         
-        if (saved) {
-            if (saved.users) {
-                globalData = saved;
+        const list = document.getElementById('users-list');
+        list.innerHTML = '';
+        
+        if (globalData.users.length === 0) {
+            list.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; color: var(--text-tertiary); text-align: center; height: 100%;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.5;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span style="font-size: 16px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px;">Пока пусто</span>
+                    <span style="font-size: 14px;">Создайте первый профиль, чтобы начать планирование</span>
+                </div>
+            `;
+        } else {
+            globalData.users.forEach((u, index) => {
+                const color = appleColors[index % appleColors.length];
+                const initial = u.name.charAt(0).toUpperCase();
+                
+                const div = document.createElement('div');
+                div.className = 'user-item';
+                div.onclick = () => selectUserForAuth(u, color);
+                div.innerHTML = `
+                    <div class="user-avatar" style="background: ${color}">${initial}</div>
+                    <span class="user-name">${u.name} ${u.surname}</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+    }
+
+    function selectUserForAuth(user, color) {
+        selectedAuthUser = user;
+        
+        document.getElementById('selected-avatar').innerText = user.name.charAt(0).toUpperCase();
+        document.getElementById('selected-avatar').style.background = color;
+        document.getElementById('selected-name').innerText = `${user.name} ${user.surname}`;
+        
+        document.getElementById('hidden-pin').value = '';
+        updatePinDots(0);
+        
+        document.getElementById('auth-card').classList.add('show-pin');
+        
+        setTimeout(() => document.getElementById('hidden-pin').focus(), 300);
+    }
+
+    function showUsersStep() {
+        document.getElementById('auth-card').classList.remove('show-pin');
+        selectedAuthUser = null;
+        document.getElementById('hidden-pin').blur();
+    }
+
+    function handlePinInput(input) {
+        input.value = input.value.replace(/\D/g, ''); 
+        const pinLength = input.value.length;
+        
+        updatePinDots(pinLength);
+
+        if (pinLength === 6) {
+            if (input.value === selectedAuthUser.pin) {
+                document.getElementById('hidden-pin').blur();
+                login(selectedAuthUser);
             } else {
-                // Если данные остались от старой версии без профилей
-                globalData.appData['legacy'] = saved;
+                const dots = document.querySelectorAll('#pin-dots .pin-dot');
+                dots.forEach(dot => dot.classList.add('error'));
+                
+                setTimeout(() => {
+                    input.value = '';
+                    updatePinDots(0);
+                }, 400);
             }
         }
-    } catch (e) {
-        console.error("Ошибка загрузки из KV:", e);
     }
-}
 
-function showAuthScreen() {
-    document.getElementById('auth-overlay').classList.add('active');
-    document.getElementById('login-pin').value = '';
-    document.getElementById('login-error').style.display = 'none';
-    
-    const list = document.getElementById('existing-users-list');
-    if (globalData.users.length === 0) {
-        list.innerHTML = '<span style="color: var(--text-tertiary); font-weight: normal;">Нет зарегистрированных профилей</span>';
-    } else {
-        list.innerHTML = globalData.users.map(u => `<div style="padding: 8px; background: rgba(0,0,0,0.03); border-radius: 10px;">👤 ${u.name} ${u.surname}</div>`).join('');
+    function updatePinDots(filledCount) {
+        const dots = document.querySelectorAll('#pin-dots .pin-dot');
+        dots.forEach((dot, index) => {
+            dot.classList.remove('error');
+            if (index < filledCount) {
+                dot.classList.add('filled');
+            } else {
+                dot.classList.remove('filled');
+            }
+        });
     }
-}
 
-function checkLoginPin(pin) {
-    document.getElementById('login-error').style.display = 'none';
-    if (pin.length === 6) {
-        const user = globalData.users.find(u => u.pin === pin);
-        if (user) {
-            login(user);
-        } else {
-            document.getElementById('login-error').style.display = 'block';
+    function showCreateProfileFromAuth() {
+        document.getElementById('auth-overlay').classList.remove('active');
+        showCreateProfile();
+    }
+
+    function login(user) {
+        currentUser = user;
+        document.getElementById('auth-overlay').classList.remove('active');
+        document.getElementById('current-user-name-display').innerText = `${user.name} ${user.surname}`;
+        
+        // ПОКАЗЫВАЕМ ПРИЛОЖЕНИЕ
+        document.getElementById('app-container').style.opacity = '1';
+        document.getElementById('app-container').style.pointerEvents = 'auto';
+        
+        appData = globalData.appData[user.id] || {};
+        initialSavings = globalData.initialSavings[user.id] || 0;
+
+        if (!appData[currentYear]) appData[currentYear] = {};
+        if (!appData[currentYear][currentMonth]) {
+            appData[currentYear][currentMonth] = { initialized: false, usd: 0, expenses: [] };
+        }
+        
+        const hasAnyData = Object.keys(appData).some(y => Object.keys(appData[y]).some(m => appData[y][m].initialized));
+        if (!hasAnyData) {
+            appData[currentYear][currentMonth] = { initialized: true, usd: 0, expenses: JSON.parse(JSON.stringify(defaultCategories)) };
+        }
+
+        renderCalendar();
+        applyMonthData();
+        updateSavingsDisplay();
+    }
+
+    function showCreateProfile() {
+        document.getElementById('create-profile-overlay').classList.add('active');
+        document.getElementById('new-user-name').value = '';
+        document.getElementById('new-user-surname').value = '';
+        document.getElementById('new-user-pin').value = '';
+        document.getElementById('create-error').style.display = 'none';
+    }
+
+    function hideCreateProfile() {
+        document.getElementById('create-profile-overlay').classList.remove('active');
+        if (!currentUser) {
+            showAuthScreen();
         }
     }
-}
 
-function login(user) {
-    currentUser = user;
-    document.getElementById('auth-overlay').classList.remove('active');
-    document.getElementById('current-user-name-display').innerText = `${user.name} ${user.surname}`;
-    
-    appData = globalData.appData[user.id] || {};
-    initialSavings = globalData.initialSavings[user.id] || 0;
+    async function createProfile() {
+        const name = document.getElementById('new-user-name').value.trim();
+        const surname = document.getElementById('new-user-surname').value.trim();
+        const pin = document.getElementById('new-user-pin').value.trim();
+        const errorDiv = document.getElementById('create-error');
+        
+        if (!name || !surname) {
+            errorDiv.innerText = 'Введите имя и фамилию';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        if (!/^\d{6}$/.test(pin)) {
+            errorDiv.innerText = 'PIN должен состоять из 6 цифр';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        if (globalData.users.some(u => u.pin === pin)) {
+            errorDiv.innerText = 'Этот PIN уже используется другим пользователем';
+            errorDiv.style.display = 'block';
+            return;
+        }
 
-    if (!appData[currentYear]) appData[currentYear] = {};
-    if (!appData[currentYear][currentMonth]) {
-        appData[currentYear][currentMonth] = { initialized: false, usd: 0, expenses: [] };
-    }
-    
-    const hasAnyData = Object.keys(appData).some(y => Object.keys(appData[y]).some(m => appData[y][m].initialized));
-    if (!hasAnyData) {
-        appData[currentYear][currentMonth] = { initialized: true, usd: 0, expenses: JSON.parse(JSON.stringify(defaultCategories)) };
-    }
+        const newUser = {
+            id: Date.now().toString(),
+            name: name,
+            surname: surname,
+            pin: pin
+        };
 
-    renderCalendar();
-    applyMonthData();
-    updateSavingsDisplay();
-}
+        globalData.users.push(newUser);
+        globalData.appData[newUser.id] = {};
+        globalData.initialSavings[newUser.id] = 0;
 
-function showCreateProfile() {
-    document.getElementById('create-profile-overlay').classList.add('active');
-    document.getElementById('new-user-name').value = '';
-    document.getElementById('new-user-surname').value = '';
-    document.getElementById('new-user-pin').value = '';
-    document.getElementById('create-error').style.display = 'none';
-}
-
-function hideCreateProfile() {
-    document.getElementById('create-profile-overlay').classList.remove('active');
-}
-
-async function createProfile() {
-    const name = document.getElementById('new-user-name').value.trim();
-    const surname = document.getElementById('new-user-surname').value.trim();
-    const pin = document.getElementById('new-user-pin').value.trim();
-    const errorDiv = document.getElementById('create-error');
-    
-    if (!name || !surname) {
-        errorDiv.innerText = 'Введите имя и фамилию';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (!/^\d{6}$/.test(pin)) {
-        errorDiv.innerText = 'PIN должен состоять из 6 цифр';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (globalData.users.some(u => u.pin === pin)) {
-        errorDiv.innerText = 'Этот PIN уже используется другим пользователем';
-        errorDiv.style.display = 'block';
-        return;
-    }
-
-    const newUser = {
-        id: Date.now().toString(),
-        name: name,
-        surname: surname,
-        pin: pin
-    };
-
-    globalData.users.push(newUser);
-    globalData.appData[newUser.id] = {};
-    globalData.initialSavings[newUser.id] = 0;
-
-    await saveGlobalData();
-    
-    hideCreateProfile();
-    login(newUser);
-}
-
-function logout() {
-    currentUser = null;
-    appData = {};
-    initialSavings = 0;
-    showAuthScreen();
-}
-
-function deleteProfile() {
-    showConfirm("Удалить профиль?", "Все ваши данные будут безвозвратно удалены. Вы уверены?", async () => {
-        globalData.users = globalData.users.filter(u => u.id !== currentUser.id);
-        delete globalData.appData[currentUser.id];
-        delete globalData.initialSavings[currentUser.id];
         await saveGlobalData();
-        logout();
-    });
-}
+        
+        hideCreateProfile();
+        login(newUser);
+    }
 
-async function saveGlobalData() {
-    if (currentUser) {
-        globalData.appData[currentUser.id] = appData;
-        globalData.initialSavings[currentUser.id] = initialSavings;
+    function logout() {
+        currentUser = null;
+        appData = {};
+        initialSavings = 0;
+        
+        // СКРЫВАЕМ ПРИЛОЖЕНИЕ
+        document.getElementById('app-container').style.opacity = '0';
+        document.getElementById('app-container').style.pointerEvents = 'none';
+        
+        showAuthScreen();
     }
-    try {
-        await fetch('/api/data', {
-            method: 'POST',
-            body: JSON.stringify(globalData),
-            headers: { 'Content-Type': 'application/json' }
+
+    function deleteProfile() {
+        showConfirm("Удалить профиль?", "Все ваши данные будут безвозвратно удалены. Вы уверены?", async () => {
+            globalData.users = globalData.users.filter(u => u.id !== currentUser.id);
+            delete globalData.appData[currentUser.id];
+            delete globalData.initialSavings[currentUser.id];
+            await saveGlobalData();
+            logout();
         });
-    } catch (e) {
-        console.error("Ошибка сохранения в KV:", e);
     }
-}
-// КОНЕЦ БЛОКА НОВЫХ ФУНКЦИЙ
+
+    async function saveGlobalData() {
+        if (currentUser) {
+            globalData.appData[currentUser.id] = appData;
+            globalData.initialSavings[currentUser.id] = initialSavings;
+        }
+        try {
+            await fetch('/api/data', {
+                method: 'POST',
+                body: JSON.stringify(globalData),
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (e) {
+            console.error("Ошибка сохранения в KV:", e);
+        }
+    }
 
     function getLastInitializedData() {
         let checkYear = currentYear;
@@ -699,19 +906,18 @@ async function saveGlobalData() {
         );
     }
 
-async function saveData() {
-    if (!appData[currentYear]) appData[currentYear] = {};
-    
-    if (appData[currentYear][currentMonth] && appData[currentYear][currentMonth].initialized) {
-        const usd = parseFloat(document.getElementById('usd-input').value) || 0;
-        appData[currentYear][currentMonth].usd = usd;
-        appData[currentYear][currentMonth].expenses = expenses;
+    async function saveData() {
+        if (!appData[currentYear]) appData[currentYear] = {};
+        
+        if (appData[currentYear][currentMonth] && appData[currentYear][currentMonth].initialized) {
+            const usd = parseFloat(document.getElementById('usd-input').value) || 0;
+            appData[currentYear][currentMonth].usd = usd;
+            appData[currentYear][currentMonth].expenses = expenses;
+        }
+        
+        await saveGlobalData();
+        updateSavingsDisplay(); 
     }
-    
-    // Используем новую функцию сохранения, чтобы не ломать логику юзеров
-    await saveGlobalData();
-    updateSavingsDisplay(); 
-}
 
     function renderCalendar() {
         document.getElementById('display-year').innerText = currentYear;
@@ -980,8 +1186,6 @@ async function saveData() {
         updateChart();
     }
 
-    /* ЛОГИКА СБЕРЕЖЕНИЙ */
-    
     function calculateTotalSavings() {
         let addedSavings = 0;
         let history = [];
@@ -1077,7 +1281,6 @@ async function saveData() {
         const val = document.getElementById('initial-savings-input').value;
         initialSavings = parseFloat(val) || 0;
         
-        // Сохраняем глобально для текущего пользователя
         saveGlobalData(); 
         updateSavingsDisplay();
         
@@ -1091,8 +1294,6 @@ async function saveData() {
         }, 800);
     }
 
-    /* ЧАРТ */
-    
     function initChart() {
         Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
         Chart.defaults.color = '#86868b'; 
