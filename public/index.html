@@ -401,36 +401,42 @@
 
     const appleColors = [ '#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#5ac8fa', '#007aff', '#5856d6', '#af52de', '#ff2d55', '#32ade6' ];
 
-    function init() {
-        initialSavings = parseFloat(localStorage.getItem('budget_initial_savings_v1')) || 0;
-        loadAppData();
-        fetchExchangeRate(); 
-        initChart();
-        updateSavingsDisplay();
-    }
+async function init() {
+    // Начальные сбережения пока оставим в localStorage для простоты
+    initialSavings = parseFloat(localStorage.getItem('budget_initial_savings_v1')) || 0;
+    
+    await loadAppData(); // Ждем загрузки данных из Cloudflare
+    
+    fetchExchangeRate();
+    initChart();
+    updateSavingsDisplay();
+}
 
-    function loadAppData() {
-        const saved = localStorage.getItem('budget_app_data_v12');
-        if (saved) {
-            appData = JSON.parse(saved);
-        } else {
-            const oldData = localStorage.getItem('budget_app_data_v11');
-            if (oldData) appData = JSON.parse(oldData);
-        }
-
-        if (!appData[currentYear]) appData[currentYear] = {};
-        if (!appData[currentYear][currentMonth]) {
-            appData[currentYear][currentMonth] = { initialized: false, usd: 0, expenses: [] };
-        }
+async function loadAppData() {
+    try {
+        const response = await fetch('/api/data'); // Путь к вашему файлу в functions
+        const saved = await response.json();
         
-        const hasAnyData = Object.keys(appData).some(y => Object.keys(appData[y]).some(m => appData[y][m].initialized));
-        if (!hasAnyData) {
-            appData[currentYear][currentMonth] = { initialized: true, usd: 0, expenses: JSON.parse(JSON.stringify(defaultCategories)) };
+        if (saved && Object.keys(saved).length > 0) {
+            appData = saved;
         }
-
-        renderCalendar();
-        applyMonthData();
+    } catch (e) {
+        console.error("Ошибка загрузки из KV:", e);
     }
+
+    if (!appData[currentYear]) appData[currentYear] = {};
+    if (!appData[currentYear][currentMonth]) {
+        appData[currentYear][currentMonth] = { initialized: false, usd: 0, expenses: [] };
+    }
+    
+    const hasAnyData = Object.keys(appData).some(y => Object.keys(appData[y]).some(m => appData[y][m].initialized));
+    if (!hasAnyData) {
+        appData[currentYear][currentMonth] = { initialized: true, usd: 0, expenses: JSON.parse(JSON.stringify(defaultCategories)) };
+    }
+
+    renderCalendar();
+    applyMonthData();
+}
 
     function getLastInitializedData() {
         let checkYear = currentYear;
@@ -523,18 +529,28 @@
         );
     }
 
-    function saveData() {
-        if (!appData[currentYear]) appData[currentYear] = {};
-        
-        if (appData[currentYear][currentMonth] && appData[currentYear][currentMonth].initialized) {
-            const usd = parseFloat(document.getElementById('usd-input').value) || 0;
-            appData[currentYear][currentMonth].usd = usd;
-            appData[currentYear][currentMonth].expenses = expenses;
-        }
-        
-        localStorage.setItem('budget_app_data_v12', JSON.stringify(appData));
-        updateSavingsDisplay(); 
+async function saveData() {
+    if (!appData[currentYear]) appData[currentYear] = {};
+    
+    if (appData[currentYear][currentMonth] && appData[currentYear][currentMonth].initialized) {
+        const usd = parseFloat(document.getElementById('usd-input').value) || 0;
+        appData[currentYear][currentMonth].usd = usd;
+        appData[currentYear][currentMonth].expenses = expenses;
     }
+    
+    // Сохраняем в Cloudflare KV через ваш новый код
+    try {
+        await fetch('/api/data', {
+            method: 'POST',
+            body: JSON.stringify(appData),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (e) {
+        console.error("Ошибка сохранения в KV:", e);
+    }
+    
+    updateSavingsDisplay(); 
+}
 
     function renderCalendar() {
         document.getElementById('display-year').innerText = currentYear;
