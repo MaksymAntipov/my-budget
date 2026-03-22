@@ -145,16 +145,26 @@
         .auth-title { font-size: 24px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px 0; letter-spacing: -0.5px;}
         .auth-subtitle { font-size: 15px; color: var(--text-secondary); margin: 0; }
 
-        .users-list { display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; margin-bottom: 16px; scrollbar-width: none; }
-        .users-list::-webkit-scrollbar { display: none; }
+.users-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+    flex: 1; 
+    overflow-y: auto; 
+    margin-bottom: 16px; 
+    padding-bottom: 12px; /* Добавили отступ снизу, чтобы скролл был мягче */
+    scrollbar-width: none; 
+}       
+.users-list::-webkit-scrollbar { display: none; }
 
-        .user-item {
-            display: flex; align-items: center; gap: 16px; padding: 14px 18px;
-            background: rgba(255,255,255,0.7); border-radius: 20px;
-            cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.9);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            animation: fadeInUp 0.4s ease forwards; opacity: 0;
-        }
+.user-item {
+    flex-shrink: 0; /* Главный фикс: запрещаем карточкам сплющиваться! */
+    display: flex; align-items: center; gap: 16px; padding: 14px 18px;
+    background: rgba(255,255,255,0.7); border-radius: 20px;
+    cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    animation: fadeInUp 0.4s ease forwards; opacity: 0;
+}
         .user-item:nth-child(1) { animation-delay: 0.1s; }
         .user-item:nth-child(2) { animation-delay: 0.2s; }
         .user-item:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
@@ -293,14 +303,22 @@
         .value-main { font-size: 20px; color: var(--sys-green); }
 
         .expenses-container { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
-        .expense-item { display: flex; gap: 12px; padding: 16px; border-radius: 20px; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03); align-items: center; transition: all 0.3s ease; }
+.expense-item { 
+    display: flex; gap: 12px; 
+    padding: 24px 16px 16px 16px; /* Увеличили верхний отступ, чтобы влез текст */
+    border-radius: 20px; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03); 
+    align-items: center; transition: all 0.3s ease; 
+}
         .expense-item:hover { background: rgba(0,0,0,0.04); transform: scale(1.01); }
         
         .expense-item input.input-name { background: transparent; border: 1px solid transparent; padding: 0 10px; height: 44px; border-radius: 12px; font-size: 16px; font-weight: 500; color: var(--text-primary); transition: 0.2s; outline: none; flex: 1; min-width: 100px; }
         .expense-item input.input-name:focus { background: white; border-color: rgba(0, 122, 255, 0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-        .amount-column { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; position: relative;}
-        .calculated-amount-btn { min-width: 120px; height: 44px; background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: flex-end; padding: 0 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.2s; font-variant-numeric: tabular-nums; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+.amount-column { 
+    position: relative; 
+    flex: 0 0 auto; 
+}
+      .calculated-amount-btn { min-width: 120px; height: 44px; background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: flex-end; padding: 0 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.2s; font-variant-numeric: tabular-nums; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
         .calculated-amount-btn:hover { background: #f8f8f8; border-color: rgba(0,0,0,0.15); }
         
         .preview-tooltip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%) translateY(10px) scale(0.95); background: rgba(28, 28, 30, 0.85); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: white; padding: 14px 18px; border-radius: 16px; font-size: 14px; font-weight: 500; z-index: 50; opacity: 0; visibility: hidden; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 12px 32px rgba(0,0,0,0.2); pointer-events: none; width: max-content; max-width: 240px; text-align: left; }
@@ -311,7 +329,13 @@
         .preview-item-name { opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .preview-item-amount { font-weight: 600; }
 
-        .expense-10y { font-size: 12px; color: var(--text-tertiary); text-align: right; padding-right: 4px; white-space: nowrap; position: absolute; top: -18px; right: 0; width: 100%; }
+.expense-10y { 
+    position: absolute; 
+    bottom: calc(100% + 6px); /* Текст теперь всегда ровно над кнопкой */
+    right: 0; 
+    font-size: 12px; color: var(--text-tertiary); 
+    text-align: right; white-space: nowrap; 
+}
         .val-10y { font-weight: 600; color: var(--text-secondary); }
         
         .expense-info { font-size: 16px; color: var(--sys-blue); min-width: 64px; text-align: right; font-weight: 600; flex: 0 0 auto; height: 44px; display: flex; align-items: center; justify-content: flex-end; }
@@ -422,8 +446,13 @@
             }
             .amount-column { flex: 1 1 auto; min-width: 120px; }
             .calculated-amount-btn { height: 48px; width: 100%; justify-content: center; background: rgba(0,122,255,0.05); color: var(--sys-blue); border-color: transparent;}
-            .expense-10y { top: auto; bottom: calc(100% + 4px); right: auto; left: 0; text-align: left; position: relative;}
-            
+.expense-10y { 
+    position: relative; 
+    bottom: auto; 
+    margin-bottom: 6px; 
+    text-align: left; 
+}
+
             .expense-info { flex: 0 0 auto; height: 48px; font-size: 18px; }
             .btn-delete { height: 48px; width: 48px; background: rgba(255,59,48,0.05); color: var(--sys-red); border: none;}
             
