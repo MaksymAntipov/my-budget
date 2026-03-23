@@ -1723,27 +1723,21 @@
         const dailyLimitVal = document.getElementById('daily-limit-val');
         const dailyLimitBox = document.getElementById('daily-limit-box');
         const trendBox = document.getElementById('trend-box');
-        let currentDailyLimit = 0;
-
+        
         if (daysLeft > 0 && remaining > 0) {
             dailyLimitBox.style.display = 'flex';
-            currentDailyLimit = remaining / daysLeft;
+            const currentDailyLimit = remaining / daysLeft;
             dailyLimitVal.innerText = currentDailyLimit.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
             dailyLimitVal.style.color = 'var(--sys-green)';
-            trendBox.style.display = 'flex';
         } else if (daysLeft > 0 && remaining <= 0) {
             dailyLimitBox.style.display = 'flex';
-            currentDailyLimit = 0;
             dailyLimitVal.innerText = '0';
             dailyLimitVal.style.color = 'var(--sys-red)';
-            trendBox.style.display = 'flex';
         } else {
             dailyLimitBox.style.display = 'none';
-            trendBox.style.display = 'none';
         }
 
-        // Анализ тенденции
-        let actualCurrentDailyLimit = (daysLeft > 0) ? (remaining / daysLeft) : 0;
+        // Анализ тенденции - СРАВНИВАЕМ ОБЩИЙ ОСТАТОК (REMAINING)
         let prevYear = currentYear;
         let prevMonth = currentMonth - 1;
         if (prevMonth < 0) {
@@ -1751,7 +1745,7 @@
             prevYear--;
         }
 
-        if (appData[prevYear] && appData[prevYear][prevMonth] && appData[prevYear][prevMonth].initialized && daysLeft > 0) {
+        if (appData[prevYear] && appData[prevYear][prevMonth] && appData[prevYear][prevMonth].initialized) {
             let prevData = appData[prevYear][prevMonth];
             let prevIncome = 0;
             if (prevData.incomes) {
@@ -1769,13 +1763,10 @@
             }
 
             let prevRemaining = prevIncome - prevExp;
-            let daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
-            let prevDailyLimit = prevRemaining / daysInPrevMonth;
 
             const iconGood = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>`;
             const iconBad = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>`;
             const iconStable = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg>`;
-            const iconEmpty = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 
             const trendHtml = (icon, cls, title, sub) => `
                 <div class="trend-icon-wrapper ${cls}">${icon}</div>
@@ -1785,22 +1776,29 @@
                 </div>
             `;
             
-            if (prevDailyLimit <= 0 && actualCurrentDailyLimit <= 0) {
-                 trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', 'Дневной бюджет в минусе', 'Ситуация не улучшилась с прошлого месяца.');
-            } else if (prevDailyLimit <= 0 && actualCurrentDailyLimit > 0) {
-                 trendBox.innerHTML = trendHtml(iconGood, 'icon-good', 'Отличный прогресс!', 'Вы вышли в плюс. Подумайте о пополнении конвертов.');
+            if (prevRemaining <= 0 && remaining <= 0) {
+                 trendBox.className = 'trend-box trend-bad';
+                 trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', 'Бюджет в минусе', 'Ситуация не улучшилась с прошлого месяца.');
+            } else if (prevRemaining <= 0 && remaining > 0) {
+                 trendBox.className = 'trend-box trend-good';
+                 trendBox.innerHTML = trendHtml(iconGood, 'icon-good', 'Отличный прогресс!', 'Вы вышли в плюс. В прошлом месяце был минус.');
             } else {
-                let diffPercent = ((actualCurrentDailyLimit - prevDailyLimit) / prevDailyLimit) * 100;
+                let diffPercent = ((remaining - prevRemaining) / prevRemaining) * 100;
                 
                 if (Math.abs(diffPercent) <= 5) {
-                    trendBox.innerHTML = trendHtml(iconStable, 'icon-stable', 'Темп сохраняется', 'Ваш дневной бюджет стабилен по сравнению с прошлым месяцем.');
+                    trendBox.className = 'trend-box trend-stable';
+                    trendBox.innerHTML = trendHtml(iconStable, 'icon-stable', 'Финансы стабильны', 'Свободных денег остается примерно столько же, сколько в прошлом месяце.');
                 } else if (diffPercent > 5) {
-                    trendBox.innerHTML = trendHtml(iconGood, 'icon-good', `Идете лучше прошлого месяца (+${diffPercent.toFixed(1)}%)`, 'Свободных денег стало больше. Отличная работа.');
+                    trendBox.className = 'trend-box trend-good';
+                    trendBox.innerHTML = trendHtml(iconGood, 'icon-good', `Свободных денег больше (+${diffPercent.toFixed(1)}%)`, 'У вас остается больше средств, чем в прошлом месяце.');
                 } else {
-                    trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', `Дневной бюджет ниже прошлого (${Math.abs(diffPercent).toFixed(1)}%)`, 'Возможно, стоит притормозить с крупными тратами.');
+                    trendBox.className = 'trend-box trend-bad';
+                    trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', `Свободных денег меньше (${Math.abs(diffPercent).toFixed(1)}%)`, 'Остаток на месяц ниже прошлого. Следите за расходами.');
                 }
             }
+            trendBox.style.display = 'flex';
         } else {
+            trendBox.className = 'trend-box trend-empty';
             trendBox.innerHTML = `
                 <div class="trend-icon-wrapper icon-empty"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
                 <div class="trend-text">
@@ -1808,6 +1806,7 @@
                     <div class="trend-sub">Аналитика тенденции появится в следующем месяце.</div>
                 </div>
             `;
+            trendBox.style.display = 'flex';
         }
 
         updateChart();
