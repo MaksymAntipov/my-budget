@@ -1708,33 +1708,22 @@
             }
         });
 
-        // Дневной лимит
-        const today = new Date();
-        let daysLeft = 1;
-        if (currentYear === today.getFullYear() && currentMonth === today.getMonth()) {
-            const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
-            daysLeft = lastDay - today.getDate() + 1; // +1 чтобы включить сегодняшний день
-        } else if (currentYear > today.getFullYear() || (currentYear === today.getFullYear() && currentMonth > today.getMonth())) {
-            daysLeft = new Date(currentYear, currentMonth + 1, 0).getDate();
-        } else {
-            daysLeft = -1; // Прошлый месяц
-        }
+// Дневной лимит (всегда делим на полное количество дней в месяце)
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
         const dailyLimitVal = document.getElementById('daily-limit-val');
         const dailyLimitBox = document.getElementById('daily-limit-box');
         const trendBox = document.getElementById('trend-box');
         
-        if (daysLeft > 0 && remaining > 0) {
-            dailyLimitBox.style.display = 'flex';
-            const currentDailyLimit = remaining / daysLeft;
+        dailyLimitBox.style.display = 'flex';
+        
+        if (remaining > 0) {
+            const currentDailyLimit = remaining / daysInMonth;
             dailyLimitVal.innerText = currentDailyLimit.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
             dailyLimitVal.style.color = 'var(--sys-green)';
-        } else if (daysLeft > 0 && remaining <= 0) {
-            dailyLimitBox.style.display = 'flex';
+        } else {
             dailyLimitVal.innerText = '0';
             dailyLimitVal.style.color = 'var(--sys-red)';
-        } else {
-            dailyLimitBox.style.display = 'none';
         }
 
         // Анализ тенденции - СРАВНИВАЕМ ОБЩИЙ ОСТАТОК (REMAINING)
