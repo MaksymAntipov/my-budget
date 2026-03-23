@@ -49,6 +49,16 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Убираем системные стрелочки у полей number */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
         /* АНИМАЦИИ */
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
@@ -75,8 +85,8 @@
         }
 
         /* Навигация (Календарь) */
-        .top-nav { width: 100%; max-width: 1050px; margin-bottom: 24px; position: relative; z-index: 50; animation: fadeInUp 0.5s ease forwards;}
-        .header-nav { display: flex; flex-direction: column; padding: 16px 20px; gap: 12px; }
+        .top-nav { width: 100%; max-width: 1100px; margin: 0 auto 24px auto; position: relative; z-index: 50; animation: fadeInUp 0.5s ease forwards;}
+        .header-nav { display: flex; flex-direction: column; padding: 24px 28px; gap: 12px; }
         .user-nav-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 4px; font-size: 14px; }
         .user-nav-actions { display: flex; gap: 8px; }
         
@@ -146,21 +156,14 @@
         .auth-subtitle { font-size: 15px; color: var(--text-secondary); margin: 0; }
 
         .users-list { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-            flex: 1; 
-            overflow-y: auto; 
-            margin-bottom: 16px; 
-            padding-bottom: 12px;
-            scrollbar-width: none; 
+            display: flex; flex-direction: column; gap: 10px; flex: 1; 
+            overflow-y: auto; margin-bottom: 16px; padding-bottom: 12px; scrollbar-width: none; 
         }       
         .users-list::-webkit-scrollbar { display: none; }
 
         .user-item {
-            flex-shrink: 0;
-            display: flex; align-items: center; gap: 16px; padding: 14px 18px;
-            background: rgba(255,255,255,0.7); border-radius: 20px;
+            flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+            background: rgba(255,255,255,0.7); border-radius: 16px;
             cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.9);
             box-shadow: 0 4px 12px rgba(0,0,0,0.03);
             animation: fadeInUp 0.4s ease forwards; opacity: 0;
@@ -171,19 +174,17 @@
         .user-item:active { transform: scale(0.96); }
 
         .user-avatar {
-            width: 48px; height: 48px; border-radius: 50%;
-            color: white; display: flex; align-items: center; justify-content: center;
-            font-size: 20px; font-weight: 600; flex-shrink: 0;
+            width: 36px; height: 36px; border-radius: 50%; color: white; display: flex; align-items: center; 
+            justify-content: center; font-size: 16px; font-weight: 600; flex-shrink: 0;
             box-shadow: inset 0 -3px 8px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1);
             background-image: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%);
         }
-        .user-name { font-size: 17px; font-weight: 600; color: var(--text-primary); }
+        .user-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 
         .btn-back {
-            position: absolute; top: -20px; left: -14px;
-            background: transparent; border: none; padding: 10px;
-            color: var(--sys-blue); display: flex; align-items: center; gap: 4px;
-            font-size: 15px; font-weight: 500; cursor: pointer; border-radius: 12px; transition: 0.2s;
+            position: absolute; top: -20px; left: -14px; background: transparent; border: none; padding: 10px;
+            color: var(--sys-blue); display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 500; 
+            cursor: pointer; border-radius: 12px; transition: 0.2s;
         }
         .btn-back:hover { background: rgba(0, 122, 255, 0.1); transform: translateX(-2px); }
 
@@ -192,23 +193,11 @@
 
         .pin-input-wrapper { position: relative; margin: 0 auto; width: max-content; }
         .pin-dots { display: flex; gap: 16px; justify-content: center; }
-        .pin-dot {
-            width: 16px; height: 16px; border-radius: 50%;
-            background: rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.05);
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .pin-dot.filled { 
-            background: var(--sys-blue); 
-            border-color: var(--sys-blue);
-            transform: scale(1.2); 
-            box-shadow: 0 4px 12px rgba(0,122,255,0.4); 
-        }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; background: rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.05); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .pin-dot.filled { background: var(--sys-blue); border-color: var(--sys-blue); transform: scale(1.2); box-shadow: 0 4px 12px rgba(0,122,255,0.4); }
         .pin-dot.error { background: var(--sys-red); border-color: var(--sys-red); animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; box-shadow: 0 4px 12px rgba(255,59,48,0.4); }
 
-        .hidden-pin-input {
-            position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0;
-            cursor: text; font-size: 16px; z-index: 10;
-        }
+        .hidden-pin-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: text; font-size: 16px; z-index: 10; }
 
         @keyframes shake {
             10%, 90% { transform: translate3d(-2px, 0, 0); }
@@ -224,9 +213,19 @@
         .savings-amount:active { transform: scale(0.96); }
 
         /* Обертка для размытия */
-        .dashboard-wrapper { position: relative; width: 100%; max-width: 1050px; display: flex; justify-content: center; margin: 0 auto;}
+        .dashboard-wrapper { position: relative; width: 100%; max-width: 1100px; display: flex; justify-content: center; margin: 0 auto;}
 
-        .container { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; transition: filter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s; position: relative; }
+        /* СТРОГИЙ GRID - Исправление ширины */
+        .container { 
+            width: 100%; 
+            display: grid; 
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
+            gap: 24px; 
+            align-items: start; 
+            transition: filter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s; 
+            position: relative; 
+        }
+        
         .container.blurred { filter: blur(14px) grayscale(40%); opacity: 0.5; pointer-events: none; user-select: none; }
 
         /* АНИМАЦИИ ПОТОКА (FLOW) */
@@ -261,6 +260,9 @@
         .btn-init-primary:hover { background: #0062cc; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,122,255,0.3); }
         .btn-init-primary:active { transform: scale(0.96); box-shadow: none; }
         
+        .btn-green { background: var(--sys-green); color: white; }
+        .btn-green:hover { background: #28a745; box-shadow: 0 8px 20px rgba(52, 199, 89, 0.3); }
+        
         .btn-init-secondary { background: rgba(0,0,0,0.05); color: var(--text-primary); width: 100%; padding: 16px; border-radius: 16px; font-size: 16px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s;}
         .btn-init-secondary:hover { background: rgba(0,0,0,0.09); transform: translateY(-2px); }
         .btn-init-secondary:active { transform: scale(0.96); }
@@ -279,18 +281,52 @@
 
         .converter-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; justify-content: space-between;}
         .converter-header h2 { margin: 0; }
-        .rate-badge { background: rgba(0,0,0,0.06); padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
-        
+        .rate-badge { background: rgba(0,0,0,0.06); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: right;}
+
+        /* НОВЫЕ СТИЛИ ВВОДА И ВЫПАДАЮЩИХ СПИСКОВ APPLE GLASS */
+        .ios-input {
+            width: 100%; padding: 16px; border-radius: 16px; border: 1px solid transparent;
+            background: rgba(0,0,0,0.04); font-size: 16px; outline: none; transition: all 0.2s;
+            font-family: inherit; color: var(--text-primary); box-sizing: border-box;
+        }
+        .ios-input:focus { background: white; border-color: var(--sys-blue); box-shadow: 0 2px 8px rgba(0,122,255,0.1); }
+
+        /* Custom Dropdown (Apple Style) */
+        .custom-dropdown { position: relative; user-select: none; }
+        .custom-dropdown-selected { 
+            background: rgba(0,0,0,0.04); padding: 0 40px 0 16px; border-radius: 16px; font-size: 16px; 
+            cursor: pointer; display: flex; align-items: center; border: 1px solid transparent; 
+            transition: 0.2s; height: 100%; width: 100%; box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .custom-dropdown-selected:hover { background: rgba(0,0,0,0.08); }
+        .custom-dropdown-selected::after { 
+            content: ''; position: absolute; right: 16px; top: 50%; border: solid var(--text-secondary); 
+            border-width: 0 2px 2px 0; display: inline-block; padding: 4px; transform: translateY(-70%) rotate(45deg); transition: 0.3s; 
+        }
+        .custom-dropdown.open .custom-dropdown-selected::after { transform: translateY(-30%) rotate(-135deg); }
+        .custom-dropdown.open .custom-dropdown-selected { background: white; border-color: var(--sys-blue); box-shadow: 0 2px 8px rgba(0,122,255,0.1); }
+        .custom-dropdown-options { 
+            position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: rgba(255,255,255,0.85); 
+            -webkit-backdrop-filter: blur(30px) saturate(200%); backdrop-filter: blur(30px) saturate(200%); 
+            border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.8); 
+            z-index: 100; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            overflow: hidden; max-height: 250px; overflow-y: auto;
+        }
+        .custom-dropdown.open .custom-dropdown-options { opacity: 1; visibility: visible; transform: translateY(0); }
+        .custom-dropdown-option { padding: 14px 16px; font-size: 16px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.03); }
+        .custom-dropdown-option:last-child { border-bottom: none; }
+        .custom-dropdown-option:hover { background: rgba(0,122,255,0.08); color: var(--sys-blue); }
+
         .usd-input-wrapper { position: relative; background: var(--input-bg); border-radius: 16px; overflow: hidden; transition: all 0.3s; border: 1px solid transparent; }
         .usd-input-wrapper:focus-within { border-color: var(--sys-blue); background: var(--input-focus); box-shadow: 0 0 0 4px rgba(0,122,255,0.1); }
         .usd-input-wrapper span { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-weight: 600; font-size: 20px; }
         .usd-input-wrapper input { width: 100%; padding: 20px 16px 20px 44px; background: transparent; border: none; font-size: 20px; font-weight: 600; color: var(--text-primary); outline: none;}
 
         .info-block { background: rgba(255, 255, 255, 0.6); border-radius: 20px; padding: 4px 20px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.9); box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 16px; gap: 10px;}
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 16px; gap: 10px; flex-wrap: wrap;}
         .info-row:last-child { border-bottom: none; }
         .text-label { color: var(--text-secondary); font-weight: 500; }
-        .text-value { font-weight: 600; color: var(--text-primary); text-align: right;}
+        .text-value { font-weight: 600; color: var(--text-primary); text-align: right; word-break: break-word;}
         .value-main { font-size: 20px; color: var(--sys-green); }
 
         .expenses-container { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
@@ -298,17 +334,14 @@
             display: flex; gap: 12px; 
             padding: 24px 16px 16px 16px; 
             border-radius: 20px; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03); 
-            align-items: center; transition: all 0.3s ease; 
+            align-items: center; transition: all 0.3s ease; position: relative;
         }
         .expense-item:hover { background: rgba(0,0,0,0.04); transform: scale(1.01); }
         
         .expense-item input.input-name { background: transparent; border: 1px solid transparent; padding: 0 10px; height: 44px; border-radius: 12px; font-size: 16px; font-weight: 500; color: var(--text-primary); transition: 0.2s; outline: none; flex: 1; min-width: 100px; }
         .expense-item input.input-name:focus { background: white; border-color: rgba(0, 122, 255, 0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-        .amount-column { 
-            position: relative; 
-            flex: 0 0 auto; 
-        }
+        .amount-column { position: relative; flex: 0 0 auto; }
         .calculated-amount-btn { min-width: 120px; height: 44px; background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: flex-end; padding: 0 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.2s; font-variant-numeric: tabular-nums; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
         .calculated-amount-btn:hover { background: #f8f8f8; border-color: rgba(0,0,0,0.15); }
         
@@ -320,13 +353,7 @@
         .preview-item-name { opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .preview-item-amount { font-weight: 600; }
 
-        .expense-10y { 
-            position: absolute; 
-            bottom: calc(100% + 6px); 
-            right: 0; 
-            font-size: 12px; color: var(--text-tertiary); 
-            text-align: right; white-space: nowrap; 
-        }
+        .expense-10y { position: absolute; bottom: calc(100% + 6px); right: 0; font-size: 12px; color: var(--text-tertiary); text-align: right; white-space: nowrap; }
         .val-10y { font-weight: 600; color: var(--text-secondary); }
         
         .expense-info { font-size: 16px; color: var(--sys-blue); min-width: 64px; text-align: right; font-weight: 600; flex: 0 0 auto; height: 44px; display: flex; align-items: center; justify-content: flex-end; }
@@ -345,9 +372,6 @@
         .btn-delete:hover { background: rgba(255, 59, 48, 0.1); color: var(--sys-red); border-color: transparent; }
         .btn-delete:active { transform: scale(0.9); }
 
-        .btn-clear-month { background: transparent; color: var(--sys-red); width: 100%; padding: 16px; border-radius: 16px; font-size: 15px; font-weight: 600; margin-top: 20px; border: 1px solid rgba(255, 59, 48, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px;}
-        .btn-clear-month:hover { background: rgba(255, 59, 48, 0.08); }
-
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.4s ease; }
         .modal-overlay.active { opacity: 1; visibility: visible; }
         .modal-content { background: rgba(255, 255, 255, 0.95); width: 90%; max-width: 500px; border-radius: 32px; padding: 32px; box-shadow: 0 32px 64px rgba(0,0,0,0.2); transform: scale(0.9) translateY(30px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 85vh; display: flex; flex-direction: column; }
@@ -358,46 +382,65 @@
         .btn-close-modal { background: rgba(0,0,0,0.06); width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 16px; flex-shrink: 0; transition: all 0.2s;}
         .btn-close-modal:hover { background: rgba(0,0,0,0.12); color: var(--text-primary); transform: rotate(90deg); }
         .modal-items-container { overflow-y: auto; padding-right: 8px; margin-bottom: 16px; flex: 1; display: flex; flex-direction: column; gap: 12px;}
-        .sub-item { display: flex; gap: 12px; align-items: center;}
-        .sub-item input { background: rgba(0,0,0,0.04); border: 1px solid transparent; padding: 14px 16px; height: 48px; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; min-width: 0;}
-        .sub-item input:focus { background: white; border-color: var(--sys-blue); box-shadow: 0 2px 8px rgba(0,122,255,0.1); }
+        
+        .sub-item { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px; background: rgba(0,0,0,0.02); transition: 0.2s; }
+        .sub-item-row { display: flex; gap: 12px; align-items: center; width: 100%; }
+        .sub-item input { background: white; border: 1px solid transparent; padding: 14px 16px; height: 48px; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; min-width: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.02);}
+        .sub-item input:focus { border-color: var(--sys-blue); box-shadow: 0 2px 8px rgba(0,122,255,0.1); }
         .sub-item-name { flex: 1.5; }
         .sub-item-amount { flex: 1; text-align: right; font-variant-numeric: tabular-nums; }
-        .btn-sub-delete { background: white; color: var(--sys-gray); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid rgba(0,0,0,0.05);}
+        .btn-sub-delete { background: white; color: var(--sys-gray); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 6px rgba(0,0,0,0.02); flex-shrink: 0;}
         .btn-sub-delete:hover { background: rgba(255, 59, 48, 0.1); color: var(--sys-red); border-color: transparent;}
+        
         .btn-modal-done { background: var(--sys-blue); color: white; width: 100%; padding: 16px; border-radius: 16px; font-size: 17px; font-weight: 600; margin-top: 12px; transition: all 0.2s;}
         .btn-modal-done:hover { background: #0062cc; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,122,255,0.3);}
 
-        .summary-box { display: flex; justify-content: space-between; align-items: center; padding: 22px 26px; border-radius: 20px; margin-bottom: 16px; font-size: 17px; font-weight: 600; transition: all 0.3s; }
+        .summary-box { display: flex; flex-direction: column; padding: 22px 26px; border-radius: 20px; transition: all 0.3s; position: relative; overflow: hidden;}
+        .summary-main { background: white; color: var(--sys-green); border: 1px solid rgba(52, 199, 89, 0.3); }
+        .summary-main .summary-progress { background: rgba(52, 199, 89, 0.15); }
         
-        .summary-main { position: relative; overflow: hidden; background: white; color: var(--text-primary); box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.04); }
-        .summary-main.danger { background: rgba(255, 59, 48, 0.05); border-color: rgba(255, 59, 48, 0.2); }
-        .summary-progress { position: absolute; top: 0; left: 0; bottom: 0; background: rgba(52, 199, 89, 0.2); z-index: 0; transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        .summary-main.danger .summary-progress { background: rgba(255, 59, 48, 0.2); }
-        .summary-content { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; width: 100%; }
-
-        .summary-yearly { background: rgba(0, 122, 255, 0.08); color: var(--sys-blue); border: 1px solid rgba(0, 122, 255, 0.1); }
-
-        .total-expenses-label { text-align: center; margin: 28px 0 20px 0; font-size: 16px; color: var(--text-secondary); font-weight: 500; }
-        .total-expenses-label b { color: var(--text-primary); font-size: 18px; }
-
-        .chart-container { position: relative; width: 100%; height: 320px; margin: 10px auto 0; transition: all 0.5s; }
+        .summary-main.danger { color: var(--sys-red); border-color: rgba(255, 59, 48, 0.3); }
+        .summary-main.danger .summary-progress { background: rgba(255, 59, 48, 0.15); }
+        
+        .summary-progress { position: absolute; top: 0; left: 0; bottom: 0; z-index: 0; transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        
+        .chart-container { position: relative; width: 100%; height: 220px; margin: 0 auto; transition: all 0.5s; }
         .chart-container:hover { transform: scale(1.02); }
         .currency-symbol { font-weight: 500; opacity: 0.6; margin-left: 2px;}
 
-        /* Стили для модалки сбережений */
-        .history-item { display: flex; justify-content: space-between; padding: 16px; border-radius: 16px; background: white; border: 1px solid rgba(0,0,0,0.04); align-items: center; gap: 10px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);}
-        .btn-ok-small { padding: 0 20px; height: 48px; border-radius: 14px; background: var(--sys-blue); color: white; border: none; font-weight: 600; font-size: 16px; cursor: pointer; transition: 0.2s; }
-        .btn-ok-small:hover { background: #0062cc; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,122,255,0.3);}
-        .btn-ok-small:active { transform: scale(0.95); }
+        /* НОВЫЕ СТИЛИ (Лимиты, Конверты, Топы) */
+        .top-expense-1 { border: 1px solid var(--sys-red) !important; background: rgba(255, 59, 48, 0.03) !important; position: relative; }
+        .top-expense-2 { border: 1px solid #ff9500 !important; background: rgba(255, 149, 0, 0.03) !important; position: relative; }
+        .top-expense-3 { border: 1px solid var(--sys-blue) !important; background: rgba(0, 122, 255, 0.03) !important; position: relative; }
+        
+        .top-badge-1 { background: var(--sys-red); color: white; }
+        .top-badge-2 { background: #ff9500; color: white; }
+        .top-badge-3 { background: var(--sys-blue); color: white; }
+        
+        .top-expense-badge { position: absolute; top: -10px; right: 20px; font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); z-index: 10; }
 
+        .top-subitem-1 { background: rgba(255, 59, 48, 0.05) !important; border-color: rgba(255, 59, 48, 0.2) !important; }
+        .top-subitem-2 { background: rgba(255, 149, 0, 0.05) !important; border-color: rgba(255, 149, 0, 0.2) !important; }
+        .top-subitem-3 { background: rgba(0, 122, 255, 0.05) !important; border-color: rgba(0, 122, 255, 0.2) !important; }
+        
+        .top-subitem-badge { display: inline-block; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 8px; align-self: flex-end; margin-bottom: 2px;}
+
+        .daily-limit-box { background: transparent; display: flex; align-items: center; justify-content: space-between; padding: 0 4px;}
+        .daily-limit-title { font-size: 14px; color: var(--text-secondary); font-weight: 600; }
+        .daily-limit-val { font-size: 18px; font-weight: 700; color: var(--sys-green); font-variant-numeric: tabular-nums; }
+
+        .jar-card { background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(44, 44, 46, 0.95)); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 20px; padding: 20px 24px; margin-bottom: 12px; position: relative; overflow: hidden; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 16px;}
+        .jar-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;}
+        .jar-balance { font-size: 24px; font-weight: 700; color: #fff; display: flex; align-items: center;}
+        .jar-progress-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; overflow: hidden; }
+        .jar-progress-fill { height: 100%; background: var(--sys-green); border-radius: 3px; }
 
         /* ========================================= */
         /* MEDIA QUERIES ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
         /* ========================================= */
 
         @media (max-width: 900px) { 
-            .container { grid-template-columns: 1fr; gap: 20px;} 
+            .container { grid-template-columns: minmax(0, 1fr); gap: 20px;} 
             body { padding: 16px 12px; } 
             .flow-track-horizontal { display: none; } 
         }
@@ -415,45 +458,25 @@
             .savings-container { flex-direction: column; gap: 10px; align-items: flex-start; }
             
             .info-block { padding: 0 16px; border-radius: 16px; }
-            .info-row { font-size: 15px; flex-wrap: wrap;}
             
             .expenses-container { gap: 16px; }
-            .expense-item { 
-                flex-wrap: wrap; 
-                padding: 16px; 
-                border-radius: 16px; 
-                background: white; 
-                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            }
-            .expense-item input.input-name { 
-                flex: 1 1 100%; 
-                margin-bottom: 12px; 
-                height: 48px; 
-                background: var(--input-bg);
-            }
+            .expense-item { flex-wrap: wrap; padding: 16px; border-radius: 16px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+            .expense-item input.input-name { flex: 1 1 100%; margin-bottom: 12px; height: 48px; background: var(--input-bg); }
             .amount-column { flex: 1 1 auto; min-width: 120px; }
             .calculated-amount-btn { height: 48px; width: 100%; justify-content: center; background: rgba(0,122,255,0.05); color: var(--sys-blue); border-color: transparent;}
             
-            .expense-10y { 
-                position: relative; 
-                bottom: auto; 
-                margin-bottom: 6px; 
-                text-align: left; 
-            }
-
+            .expense-10y { position: relative; bottom: auto; margin-bottom: 6px; text-align: left; }
             .expense-info { flex: 0 0 auto; height: 48px; font-size: 18px; }
             .btn-delete { height: 48px; width: 48px; background: rgba(255,59,48,0.05); color: var(--sys-red); border: none;}
             
-            .summary-box { flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px; }
-            .summary-content { flex-direction: column; align-items: flex-start; gap: 8px; }
-            .summary-yearly { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .summary-box { padding: 20px; }
             
             .modal-content { padding: 24px 20px; width: 95%; border-radius: 28px;}
-            .sub-item { flex-wrap: wrap; gap: 8px; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 16px;}
-            .sub-item input { height: 44px; background: white;}
+            .sub-item-row { flex-wrap: wrap; }
+            .sub-item input { height: 44px; }
             .sub-item-name { flex: 1 1 100%; }
             .sub-item-amount { flex: 1 1 auto; }
-            .btn-sub-delete { height: 44px; padding: 0 15px; background: transparent; border: none;}
+            .btn-sub-delete { height: 44px; padding: 0 15px; background: transparent; border: none; box-shadow: none;}
             
             .auth-card { padding: 32px 20px; border-radius: 28px; min-height: 400px; }
             .auth-step { left: 20px; right: 20px; top: 32px; bottom: 32px;}
@@ -467,7 +490,7 @@
 <div id="app-container" style="opacity: 0; pointer-events: none; transition: opacity 0.5s ease; width: 100%; display: flex; flex-direction: column; align-items: center;">
 
     <div class="top-nav">
-        <div class="glass-card header-nav" style="padding: 16px 20px;">
+        <div class="glass-card header-nav" style="padding: 24px 28px;">
             <div class="user-nav-row">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div id="nav-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: var(--sys-blue); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2);"></div>
@@ -486,7 +509,7 @@
             <div class="months-carousel" id="months-container"></div>
             <div class="savings-container">
                 <span>Мои сбережения:</span>
-                <span class="savings-amount tabular" onclick="openSavingsHistory()">
+                <span class="savings-amount tabular" onclick="openEnvelopesModal()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
                     <span id="total-savings-display">0</span> ₴
                 </span>
@@ -495,7 +518,6 @@
     </div>
 
     <div class="dashboard-wrapper">
-        
         <div class="flow-track-horizontal"><div class="flow-particle-horizontal"></div></div>
 
         <div id="init-overlay" class="init-overlay">
@@ -517,13 +539,11 @@
             <div class="left-panel">
                 <div class="glass-card" style="margin-bottom: 0;">
                     <div class="converter-header">
-                        <h2>Доход в USD</h2>
+                        <h2>Источники дохода</h2>
                         <div class="rate-badge" id="rate-info">Загрузка...</div>
                     </div>
-                    <div class="usd-input-wrapper">
-                        <span>$</span>
-                        <input type="number" id="usd-input" placeholder="0" oninput="convertCurrency()">
-                    </div>
+                    <div id="incomes-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    <button class="btn-add" style="margin-top: 10px; padding: 12px; font-size: 14px;" onclick="addIncome()">+ Добавить источник</button>
                 </div>
 
                 <div class="flow-container">
@@ -567,48 +587,55 @@
 
             <div class="right-panel">
                 <div class="glass-card" style="position: sticky; top: 20px;">
-                    <h2>Сводка</h2>
+                    <h2 style="margin-bottom: 16px;">Сводка</h2>
                     
-                    <div id="summary-card" class="summary-box summary-main">
+                    <div id="summary-card" class="summary-box summary-main" style="margin-bottom: 12px; flex-direction: row; align-items: center; justify-content: space-between;">
                         <div id="summary-progress" class="summary-progress" style="width: 0%;"></div>
-                        <div class="summary-content">
-                            <div>Остается в мес:</div>
-                            <div class="tabular" style="font-size: 20px; font-weight: 700;">
-                                <span id="remaining-money">0</span><span class="currency-symbol" style="opacity: 0.8;">₴</span> 
-                                <span style="opacity: 0.9; font-weight: 600; font-size: 16px; margin-left: 6px; color: var(--sys-blue); background: rgba(0,122,255,0.1); padding: 4px 8px; border-radius: 8px;"><span id="remaining-percent">0</span>%</span>
+                        <div class="summary-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; z-index: 1; position: relative;">
+                            <div style="font-size: 16px; font-weight: 600; color: inherit;">Остается в мес:</div>
+                            <div class="tabular" style="font-size: 22px; font-weight: 700; color: inherit;">
+                                <span id="remaining-money">0</span> ₴
+                                <span style="opacity: 0.9; font-weight: 600; font-size: 14px; margin-left: 6px; background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 8px;"><span id="remaining-percent">0</span>%</span>
                             </div>
                         </div>
                     </div>
-                    
-                    <button class="btn-savings-transfer" onclick="openTransferModal()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                        Перенести в сбережения
-                    </button>
 
-                    <div id="yearly-summary-card" class="summary-box summary-yearly" style="margin-top: 16px;">
-                        <div>Чистыми за год:</div>
-                        <div class="tabular" style="font-weight: 700; font-size: 20px;">
-                            <span id="yearly-remaining">0</span><span class="currency-symbol" style="opacity: 0.5;">₴</span>
-                        </div>
+                    <div id="daily-limit-box" class="daily-limit-box" style="margin-bottom: 24px;">
+                        <div class="daily-limit-title">Сегодня вы можете потратить:</div>
+                        <div class="daily-limit-val" id="daily-limit-val-container"><span id="daily-limit-val">0</span> ₴</div>
                     </div>
-
-                    <div class="total-expenses-label">
-                        Всего расходов: <b class="tabular"><span id="total-expenses">0</span><span class="currency-symbol">₴</span></b>
-                    </div>
-                    
-                    <button class="btn-init-secondary" style="margin-bottom: 16px; background: white; border: 1px solid rgba(0,0,0,0.05); color: var(--sys-blue); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="openAnalyticsModal()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                        Динамика по месяцам
-                    </button>
 
                     <div class="chart-container">
                         <canvas id="budgetChart"></canvas>
                     </div>
+
+                    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 24px; margin-bottom: 24px;">
+                        <div style="background: rgba(0, 122, 255, 0.05); padding: 16px; border-radius: 16px; text-align: center; border: 1px solid rgba(0, 122, 255, 0.1);">
+                            <div style="font-size: 13px; color: var(--sys-blue); font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Чистыми за год</div>
+                            <div class="tabular" style="font-weight: 700; font-size: 18px; color: var(--text-primary);"><span id="yearly-remaining">0</span> ₴</div>
+                        </div>
+                        <div style="background: rgba(0, 0, 0, 0.03); padding: 16px; border-radius: 16px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.05);">
+                            <div style="font-size: 13px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Расходы за месяц</div>
+                            <div class="tabular" style="font-weight: 700; font-size: 18px; color: var(--text-primary);"><span id="total-expenses">0</span> ₴</div>
+                        </div>
+                    </div>
                     
-                    <button class="btn-clear-month" onclick="clearCurrentMonth()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        Очистить этот месяц
-                    </button>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="btn-init-primary btn-green" style="margin:0; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="openTransferModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            Перенести в конверт
+                        </button>
+                        <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
+                            <button class="btn-init-secondary" style="margin:0; padding: 14px; font-size: 14px; color: var(--sys-blue); display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openAnalyticsModal()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                                Динамика
+                            </button>
+                            <button class="btn-init-secondary" style="margin:0; padding: 14px; font-size: 14px; color: var(--sys-red); background: rgba(255,59,48,0.05); display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="clearCurrentMonth()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                Очистить
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -631,7 +658,7 @@
     </div>
 </div>
 
-<div id="confirm-modal" class="modal-overlay" onclick="closeConfirmModal(event)">
+<div id="confirm-modal" class="modal-overlay" onclick="closeConfirmModal(event)" style="z-index: 1050;">
     <div class="modal-content" style="max-width: 380px; padding: 32px 28px 28px; text-align: center;" onclick="event.stopPropagation()">
         <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
         <h3 id="confirm-title" style="margin-bottom: 12px; font-size: 22px; font-weight: 700; color: var(--text-primary);">Подтвердите действие</h3>
@@ -646,38 +673,42 @@
 <div id="transfer-modal" class="modal-overlay" onclick="closeTransferModal(event)">
     <div class="modal-content" style="max-width: 400px;" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h3 style="margin: 0;">Пополнение сбережений</h3>
+            <h3 style="margin: 0;">Отложить в конверт</h3>
             <button class="btn-close-modal" onclick="closeTransferModal()">✕</button>
         </div>
-        <p style="color: var(--text-secondary); font-size: 15px; margin-top: -12px; margin-bottom: 24px;">Укажите сумму, которую хотите отложить в этом месяце.</p>
-        <div class="usd-input-wrapper" style="margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.1);">
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: -12px; margin-bottom: 24px;">Укажите сумму, которую хотите отложить, и выберите конверт.</p>
+        
+        <div class="custom-dropdown" id="transfer-jar-dropdown" onclick="event.stopPropagation(); this.classList.toggle('open')" style="width: 100%; margin-bottom: 16px;">
+            <div class="custom-dropdown-selected" id="transfer-jar-selected" style="height: 56px; font-weight: 500;">
+                Выберите конверт
+            </div>
+            <div class="custom-dropdown-options" id="transfer-jar-options"></div>
+        </div>
+        <input type="hidden" id="transfer-jar-select">
+        
+        <div class="usd-input-wrapper" style="margin-bottom: 24px;">
             <span style="color: var(--sys-green);">₴</span>
             <input type="number" id="transfer-amount" style="color: var(--sys-green);" placeholder="0">
         </div>
-        <button class="btn-init-primary" style="background: var(--sys-green); margin: 0; height: 56px;" onclick="executeTransfer()">Отложить</button>
+        <button class="btn-init-primary btn-green" style="margin: 0; height: 56px;" onclick="executeTransfer()">Отложить</button>
     </div>
 </div>
 
-<div id="history-modal" class="modal-overlay" onclick="closeHistoryModal(event)">
-    <div class="modal-content" style="max-width: 440px;" onclick="event.stopPropagation()">
+<div id="jars-modal" class="modal-overlay" onclick="closeEnvelopesModal(event)">
+    <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h3 style="margin: 0;">История сбережений</h3>
-            <button class="btn-close-modal" onclick="closeHistoryModal()">✕</button>
+            <h3 style="margin: 0;">Мои конверты</h3>
+            <button class="btn-close-modal" onclick="closeEnvelopesModal()">✕</button>
         </div>
         
-        <div style="background: rgba(0,0,0,0.03); padding: 20px; border-radius: 20px; margin-bottom: 24px; border: 1px solid rgba(0,0,0,0.04);">
-            <div style="font-weight: 600; font-size: 15px; color: var(--text-secondary); margin-bottom: 12px;">Начальный капитал:</div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="position: relative; flex: 1;">
-                    <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--text-tertiary);">₴</span>
-                    <input type="number" id="initial-savings-input" style="width: 100%; padding: 14px 14px 14px 36px; background: white; border: 1px solid transparent; border-radius: 14px; font-size: 18px; font-weight: 600; outline: none; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: 0.2s;" placeholder="0" onfocus="this.style.borderColor='var(--sys-blue)'" onblur="this.style.borderColor='transparent'">
-                </div>
-                <button class="btn-ok-small" onclick="saveInitialSavings()">ОК</button>
-            </div>
-        </div>
+        <div id="jars-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; max-height: 40vh; overflow-y: auto;"></div>
         
-        <h4 style="margin: 0 0 16px 0; font-size: 18px; color: var(--text-primary); font-weight: 700;">Пополнения по месяцам</h4>
-        <div id="savings-history-list" class="modal-items-container" style="max-height: 40vh; background: rgba(0,0,0,0.02); border-radius: 20px; padding: 12px; border: 1px solid rgba(0,0,0,0.03);"></div>
+        <div style="background: rgba(0,0,0,0.03); padding: 20px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05);">
+            <h4 style="margin: 0 0 16px 0; font-size: 16px;">Создать новый конверт</h4>
+            <input type="text" id="new-jar-name" class="ios-input" placeholder="Название (например, На машину)" style="margin-bottom: 12px;">
+            <input type="number" id="new-jar-goal" class="ios-input" placeholder="Цель (сумма, необязательно)" style="margin-bottom: 16px;">
+            <button class="btn-init-primary" style="margin: 0;" onclick="createNewEnvelope()">Создать</button>
+        </div>
     </div>
 </div>
 
@@ -719,7 +750,7 @@
             </button>
             
             <div class="selected-user-display">
-                <div id="selected-avatar" class="user-avatar" style="box-shadow: 0 8px 24px rgba(0,0,0,0.15);"></div>
+                <div id="selected-avatar" class="user-avatar" style="box-shadow: 0 8px 24px rgba(0,0,0,0.15); width: 72px; height: 72px; font-size: 32px;"></div>
                 <h2 id="selected-name" class="auth-title" style="font-size: 20px;"></h2>
                 <p class="auth-subtitle">Введите 6-значный PIN</p>
             </div>
@@ -765,7 +796,7 @@
 <script>
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     
-    let globalData = { users: [], appData: {}, initialSavings: {} };
+    let globalData = { users: [], appData: {}, initialSavings: {}, jars: {} };
     let currentUser = null;
 
     let defaultCategories = []; 
@@ -777,13 +808,18 @@
     
     let expenses = []; 
     let myChart = null;
-    let analyticsChart = null; // Переменная для графика
+    let analyticsChart = null; 
     let currentExchangeRate = 0;
     let currentIncomeUah = 0; 
     let activeCategoryId = null;
     let pendingConfirmAction = null; 
 
     const appleColors = [ '#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#5ac8fa', '#007aff', '#5856d6', '#af52de', '#ff2d55', '#32ade6' ];
+
+    // Глобальное закрытие всех кастомных dropdown-ов при клике вне их области
+    window.addEventListener('click', function() {
+        document.querySelectorAll('.custom-dropdown').forEach(el => el.classList.remove('open'));
+    });
 
     async function init() {
         await fetchGlobalData();
@@ -815,6 +851,7 @@
         } catch (e) {
             console.error("Ошибка загрузки:", e);
         }
+        if (!globalData.jars) globalData.jars = {};
     }
 
     let selectedAuthUser = null;
@@ -921,6 +958,24 @@
         showCreateProfile();
     }
 
+    function calculateTotalSavingsOldLogic(userId) {
+        let total = globalData.initialSavings[userId] || 0;
+        const userAppData = globalData.appData[userId] || {};
+        for (const year in userAppData) {
+            for (const month in userAppData[year]) {
+                const monthData = userAppData[year][month];
+                if (monthData.initialized && monthData.expenses) {
+                    monthData.expenses.forEach(exp => {
+                        if (exp.isSavings) {
+                            total += exp.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                        }
+                    });
+                }
+            }
+        }
+        return total;
+    }
+
     function login(user) {
         currentUser = user;
         localStorage.setItem('budget_saved_user_id', user.id);
@@ -934,14 +989,37 @@
         appData = globalData.appData[user.id] || {};
         initialSavings = globalData.initialSavings[user.id] || 0;
 
+        if (!globalData.jars) globalData.jars = {};
+        
+        if (globalData.jars[user.id]) {
+            globalData.jars[user.id].forEach(j => {
+                if (j.name === "Основная копилка") j.name = "Мои сбережения";
+            });
+        }
+
+        if (!globalData.jars[user.id] || globalData.jars[user.id].length === 0) {
+            const oldTotal = calculateTotalSavingsOldLogic(user.id);
+            globalData.jars[user.id] = [{
+                id: Date.now(),
+                name: "Мои сбережения",
+                goal: 0,
+                balance: oldTotal,
+                isMain: true
+            }];
+        } else {
+            if (!globalData.jars[user.id].some(j => j.isMain)) {
+                globalData.jars[user.id][0].isMain = true;
+            }
+        }
+
         if (!appData[currentYear]) appData[currentYear] = {};
         if (!appData[currentYear][currentMonth]) {
-            appData[currentYear][currentMonth] = { initialized: false, usd: 0, expenses: [] };
+            appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
         }
         
         const hasAnyData = Object.keys(appData).some(y => Object.keys(appData[y]).some(m => appData[y][m].initialized));
         if (!hasAnyData) {
-            appData[currentYear][currentMonth] = { initialized: true, usd: 0, expenses: JSON.parse(JSON.stringify(defaultCategories)) };
+            appData[currentYear][currentMonth] = { initialized: true, incomes: [{id: Date.now(), name: "Основной", amount: 0, currency: "UAH"}], expenses: JSON.parse(JSON.stringify(defaultCategories)) };
         }
 
         renderCalendar();
@@ -1001,6 +1079,7 @@
         globalData.users.push(newUser);
         globalData.appData[newUser.id] = {};
         globalData.initialSavings[newUser.id] = 0;
+        globalData.jars[newUser.id] = [];
 
         const color = appleColors[(globalData.users.length - 1) % appleColors.length];
         document.getElementById('nav-avatar').innerText = newUser.name.charAt(0).toUpperCase();
@@ -1030,6 +1109,7 @@
             globalData.users = globalData.users.filter(u => u.id !== currentUser.id);
             delete globalData.appData[currentUser.id];
             delete globalData.initialSavings[currentUser.id];
+            delete globalData.jars[currentUser.id];
             await saveGlobalData();
             logout();
         });
@@ -1070,23 +1150,28 @@
     }
 
     function applyMonthData() {
-        const data = appData[currentYear][currentMonth] || { initialized: false, usd: 0, expenses: [] };
+        const data = appData[currentYear][currentMonth] || { initialized: false, incomes: [], expenses: [] };
         
         if (data.initialized) {
             document.getElementById('main-dashboard').classList.remove('blurred');
             document.getElementById('init-overlay').classList.remove('active');
             
-            document.getElementById('usd-input').value = data.usd || '';
+            if (!data.incomes) {
+                data.incomes = [{ id: Date.now(), name: "Основной", amount: data.usd || 0, currency: "USD" }];
+            }
+
             expenses = data.expenses || [];
             
+            renderIncomes();
             renderExpenses(); 
             convertCurrency(); 
         } else {
             document.getElementById('main-dashboard').classList.add('blurred');
             document.getElementById('init-overlay').classList.add('active');
             
-            document.getElementById('usd-input').value = '';
+            if(data.incomes) data.incomes = [];
             expenses = [];
+            renderIncomes();
             renderExpenses(); 
             currentIncomeUah = 0;
             updateAll();
@@ -1114,19 +1199,18 @@
             if (prev) {
                 appData[currentYear][currentMonth] = {
                     initialized: true,
-                    usd: prev.data.usd || 0,
+                    incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: Date.now(), name: "Основной", amount: prev.data.usd || 0, currency: "USD" }])),
                     expenses: JSON.parse(JSON.stringify(prev.data.expenses || []))
                 };
             }
         } else {
             appData[currentYear][currentMonth] = {
                 initialized: true,
-                usd: 0,
+                incomes: [{id: Date.now(), name: "Основной", amount: 0, currency: "UAH"}],
                 expenses: JSON.parse(JSON.stringify(defaultCategories)) 
             };
         }
         
-        // Сначала обновляем интерфейс, затем сохраняем (чтобы не перезаписать старыми пустыми данными)
         renderCalendar(); 
         applyMonthData(); 
     }
@@ -1136,7 +1220,7 @@
             "Очистить месяц", 
             "Вы уверены, что хотите полностью очистить данные за этот месяц? Действие нельзя отменить.", 
             () => {
-                appData[currentYear][currentMonth] = { initialized: false, usd: 0, expenses: [] };
+                appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
                 saveData();
                 renderCalendar(); 
                 applyMonthData(); 
@@ -1148,8 +1232,6 @@
         if (!appData[currentYear]) appData[currentYear] = {};
         
         if (appData[currentYear][currentMonth] && appData[currentYear][currentMonth].initialized) {
-            const usd = parseFloat(document.getElementById('usd-input').value) || 0;
-            appData[currentYear][currentMonth].usd = usd;
             appData[currentYear][currentMonth].expenses = expenses;
         }
         
@@ -1182,7 +1264,7 @@
         currentYear += delta;
         if (!appData[currentYear]) appData[currentYear] = {};
         if (!appData[currentYear][currentMonth]) {
-            appData[currentYear][currentMonth] = { initialized: false, usd: 0, expenses: [] };
+            appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
         }
         renderCalendar();
         applyMonthData();
@@ -1194,7 +1276,7 @@
         
         currentMonth = m;
         if (!appData[currentYear][currentMonth]) {
-            appData[currentYear][currentMonth] = { initialized: false, usd: 0, expenses: [] };
+            appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
         }
 
         renderCalendar();
@@ -1208,7 +1290,8 @@
             const data = await response.json();
             if (data && data.length > 0) {
                 currentExchangeRate = data[0].rate;
-                document.getElementById('rate-info').innerText = `НБУ: ${currentExchangeRate.toFixed(2)} ₴`;
+                const dateStr = data[0].exchangedate || '';
+                document.getElementById('rate-info').innerText = `НБУ: ${currentExchangeRate.toFixed(2)} ₴ ${dateStr ? '• ' + dateStr : ''}`;
                 convertCurrency(); 
             }
         } catch (error) {
@@ -1216,22 +1299,99 @@
         }
     }
 
+    function selectCurrency(event, incId, currencyCode) {
+        if(event) event.stopPropagation();
+        updateIncome(incId, 'currency', currencyCode);
+    }
+
+    function renderIncomes() {
+        const container = document.getElementById('incomes-container');
+        if(!container) return;
+        container.innerHTML = '';
+        
+        if(!appData[currentYear] || !appData[currentYear][currentMonth] || !appData[currentYear][currentMonth].initialized) return;
+
+        const incomes = appData[currentYear][currentMonth].incomes || [];
+        incomes.forEach(inc => {
+            const div = document.createElement('div');
+            div.className = 'expense-item'; 
+            div.style = "padding: 12px 16px; margin-bottom: 8px;";
+            div.innerHTML = `
+                <input type="text" class="input-name" value="${inc.name}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Название">
+                <input type="number" class="input-name tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${inc.id}, 'amount', this.value)" style="text-align: right; margin: 0 8px; flex: 1; min-width: 80px;">
+                
+                <div class="custom-dropdown" style="width: 90px; margin-right: 8px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
+                    <div class="custom-dropdown-selected" style="height: 44px; padding: 0 32px 0 16px; border-radius: 12px;">
+                        ${inc.currency}
+                    </div>
+                    <div class="custom-dropdown-options" style="min-width: 100px;">
+                        <div class="custom-dropdown-option" onclick="selectCurrency(event, ${inc.id}, 'UAH'); this.closest('.custom-dropdown').classList.remove('open');">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
+                        <div class="custom-dropdown-option" onclick="selectCurrency(event, ${inc.id}, 'USD'); this.closest('.custom-dropdown').classList.remove('open');">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
+                    </div>
+                </div>
+
+                <button class="btn-delete" onclick="deleteIncome(${inc.id})" style="width: 44px; height: 44px; flex: 0 0 auto;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function addIncome() {
+        if(!appData[currentYear][currentMonth].incomes) appData[currentYear][currentMonth].incomes = [];
+        appData[currentYear][currentMonth].incomes.push({id: Date.now(), name: 'Новый', amount: 0, currency: 'UAH'});
+        saveData();
+        renderIncomes();
+        convertCurrency();
+    }
+
+    function updateIncome(id, field, value) {
+        const inc = appData[currentYear][currentMonth].incomes.find(i => i.id === id);
+        if (inc) {
+            inc[field] = field === 'amount' ? parseFloat(value) || 0 : value;
+            saveData();
+            convertCurrency();
+            if (field === 'currency') renderIncomes(); 
+        }
+    }
+
+    function deleteIncome(id) {
+        appData[currentYear][currentMonth].incomes = appData[currentYear][currentMonth].incomes.filter(i => i.id !== id);
+        saveData();
+        renderIncomes();
+        convertCurrency();
+    }
+
     function convertCurrency() {
-        const usd = parseFloat(document.getElementById('usd-input').value) || 0;
-        const uah = usd * currentExchangeRate;
+        if(!appData[currentYear] || !appData[currentYear][currentMonth] || !appData[currentYear][currentMonth].initialized) return;
+
+        let totalUah = 0;
+        let totalUsdEquivalent = 0;
+
+        const incomes = appData[currentYear][currentMonth].incomes || [];
+        incomes.forEach(inc => {
+            if (inc.currency === 'USD') {
+                totalUah += (inc.amount * currentExchangeRate);
+                totalUsdEquivalent += inc.amount;
+            } else {
+                totalUah += inc.amount;
+                totalUsdEquivalent += (currentExchangeRate > 0 ? inc.amount / currentExchangeRate : 0);
+            }
+        });
         
         saveData(); 
 
-        currentIncomeUah = uah; 
-        document.getElementById('income-display').innerText = uah.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); 
-        document.getElementById('yearly-income-display').innerText = (uah * 12).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
-        document.getElementById('yearly-income-usd').innerText = (usd * 12).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+        currentIncomeUah = totalUah; 
+        document.getElementById('income-display').innerText = totalUah.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); 
+        document.getElementById('yearly-income-display').innerText = (totalUah * 12).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+        document.getElementById('yearly-income-usd').innerText = (totalUsdEquivalent * 12).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
 
         const workingDays = 21, workingHours = workingDays * 8; 
-        document.getElementById('daily-rate-usd').innerText = (usd > 0 ? (usd / workingDays) : 0).toFixed(2);
-        document.getElementById('daily-rate-uah').innerText = (uah > 0 ? (uah / workingDays) : 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 }); 
-        document.getElementById('hourly-rate-usd').innerText = (usd > 0 ? (usd / workingHours) : 0).toFixed(2);
-        document.getElementById('hourly-rate-uah').innerText = (uah > 0 ? (uah / workingHours) : 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('daily-rate-usd').innerText = (totalUsdEquivalent > 0 ? (totalUsdEquivalent / workingDays) : 0).toFixed(2);
+        document.getElementById('daily-rate-uah').innerText = (totalUah > 0 ? (totalUah / workingDays) : 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 }); 
+        document.getElementById('hourly-rate-usd').innerText = (totalUsdEquivalent > 0 ? (totalUsdEquivalent / workingHours) : 0).toFixed(2);
+        document.getElementById('hourly-rate-uah').innerText = (totalUah > 0 ? (totalUah / workingHours) : 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         updateAll(); 
     }
@@ -1251,11 +1411,26 @@
         const list = document.getElementById('expenses-list');
         list.innerHTML = '';
         const income = currentIncomeUah; 
+        
+        let totals = expenses.map(e => getCategoryTotal(e)).filter(t => t > 0);
+        let uniqueTotals = [...new Set(totals)].sort((a,b) => b - a);
+        let top1 = uniqueTotals[0] || -1;
+        let top2 = uniqueTotals[1] || -1;
+        let top3 = uniqueTotals[2] || -1;
 
         expenses.forEach(exp => {
             const totalAmount = getCategoryTotal(exp);
             const percent = income > 0 ? ((totalAmount / income) * 100).toFixed(1) : 0;
             const cost10Years = totalAmount * 120;
+            
+            let rankClass = '';
+            let badgeHtml = '';
+            
+            if (totalAmount > 0) {
+                if (totalAmount === top1) { rankClass = 'top-expense-1'; badgeHtml = '<div class="top-expense-badge top-badge-1">🥇 1 место</div>'; }
+                else if (totalAmount === top2) { rankClass = 'top-expense-2'; badgeHtml = '<div class="top-expense-badge top-badge-2">🥈 2 место</div>'; }
+                else if (totalAmount === top3) { rankClass = 'top-expense-3'; badgeHtml = '<div class="top-expense-badge top-badge-3">🥉 3 место</div>'; }
+            }
             
             let tooltipHtml = exp.items.length > 0 
                 ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${i.name || 'Без названия'}</span><span class="preview-item-amount">${(parseFloat(i.amount)||0).toLocaleString('ru-RU')} ₴</span></div>`).join('')
@@ -1264,8 +1439,9 @@
             const isSavingsClass = exp.isSavings ? 'color: var(--sys-green); font-weight: 600;' : '';
 
             const div = document.createElement('div');
-            div.className = 'expense-item';
+            div.className = `expense-item ${rankClass}`;
             div.innerHTML = `
+                ${badgeHtml}
                 <input class="input-name" type="text" value="${exp.name}" placeholder="Название категории" oninput="updateCategoryName(${exp.id}, this.value)" style="${isSavingsClass}">
                 
                 <div class="amount-column">
@@ -1303,16 +1479,25 @@
     }
 
     function deleteCategory(id) {
-        showConfirm(
-            "Удаление категории", 
-            "Удалить эту категорию со всеми расходами?", 
-            () => {
-                expenses = expenses.filter(e => e.id !== id);
-                renderExpenses();
-                saveData();
-                updateAll();
+        showConfirm("Удаление категории", "Удалить эту категорию со всеми расходами?", () => {
+            const category = expenses.find(e => e.id === id);
+            
+            if (category && category.isSavings) {
+                category.items.forEach(item => {
+                    if (item.envelopeId) {
+                        const jar = globalData.jars[currentUser.id].find(j => j.id === item.envelopeId);
+                        if (jar) jar.balance -= (item.amount || 0);
+                    }
+                });
+                saveGlobalData();
+                updateSavingsDisplay();
             }
-        );
+
+            expenses = expenses.filter(e => e.id !== id);
+            renderExpenses();
+            saveData();
+            updateAll();
+        });
     }
 
     function openModal(categoryId) {
@@ -1335,25 +1520,78 @@
         saveData();
     }
 
+    function getTop3SubItems(category) {
+        let totals = category.items.map(i => parseFloat(i.amount) || 0).filter(t => t > 0);
+        let unique = [...new Set(totals)].sort((a,b) => b - a);
+        return { top1: unique[0] || -1, top2: unique[1] || -1, top3: unique[2] || -1 };
+    }
+
     function renderModalItems() {
         const category = expenses.find(e => e.id === activeCategoryId);
         const list = document.getElementById('modal-subitems-list');
         list.innerHTML = '';
 
+        const tops = getTop3SubItems(category);
+
         category.items.forEach(item => {
+            let amt = parseFloat(item.amount) || 0;
+            let rankClass = '';
+            let badgeClass = '';
+            let badgeText = '';
+            
+            if (amt > 0) {
+                if (amt === tops.top1) { rankClass = 'top-subitem-1'; badgeClass = 'top-badge-1'; badgeText = '🥇 1 место'; }
+                else if (amt === tops.top2) { rankClass = 'top-subitem-2'; badgeClass = 'top-badge-2'; badgeText = '🥈 2 место'; }
+                else if (amt === tops.top3) { rankClass = 'top-subitem-3'; badgeClass = 'top-badge-3'; badgeText = '🥉 3 место'; }
+            }
+            
+            const badgeHtml = badgeText 
+                ? `<div class="badge-wrapper" style="display:flex; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge ${badgeClass}">${badgeText}</span></div>` 
+                : `<div class="badge-wrapper" style="display:none; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge"></span></div>`;
+
             const div = document.createElement('div');
-            div.className = 'sub-item';
+            div.className = `sub-item ${rankClass}`;
             div.innerHTML = `
-                <input type="text" class="sub-item-name" value="${item.name}" placeholder="Название статьи" oninput="updateSubItemName(${item.id}, this.value)">
-                <input type="number" class="sub-item-amount" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${item.id}, this.value)">
-                <button class="btn-sub-delete" onclick="deleteSubItem(${item.id})">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
+                ${badgeHtml}
+                <div class="sub-item-row">
+                    <input type="text" class="sub-item-name" value="${item.name}" placeholder="Название статьи" oninput="updateSubItemName(${item.id}, this.value)">
+                    <input type="number" class="sub-item-amount" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${item.id}, this.value)">
+                    <button class="btn-sub-delete" onclick="deleteSubItem(${item.id})">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
             `;
             list.appendChild(div);
         });
 
         document.getElementById('modal-category-total').innerText = getCategoryTotal(category).toLocaleString('ru-RU');
+    }
+
+    function updateTopSubItemBadges(category) {
+        const list = document.getElementById('modal-subitems-list');
+        const subItems = list.querySelectorAll('.sub-item');
+        const tops = getTop3SubItems(category);
+
+        category.items.forEach((item, index) => {
+            const domItem = subItems[index];
+            if (!domItem) return;
+            
+            let amt = parseFloat(item.amount) || 0;
+            domItem.classList.remove('top-subitem-1', 'top-subitem-2', 'top-subitem-3');
+            
+            const badgeWrap = domItem.querySelector('.badge-wrapper');
+            const badgeSpan = domItem.querySelector('.top-subitem-badge');
+            
+            if (amt > 0 && (amt === tops.top1 || amt === tops.top2 || amt === tops.top3)) {
+                badgeWrap.style.display = 'flex';
+                badgeSpan.className = 'top-subitem-badge'; 
+                if (amt === tops.top1) { domItem.classList.add('top-subitem-1'); badgeSpan.classList.add('top-badge-1'); badgeSpan.innerText = '🥇 1 место'; }
+                else if (amt === tops.top2) { domItem.classList.add('top-subitem-2'); badgeSpan.classList.add('top-badge-2'); badgeSpan.innerText = '🥈 2 место'; }
+                else if (amt === tops.top3) { domItem.classList.add('top-subitem-3'); badgeSpan.classList.add('top-badge-3'); badgeSpan.innerText = '🥉 3 место'; }
+            } else {
+                if (badgeWrap) badgeWrap.style.display = 'none';
+            }
+        });
     }
 
     function addSubItem() {
@@ -1372,13 +1610,37 @@
         const category = expenses.find(e => e.id === activeCategoryId);
         const item = category.items.find(i => i.id === subId);
         if (item) {
-            item.amount = parseFloat(val) || 0;
+            const newVal = parseFloat(val) || 0;
+            
+            if (category.isSavings && item.envelopeId) {
+                const jar = globalData.jars[currentUser.id].find(j => j.id === item.envelopeId);
+                if (jar) {
+                    jar.balance += (newVal - (item.amount || 0)); 
+                    saveGlobalData();
+                    updateSavingsDisplay();
+                }
+            }
+
+            item.amount = newVal;
             document.getElementById('modal-category-total').innerText = getCategoryTotal(category).toLocaleString('ru-RU');
+            
+            updateTopSubItemBadges(category);
         }
     }
 
     function deleteSubItem(subId) {
         const category = expenses.find(e => e.id === activeCategoryId);
+        const item = category.items.find(i => i.id === subId);
+        
+        if (category.isSavings && item && item.envelopeId) {
+            const jar = globalData.jars[currentUser.id].find(j => j.id === item.envelopeId);
+            if (jar) {
+                jar.balance -= (item.amount || 0);
+                saveGlobalData();
+                updateSavingsDisplay();
+            }
+        }
+
         category.items = category.items.filter(i => i.id !== subId);
         renderModalItems();
     }
@@ -1413,17 +1675,16 @@
         document.getElementById('yearly-remaining').innerText = (remaining * 12).toLocaleString('ru-RU');
 
         const summaryCard = document.getElementById('summary-card');
-        const summaryProgress = document.getElementById('summary-progress');
         
-        const remainingPercentVal = currentIncomeUah > 0 ? ((remaining / currentIncomeUah) * 100) : 0;
-        const progressWidth = Math.max(0, Math.min(100, remainingPercentVal));
-        summaryProgress.style.width = progressWidth + '%';
-
         if (remaining < 0) {
             summaryCard.classList.add('danger');
         } else {
             summaryCard.classList.remove('danger');
         }
+
+        const remainingPercentVal = currentIncomeUah > 0 ? ((remaining / currentIncomeUah) * 100) : 0;
+        const progressWidth = Math.max(0, Math.min(100, remainingPercentVal));
+        document.getElementById('summary-progress').style.width = progressWidth + '%';
 
         const percentElements = document.querySelectorAll('.expense-info.tabular');
         expenses.forEach((exp, index) => {
@@ -1434,42 +1695,173 @@
             }
         });
 
+        // Дневной лимит
+        const today = new Date();
+        let daysLeft = 1;
+        if (currentYear === today.getFullYear() && currentMonth === today.getMonth()) {
+            const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+            daysLeft = lastDay - today.getDate() + 1; // +1 чтобы включить сегодняшний день
+        } else if (currentYear > today.getFullYear() || (currentYear === today.getFullYear() && currentMonth > today.getMonth())) {
+            daysLeft = new Date(currentYear, currentMonth + 1, 0).getDate();
+        } else {
+            daysLeft = -1; // Прошлый месяц
+        }
+
+        const dailyLimitVal = document.getElementById('daily-limit-val');
+        const dailyLimitBox = document.getElementById('daily-limit-box');
+        if (daysLeft > 0 && remaining > 0) {
+            dailyLimitBox.style.display = 'flex';
+            dailyLimitVal.innerText = (remaining / daysLeft).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+            dailyLimitVal.style.color = 'var(--sys-green)';
+        } else if (daysLeft > 0 && remaining <= 0) {
+            dailyLimitBox.style.display = 'flex';
+            dailyLimitVal.innerText = '0';
+            dailyLimitVal.style.color = 'var(--sys-red)';
+        } else {
+            dailyLimitBox.style.display = 'none';
+        }
+
         updateChart();
     }
 
-    function calculateTotalSavings() {
-        let addedSavings = 0;
-        let history = [];
-        
-        for (const year in appData) {
-            for (const month in appData[year]) {
-                const monthData = appData[year][month];
-                if (monthData.initialized && monthData.expenses) {
-                    let monthSavings = 0;
-                    monthData.expenses.forEach(exp => {
-                        if (exp.isSavings) {
-                            monthSavings += getCategoryTotal(exp);
-                        }
-                    });
-                    if (monthSavings > 0) {
-                        addedSavings += monthSavings;
-                        history.push({ year: parseInt(year), month: parseInt(month), amount: monthSavings });
-                    }
-                }
-            }
-        }
-        return { total: initialSavings + addedSavings, history: history };
+    function updateSavingsDisplay() {
+        if (!currentUser) return;
+        const userJars = globalData.jars[currentUser.id] || [];
+        const total = userJars.reduce((sum, jar) => sum + jar.balance, 0);
+        document.getElementById('total-savings-display').innerText = total.toLocaleString('ru-RU');
     }
 
-    function updateSavingsDisplay() {
-        const stats = calculateTotalSavings();
-        document.getElementById('total-savings-display').innerText = stats.total.toLocaleString('ru-RU');
+    function openEnvelopesModal() {
+        renderEnvelopes();
+        document.getElementById('jars-modal').classList.add('active');
+    }
+
+    function closeEnvelopesModal(e) {
+        if (e && e.target.id !== 'jars-modal' && e.target.className !== 'btn-close-modal') return;
+        document.getElementById('jars-modal').classList.remove('active');
+    }
+
+    function updateMainJarBalance(id, val) {
+        const jar = globalData.jars[currentUser.id].find(j => j.id === id);
+        if (!jar) return;
+        const parsed = parseFloat(val) || 0;
+        jar.balance = parsed;
+        saveGlobalData();
+        updateSavingsDisplay();
+    }
+
+    function renderEnvelopes() {
+        const list = document.getElementById('jars-list');
+        list.innerHTML = '';
+        const userJars = globalData.jars[currentUser.id] || [];
+        
+        if (userJars.length === 0) {
+            list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 20px;">Нет созданных конвертов</div>';
+            return;
+        }
+
+        userJars.forEach(jar => {
+            const percent = jar.goal > 0 ? Math.min(100, (jar.balance / jar.goal) * 100) : 0;
+            const goalText = jar.goal > 0 ? `из ${jar.goal.toLocaleString('ru-RU')} ₴` : '';
+            
+            const balanceDisplay = jar.isMain 
+                ? `<input type="number" value="${jar.balance}" onchange="updateMainJarBalance(${jar.id}, this.value)" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 10px; color: white; font-size: 22px; font-weight: 700; width: 130px; padding: 6px 12px; outline: none; transition: 0.2s;" onfocus="this.style.background='rgba(255,255,255,0.25)'" onblur="this.style.background='rgba(255,255,255,0.15)'"> <span style="margin-left: 6px;">₴</span>`
+                : `${jar.balance.toLocaleString('ru-RU')} ₴`;
+
+            const deleteBtn = jar.isMain ? '' : `<button onclick="deleteEnvelope(${jar.id})" style="background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(255,59,48,0.8)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">✕</button>`;
+
+            list.innerHTML += `
+                <div class="jar-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <div class="jar-title">${jar.name}</div>
+                            <div style="color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 4px;">Собрано</div>
+                            <div class="jar-balance" style="display: flex; align-items: center; margin-top: 4px;">
+                                ${balanceDisplay}
+                            </div>
+                            ${goalText ? `<div style="font-size: 14px; opacity: 0.7; margin-top: 6px;">${goalText}</div>` : ''}
+                        </div>
+                        ${deleteBtn}
+                    </div>
+                    ${jar.goal > 0 ? `
+                        <div class="jar-progress-bg">
+                            <div class="jar-progress-fill" style="width: ${percent}%;"></div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+    }
+
+    function createNewEnvelope() {
+        const name = document.getElementById('new-jar-name').value;
+        const goal = parseFloat(document.getElementById('new-jar-goal').value) || 0;
+        if(!name) return;
+        if(!globalData.jars) globalData.jars = {};
+        if(!globalData.jars[currentUser.id]) globalData.jars[currentUser.id] = [];
+        
+        globalData.jars[currentUser.id].push({ id: Date.now(), name, goal, balance: 0, isMain: false });
+        
+        document.getElementById('new-jar-name').value = '';
+        document.getElementById('new-jar-goal').value = '';
+        
+        saveGlobalData();
+        renderEnvelopes();
+        updateSavingsDisplay();
+    }
+
+    function deleteEnvelope(id) {
+        const envelope = globalData.jars[currentUser.id].find(j => j.id === id);
+        if (!envelope || envelope.isMain) return;
+
+        showConfirm("Удалить конверт?", "Конверт будет удален, а средства, отложенные в этом месяце, вернутся в свободный остаток.", () => {
+            globalData.jars[currentUser.id] = globalData.jars[currentUser.id].filter(j => j.id !== id);
+            
+            let savingsCat = expenses.find(e => e.isSavings);
+            if (savingsCat) {
+                savingsCat.items = savingsCat.items.filter(item => {
+                    return item.envelopeId !== id && item.name !== ("В конверт: " + envelope.name) && item.name !== ("В банку: " + envelope.name);
+                });
+            }
+
+            saveGlobalData();
+            saveData();
+            
+            renderEnvelopes();
+            renderExpenses();
+            updateAll();
+            updateSavingsDisplay();
+        });
+    }
+
+    function selectTransferJar(event, id, text) {
+        if(event) event.stopPropagation();
+        document.getElementById('transfer-jar-select').value = id;
+        document.getElementById('transfer-jar-selected').innerHTML = text;
+        document.getElementById('transfer-jar-dropdown').classList.remove('open');
     }
 
     function openTransferModal() {
         const totalExp = expenses.reduce((sum, exp) => sum + getCategoryTotal(exp), 0);
         const remaining = currentIncomeUah - totalExp;
         
+        const optionsContainer = document.getElementById('transfer-jar-options');
+        optionsContainer.innerHTML = '';
+        const userJars = globalData.jars[currentUser.id] || [];
+        
+        if (userJars.length === 0) {
+            document.getElementById('transfer-jar-selected').innerHTML = "Нет конвертов";
+            document.getElementById('transfer-jar-select').value = "";
+        } else {
+            let firstJarId = null, firstJarName = '';
+            userJars.forEach((jar, index) => {
+                const text = `${jar.name} (сейчас ${jar.balance.toLocaleString('ru-RU')} ₴)`;
+                if (index === 0) { firstJarId = jar.id; firstJarName = text; }
+                optionsContainer.innerHTML += `<div class="custom-dropdown-option" onclick="selectTransferJar(event, ${jar.id}, '${text}')">${text}</div>`;
+            });
+            selectTransferJar(null, firstJarId, firstJarName);
+        }
+
         document.getElementById('transfer-amount').value = remaining > 0 ? remaining : '';
         document.getElementById('transfer-modal').classList.add('active');
         setTimeout(() => document.getElementById('transfer-amount').focus(), 300);
@@ -1482,68 +1874,28 @@
 
     function executeTransfer() {
         const val = parseFloat(document.getElementById('transfer-amount').value);
-        if (!val || val <= 0) return;
+        const jarId = parseInt(document.getElementById('transfer-jar-select').value);
+        
+        if (!val || val <= 0 || isNaN(jarId)) return;
 
         let savingsCat = expenses.find(e => e.isSavings);
         if (!savingsCat) {
-            savingsCat = { id: Date.now(), name: "Сбережения (Пополнение)", isSavings: true, items: [] };
+            savingsCat = { id: Date.now(), name: "Сбережения", isSavings: true, items: [] };
             expenses.push(savingsCat);
         }
         
-        savingsCat.items.push({ id: Date.now(), name: "Перевод", amount: val });
+        const jar = globalData.jars[currentUser.id].find(j => j.id === jarId);
+        if(jar) {
+            jar.balance += val;
+            savingsCat.items.push({ id: Date.now(), name: "В конверт: " + jar.name, amount: val, envelopeId: jarId });
+        }
         
+        saveGlobalData();
         saveData();
         renderExpenses();
         updateAll();
-        closeTransferModal();
-    }
-
-    function openSavingsHistory() {
-        document.getElementById('initial-savings-input').value = initialSavings || '';
-        const stats = calculateTotalSavings();
-        
-        const list = document.getElementById('savings-history-list');
-        list.innerHTML = '';
-        
-        if (stats.history.length === 0) {
-            list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 24px 0; font-size: 15px;">Вы пока не откладывали сбережения через приложение</div>';
-        } else {
-            stats.history.sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month));
-            
-            stats.history.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'history-item';
-                div.innerHTML = `
-                    <div style="font-weight: 500; font-size: 15px;">${monthNames[item.month]} ${item.year}</div>
-                    <div style="color: var(--sys-green); font-weight: 700; font-size: 16px;" class="tabular">+ ${item.amount.toLocaleString('ru-RU')} ₴</div>
-                `;
-                list.appendChild(div);
-            });
-        }
-        
-        document.getElementById('history-modal').classList.add('active');
-    }
-
-    function closeHistoryModal(e) {
-        if (e && e.target.id !== 'history-modal' && e.target.className !== 'btn-close-modal') return;
-        document.getElementById('history-modal').classList.remove('active');
-    }
-
-    function saveInitialSavings() {
-        const val = document.getElementById('initial-savings-input').value;
-        initialSavings = parseFloat(val) || 0;
-        
-        saveGlobalData(); 
         updateSavingsDisplay();
-        
-        const btn = document.querySelector('.btn-ok-small');
-        const oldBg = btn.style.background;
-        btn.style.background = 'var(--sys-green)';
-        btn.innerText = '✔';
-        setTimeout(() => {
-            btn.style.background = oldBg;
-            btn.innerText = 'ОК';
-        }, 800);
+        closeTransferModal();
     }
 
     function initChart() {
@@ -1635,7 +1987,15 @@
                 if (data && data.initialized) {
                     labels.push(`${monthNames[month].substring(0,3)} ${year}`);
                     
-                    const income = (data.usd || 0) * currentExchangeRate;
+                    let income = 0;
+                    if (data.incomes) {
+                        data.incomes.forEach(inc => {
+                            if(inc.currency === 'USD') income += inc.amount * currentExchangeRate;
+                            else income += inc.amount;
+                        });
+                    } else {
+                        income = (data.usd || 0) * currentExchangeRate;
+                    }
                     incomeData.push(income);
                     
                     let expensesTotal = 0;
