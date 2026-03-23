@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Мой Бюджет</title>
+    <title>My budget</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💸</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -1043,7 +1043,7 @@
         }
     }
 
-    async function createProfile() {
+async function createProfile() {
         const name = document.getElementById('new-user-name').value.trim();
         const surname = document.getElementById('new-user-surname').value.trim();
         const pin = document.getElementById('new-user-pin').value.trim();
@@ -1061,11 +1061,6 @@
             errorDiv.style.display = 'block';
             errorDiv.style.animation = 'shake 0.4s';
             setTimeout(() => errorDiv.style.animation = '', 400);
-            return;
-        }
-        if (globalData.users.some(u => u.pin === pin)) {
-            errorDiv.innerText = 'Этот PIN уже используется';
-            errorDiv.style.display = 'block';
             return;
         }
 
