@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My budget</title>
+    <title>Мой Бюджет</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💸</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -425,9 +425,25 @@
         
         .top-subitem-badge { display: inline-block; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 8px; align-self: flex-end; margin-bottom: 2px;}
 
-        .daily-limit-box { background: transparent; display: flex; align-items: center; justify-content: space-between; padding: 0 4px;}
+        .daily-limit-box { background: transparent; display: flex; align-items: center; justify-content: space-between; padding: 0 4px; margin-bottom: 12px;}
         .daily-limit-title { font-size: 14px; color: var(--text-secondary); font-weight: 600; }
         .daily-limit-val { font-size: 18px; font-weight: 700; color: var(--sys-green); font-variant-numeric: tabular-nums; }
+
+        /* ТЕНДЕНЦИИ (TRENDS) - APPLE STYLE */
+        .trend-box { 
+            margin-bottom: 24px; padding: 14px 18px; border-radius: 20px; 
+            display: flex; flex-direction: row; align-items: center; gap: 14px; 
+            background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255, 255, 255, 0.9); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02); transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
+        }
+        .trend-icon-wrapper { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .icon-good { background: rgba(52, 199, 89, 0.15); color: var(--sys-green); }
+        .icon-bad { background: rgba(255, 59, 48, 0.15); color: var(--sys-red); }
+        .icon-stable { background: rgba(255, 149, 0, 0.15); color: #ff9500; }
+        .icon-empty { background: rgba(0, 0, 0, 0.05); color: var(--sys-gray); }
+        .trend-text { display: flex; flex-direction: column; gap: 3px; }
+        .trend-title { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px;}
+        .trend-sub { font-size: 13px; font-weight: 500; color: var(--text-secondary); line-height: 1.3;}
 
         .jar-card { background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(44, 44, 46, 0.95)); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 20px; padding: 20px 24px; margin-bottom: 12px; position: relative; overflow: hidden; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 16px;}
         .jar-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;}
@@ -594,16 +610,18 @@
                         <div class="summary-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; z-index: 1; position: relative;">
                             <div style="font-size: 16px; font-weight: 600; color: inherit;">Остается в мес:</div>
                             <div class="tabular" style="font-size: 22px; font-weight: 700; color: inherit;">
-                                <span id="remaining-money">0</span> ₴
+                                <span id="remaining-money">0</span> <span class="currency-symbol">₴</span>
                                 <span style="opacity: 0.9; font-weight: 600; font-size: 14px; margin-left: 6px; background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 8px;"><span id="remaining-percent">0</span>%</span>
                             </div>
                         </div>
                     </div>
 
-                    <div id="daily-limit-box" class="daily-limit-box" style="margin-bottom: 24px;">
+                    <div id="daily-limit-box" class="daily-limit-box">
                         <div class="daily-limit-title">Сегодня вы можете потратить:</div>
                         <div class="daily-limit-val" id="daily-limit-val-container"><span id="daily-limit-val">0</span> ₴</div>
                     </div>
+                    
+                    <div id="trend-box" class="trend-box trend-empty" style="display: none;"></div>
 
                     <div class="chart-container">
                         <canvas id="budgetChart"></canvas>
@@ -1043,7 +1061,7 @@
         }
     }
 
-async function createProfile() {
+    async function createProfile() {
         const name = document.getElementById('new-user-name').value.trim();
         const surname = document.getElementById('new-user-surname').value.trim();
         const pin = document.getElementById('new-user-pin').value.trim();
@@ -1704,16 +1722,92 @@ async function createProfile() {
 
         const dailyLimitVal = document.getElementById('daily-limit-val');
         const dailyLimitBox = document.getElementById('daily-limit-box');
+        const trendBox = document.getElementById('trend-box');
+        let currentDailyLimit = 0;
+
         if (daysLeft > 0 && remaining > 0) {
             dailyLimitBox.style.display = 'flex';
-            dailyLimitVal.innerText = (remaining / daysLeft).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+            currentDailyLimit = remaining / daysLeft;
+            dailyLimitVal.innerText = currentDailyLimit.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
             dailyLimitVal.style.color = 'var(--sys-green)';
+            trendBox.style.display = 'flex';
         } else if (daysLeft > 0 && remaining <= 0) {
             dailyLimitBox.style.display = 'flex';
+            currentDailyLimit = 0;
             dailyLimitVal.innerText = '0';
             dailyLimitVal.style.color = 'var(--sys-red)';
+            trendBox.style.display = 'flex';
         } else {
             dailyLimitBox.style.display = 'none';
+            trendBox.style.display = 'none';
+        }
+
+        // Анализ тенденции
+        let actualCurrentDailyLimit = (daysLeft > 0) ? (remaining / daysLeft) : 0;
+        let prevYear = currentYear;
+        let prevMonth = currentMonth - 1;
+        if (prevMonth < 0) {
+            prevMonth = 11;
+            prevYear--;
+        }
+
+        if (appData[prevYear] && appData[prevYear][prevMonth] && appData[prevYear][prevMonth].initialized && daysLeft > 0) {
+            let prevData = appData[prevYear][prevMonth];
+            let prevIncome = 0;
+            if (prevData.incomes) {
+                prevData.incomes.forEach(inc => {
+                    if (inc.currency === 'USD') prevIncome += inc.amount * currentExchangeRate;
+                    else prevIncome += inc.amount;
+                });
+            } else {
+                prevIncome = (prevData.usd || 0) * currentExchangeRate;
+            }
+
+            let prevExp = 0;
+            if (prevData.expenses) {
+                prevExp = prevData.expenses.reduce((sum, exp) => sum + exp.items.reduce((s, item) => s + (parseFloat(item.amount) || 0), 0), 0);
+            }
+
+            let prevRemaining = prevIncome - prevExp;
+            let daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+            let prevDailyLimit = prevRemaining / daysInPrevMonth;
+
+            const iconGood = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>`;
+            const iconBad = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>`;
+            const iconStable = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg>`;
+            const iconEmpty = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+
+            const trendHtml = (icon, cls, title, sub) => `
+                <div class="trend-icon-wrapper ${cls}">${icon}</div>
+                <div class="trend-text">
+                    <div class="trend-title">${title}</div>
+                    <div class="trend-sub">${sub}</div>
+                </div>
+            `;
+            
+            if (prevDailyLimit <= 0 && actualCurrentDailyLimit <= 0) {
+                 trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', 'Дневной бюджет в минусе', 'Ситуация не улучшилась с прошлого месяца.');
+            } else if (prevDailyLimit <= 0 && actualCurrentDailyLimit > 0) {
+                 trendBox.innerHTML = trendHtml(iconGood, 'icon-good', 'Отличный прогресс!', 'Вы вышли в плюс. Подумайте о пополнении конвертов.');
+            } else {
+                let diffPercent = ((actualCurrentDailyLimit - prevDailyLimit) / prevDailyLimit) * 100;
+                
+                if (Math.abs(diffPercent) <= 5) {
+                    trendBox.innerHTML = trendHtml(iconStable, 'icon-stable', 'Темп сохраняется', 'Ваш дневной бюджет стабилен по сравнению с прошлым месяцем.');
+                } else if (diffPercent > 5) {
+                    trendBox.innerHTML = trendHtml(iconGood, 'icon-good', `Идете лучше прошлого месяца (+${diffPercent.toFixed(1)}%)`, 'Свободных денег стало больше. Отличная работа.');
+                } else {
+                    trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', `Дневной бюджет ниже прошлого (${Math.abs(diffPercent).toFixed(1)}%)`, 'Возможно, стоит притормозить с крупными тратами.');
+                }
+            }
+        } else {
+            trendBox.innerHTML = `
+                <div class="trend-icon-wrapper icon-empty"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
+                <div class="trend-text">
+                    <div class="trend-title">Недостаточно данных</div>
+                    <div class="trend-sub">Аналитика тенденции появится в следующем месяце.</div>
+                </div>
+            `;
         }
 
         updateChart();
