@@ -68,11 +68,6 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 0 0 var(--sys-blue-glow); }
-            70% { box-shadow: 0 0 0 10px rgba(0, 122, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
-        }
         @keyframes flowVertical {
             0% { top: -100%; opacity: 0; }
             50% { opacity: 1; }
@@ -83,6 +78,12 @@
             50% { opacity: 1; }
             100% { left: 100%; opacity: 0; }
         }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
+            40%, 60% { transform: translate3d(8px, 0, 0); }
+        }
 
         /* Навигация (Календарь) */
         .top-nav { width: 100%; max-width: 1100px; margin: 0 auto 24px auto; position: relative; z-index: 50; animation: fadeInUp 0.5s ease forwards;}
@@ -90,6 +91,10 @@
         .user-nav-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 4px; font-size: 14px; }
         .user-nav-actions { display: flex; gap: 8px; }
         
+        /* БЕЙДЖИ ТИПА АККАУНТА */
+        .badge-type { background: rgba(0, 122, 255, 0.1); color: var(--sys-blue); padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 8px; display: inline-block;}
+        .badge-business { background: rgba(52, 199, 89, 0.1); color: var(--sys-green); }
+
         .year-selector { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: 600; }
         .year-btn { background: rgba(0, 122, 255, 0.1); color: var(--sys-blue); width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; cursor: pointer; transition: all 0.2s;}
         .year-btn:hover { background: rgba(0, 122, 255, 0.15); transform: scale(1.05); }
@@ -199,12 +204,10 @@
 
         .hidden-pin-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: text; font-size: 16px; z-index: 10; }
 
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-2px, 0, 0); }
-            20%, 80% { transform: translate3d(4px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
-            40%, 60% { transform: translate3d(8px, 0, 0); }
-        }
+        /* ВЫБОР ТИПА ПРОФИЛЯ ПРИ СОЗДАНИИ */
+        .type-selector { display: flex; gap: 8px; margin-bottom: 20px; background: rgba(0,0,0,0.04); padding: 4px; border-radius: 16px; }
+        .type-btn { flex: 1; padding: 12px; border: none; background: transparent; border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: 0.3s; }
+        .type-btn.active { background: white; color: var(--text-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
         /* БЛОК СБЕРЕЖЕНИЙ */
         .savings-container { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.05); font-size: 16px; font-weight: 500; color: var(--text-secondary); }
@@ -215,7 +218,7 @@
         /* Обертка для размытия */
         .dashboard-wrapper { position: relative; width: 100%; max-width: 1100px; display: flex; justify-content: center; margin: 0 auto;}
 
-        /* СТРОГИЙ GRID - Исправление ширины */
+        /* СТРОГИЙ GRID */
         .container { 
             width: 100%; 
             display: grid; 
@@ -279,9 +282,10 @@
         
         .tabular { font-variant-numeric: tabular-nums; }
 
-        .converter-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; justify-content: space-between;}
-        .converter-header h2 { margin: 0; }
-        .rate-badge { background: rgba(0,0,0,0.06); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: right;}
+        /* ИСПРАВЛЕНИЕ ШАПКИ ДЛЯ ДЛИННЫХ ТЕКСТОВ */
+        .converter-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; justify-content: space-between;}
+        .converter-header h2 { margin: 0; line-height: 1.2; flex: 1 1 auto; word-break: break-word; }
+        .rate-badge { flex-shrink: 0; background: rgba(0,0,0,0.06); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: right; margin-top: 2px;}
 
         /* НОВЫЕ СТИЛИ ВВОДА И ВЫПАДАЮЩИХ СПИСКОВ APPLE GLASS */
         .ios-input {
@@ -291,8 +295,9 @@
         }
         .ios-input:focus { background: white; border-color: var(--sys-blue); box-shadow: 0 2px 8px rgba(0,122,255,0.1); }
 
-        /* Custom Dropdown (Apple Style) */
-        .custom-dropdown { position: relative; user-select: none; }
+        /* Custom Dropdown - ИСПРАВЛЕНИЕ Z-INDEX ДЛЯ НАКЛАДЫВАНИЯ */
+        .custom-dropdown { position: relative; user-select: none; z-index: 1; }
+        .custom-dropdown.open { z-index: 1000; }
         .custom-dropdown-selected { 
             background: rgba(0,0,0,0.04); padding: 0 40px 0 16px; border-radius: 16px; font-size: 16px; 
             cursor: pointer; display: flex; align-items: center; border: 1px solid transparent; 
@@ -309,7 +314,7 @@
             position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: rgba(255,255,255,0.85); 
             -webkit-backdrop-filter: blur(30px) saturate(200%); backdrop-filter: blur(30px) saturate(200%); 
             border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.8); 
-            z-index: 100; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); 
             overflow: hidden; max-height: 250px; overflow-y: auto;
         }
         .custom-dropdown.open .custom-dropdown-options { opacity: 1; visibility: visible; transform: translateY(0); }
@@ -329,14 +334,21 @@
         .text-value { font-weight: 600; color: var(--text-primary); text-align: right; word-break: break-word;}
         .value-main { font-size: 20px; color: var(--sys-green); }
 
+        /* ИНПУТЫ СЕБЕСТОИМОСТИ ДЛЯ БИЗНЕСА */
+        .cogs-input-group { display: flex; gap: 12px; align-items: center; }
+        .cogs-input-group input { flex: 1; height: 48px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.08); padding: 0 16px; font-size: 16px; background: rgba(0,0,0,0.02); outline: none; transition: 0.2s; font-family: inherit;}
+        .cogs-input-group input:focus { border-color: var(--sys-blue); box-shadow: 0 2px 8px rgba(0,122,255,0.1); background: white;}
+
         .expenses-container { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+        
+        /* Z-INDEX ИСПРАВЛЕНИЕ: Чтобы выпадающие списки внутри элементов не перекрывались нижними строками */
         .expense-item { 
             display: flex; gap: 12px; 
             padding: 24px 16px 16px 16px; 
             border-radius: 20px; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03); 
-            align-items: center; transition: all 0.3s ease; position: relative;
+            align-items: center; transition: all 0.3s ease; position: relative; z-index: 1;
         }
-        .expense-item:hover { background: rgba(0,0,0,0.04); transform: scale(1.01); }
+        .expense-item:hover, .expense-item:focus-within { z-index: 10; transform: scale(1.01); background: rgba(0,0,0,0.04); }
         
         .expense-item input.input-name { background: transparent; border: 1px solid transparent; padding: 0 10px; height: 44px; border-radius: 12px; font-size: 16px; font-weight: 500; color: var(--text-primary); transition: 0.2s; outline: none; flex: 1; min-width: 100px; }
         .expense-item input.input-name:focus { background: white; border-color: rgba(0, 122, 255, 0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -510,7 +522,10 @@
             <div class="user-nav-row">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div id="nav-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: var(--sys-blue); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2);"></div>
-                    <span id="current-user-name-display" style="font-weight: 600; font-size: 16px; color: var(--text-primary);"></span>
+                    <div style="display: flex; align-items: center;">
+                        <span id="current-user-name-display" style="font-weight: 600; font-size: 16px; color: var(--text-primary);"></span>
+                        <span id="account-type-badge" class="badge-type" style="display: none;">Физ. лицо</span>
+                    </div>
                 </div>
                 <div class="user-nav-actions">
                     <button style="background: transparent; color: var(--sys-red); border: none; font-size: 14px; font-weight: 500; cursor: pointer; padding: 8px;" onclick="deleteProfile()">Удалить профиль</button>
@@ -524,7 +539,7 @@
             </div>
             <div class="months-carousel" id="months-container"></div>
             <div class="savings-container">
-                <span>Мои сбережения:</span>
+                <span id="savings-title">Мои сбережения:</span>
                 <span class="savings-amount tabular" onclick="openEnvelopesModal()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
                     <span id="total-savings-display">0</span> ₴
@@ -555,7 +570,7 @@
             <div class="left-panel">
                 <div class="glass-card" style="margin-bottom: 0;">
                     <div class="converter-header">
-                        <h2>Источники дохода</h2>
+                        <h2 id="title-sources">Источники дохода</h2>
                         <div class="rate-badge" id="rate-info">Загрузка...</div>
                     </div>
                     <div id="incomes-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
@@ -566,8 +581,33 @@
                     <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
                 </div>
 
+                <div id="cogs-block" class="glass-card" style="margin-bottom: 0; display: none;">
+                    <h2>Себестоимость</h2>
+                    <div class="info-block" style="padding: 16px 20px;">
+                        <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">Процент или сумма расходов на реализацию (отнимается от оборота)</div>
+                        <div class="cogs-input-group">
+                            <input type="number" id="cogs-value" placeholder="Например, 30" oninput="updateCOGS(this.value)">
+                            <div class="custom-dropdown" style="width: 100px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
+                                <div class="custom-dropdown-selected" id="cogs-type-display" style="height: 48px; padding: 0 32px 0 16px; border-radius: 14px;">%</div>
+                                <div class="custom-dropdown-options" style="min-width: 100px;">
+                                    <div class="custom-dropdown-option" onclick="selectCOGSType(event, 'percent')">%</div>
+                                    <div class="custom-dropdown-option" onclick="selectCOGSType(event, 'fixed')">Фикс (₴)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px; font-size: 15px; display: flex; justify-content: space-between;">
+                            <span>Сумма себестоимости:</span>
+                            <span class="tabular" style="font-weight: 600; color: var(--sys-red);">-<span id="cogs-calculated-amount">0</span> ₴</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-container" id="cogs-flow" style="display: none;">
+                    <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
+                </div>
+
                 <div class="glass-card" style="margin-bottom: 0;">
-                    <h1>Доходы</h1>
+                    <h1 id="title-incomes">Доходы</h1>
                     <div class="info-block">
                         <div class="info-row">
                             <span class="text-label">В месяц:</span>
@@ -575,17 +615,17 @@
                         </div>
                         <div class="info-row">
                             <span class="text-label">За год:</span>
-                            <span class="text-value tabular"><span id="yearly-income-display">0</span><span class="currency-symbol">₴</span> <span style="color: var(--text-tertiary); font-weight: normal; font-size: 14px; margin-left: 4px;">($<span id="yearly-income-usd">0</span>)</span></span>
+                            <span class="text-value tabular"><span id="yearly-income-display">0</span><span class="currency-symbol">₴</span> <span style="color: var(--text-tertiary); font-weight: normal; font-size: 14px; margin-left: 4px;" id="yearly-income-usd-container">($<span id="yearly-income-usd">0</span>)</span></span>
                         </div>
                     </div>
                     <div class="info-block">
                         <div class="info-row">
-                            <span class="text-label">В рабочий день:</span>
-                            <span class="text-value tabular">$<span id="daily-rate-usd">0</span> <span style="color: var(--text-tertiary); font-weight: normal; margin: 0 4px;">/</span> <span id="daily-rate-uah">0</span><span class="currency-symbol">₴</span></span>
+                            <span class="text-label" id="label-daily">В рабочий день:</span>
+                            <span class="text-value tabular"><span id="daily-rate-usd-container">$<span id="daily-rate-usd">0</span> <span style="color: var(--text-tertiary); font-weight: normal; margin: 0 4px;">/</span> </span><span id="daily-rate-uah">0</span><span class="currency-symbol">₴</span></span>
                         </div>
                         <div class="info-row">
-                            <span class="text-label">Стоимость 1 часа:</span>
-                            <span class="text-value tabular">$<span id="hourly-rate-usd">0</span> <span style="color: var(--text-tertiary); font-weight: normal; margin: 0 4px;">/</span> <span id="hourly-rate-uah">0</span><span class="currency-symbol">₴</span></span>
+                            <span class="text-label" id="label-hourly">Стоимость 1 часа:</span>
+                            <span class="text-value tabular"><span id="hourly-rate-usd-container">$<span id="hourly-rate-usd">0</span> <span style="color: var(--text-tertiary); font-weight: normal; margin: 0 4px;">/</span> </span><span id="hourly-rate-uah">0</span><span class="currency-symbol">₴</span></span>
                         </div>
                     </div>
                 </div>
@@ -608,7 +648,7 @@
                     <div id="summary-card" class="summary-box summary-main" style="margin-bottom: 12px; flex-direction: row; align-items: center; justify-content: space-between;">
                         <div id="summary-progress" class="summary-progress" style="width: 0%;"></div>
                         <div class="summary-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; z-index: 1; position: relative;">
-                            <div style="font-size: 16px; font-weight: 600; color: inherit;">Остается в мес:</div>
+                            <div id="title-remaining" style="font-size: 16px; font-weight: 600; color: inherit;">Остается в мес:</div>
                             <div class="tabular" style="font-size: 22px; font-weight: 700; color: inherit;">
                                 <span id="remaining-money">0</span> <span class="currency-symbol">₴</span>
                                 <span style="opacity: 0.9; font-weight: 600; font-size: 14px; margin-left: 6px; background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 8px;"><span id="remaining-percent">0</span>%</span>
@@ -629,7 +669,7 @@
 
                     <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 24px; margin-bottom: 24px;">
                         <div style="background: rgba(0, 122, 255, 0.05); padding: 16px; border-radius: 16px; text-align: center; border: 1px solid rgba(0, 122, 255, 0.1);">
-                            <div style="font-size: 13px; color: var(--sys-blue); font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Чистыми за год</div>
+                            <div id="label-yearly-remaining" style="font-size: 13px; color: var(--sys-blue); font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Чистыми за год</div>
                             <div class="tabular" style="font-weight: 700; font-size: 18px; color: var(--text-primary);"><span id="yearly-remaining">0</span> ₴</div>
                         </div>
                         <div style="background: rgba(0, 0, 0, 0.03); padding: 16px; border-radius: 16px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.05);">
@@ -641,7 +681,7 @@
                     <div style="display: flex; flex-direction: column; gap: 10px;">
                         <button class="btn-init-primary btn-green" style="margin:0; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="openTransferModal()">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                            Перенести в конверт
+                            <span id="text-transfer">Перенести в конверт</span>
                         </button>
                         <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
                             <button class="btn-init-secondary" style="margin:0; padding: 14px; font-size: 14px; color: var(--sys-blue); display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openAnalyticsModal()">
@@ -691,7 +731,7 @@
 <div id="transfer-modal" class="modal-overlay" onclick="closeTransferModal(event)">
     <div class="modal-content" style="max-width: 400px;" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h3 style="margin: 0;">Отложить в конверт</h3>
+            <h3 style="margin: 0;" id="transfer-modal-title">Отложить в конверт</h3>
             <button class="btn-close-modal" onclick="closeTransferModal()">✕</button>
         </div>
         <p style="color: var(--text-secondary); font-size: 15px; margin-top: -12px; margin-bottom: 24px;">Укажите сумму, которую хотите отложить, и выберите конверт.</p>
@@ -708,21 +748,21 @@
             <span style="color: var(--sys-green);">₴</span>
             <input type="number" id="transfer-amount" style="color: var(--sys-green);" placeholder="0">
         </div>
-        <button class="btn-init-primary btn-green" style="margin: 0; height: 56px;" onclick="executeTransfer()">Отложить</button>
+        <button class="btn-init-primary btn-green" style="margin: 0; height: 56px;" onclick="executeTransfer()">Готово</button>
     </div>
 </div>
 
 <div id="jars-modal" class="modal-overlay" onclick="closeEnvelopesModal(event)">
     <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h3 style="margin: 0;">Мои конверты</h3>
+            <h3 style="margin: 0;" id="jars-modal-title">Мои конверты</h3>
             <button class="btn-close-modal" onclick="closeEnvelopesModal()">✕</button>
         </div>
         
         <div id="jars-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; max-height: 40vh; overflow-y: auto;"></div>
         
         <div style="background: rgba(0,0,0,0.03); padding: 20px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05);">
-            <h4 style="margin: 0 0 16px 0; font-size: 16px;">Создать новый конверт</h4>
+            <h4 style="margin: 0 0 16px 0; font-size: 16px;">Создать новый</h4>
             <input type="text" id="new-jar-name" class="ios-input" placeholder="Название (например, На машину)" style="margin-bottom: 12px;">
             <input type="number" id="new-jar-goal" class="ios-input" placeholder="Цель (сумма, необязательно)" style="margin-bottom: 16px;">
             <button class="btn-init-primary" style="margin: 0;" onclick="createNewEnvelope()">Создать</button>
@@ -794,9 +834,15 @@
             <p class="auth-subtitle">Давайте начнем управлять бюджетом</p>
         </div>
         
+        <div class="type-selector">
+            <button id="btn-type-personal" class="type-btn active" onclick="selectProfileType('personal')">Для себя</button>
+            <button id="btn-type-business" class="type-btn" onclick="selectProfileType('business')">Для бизнеса</button>
+        </div>
+        <input type="hidden" id="new-user-type" value="personal">
+
         <div style="background: rgba(0,0,0,0.03); padding: 4px; border-radius: 20px; margin-bottom: 24px;">
-            <input type="text" id="new-user-name" style="width: 100%; box-sizing: border-box; background: white; border: none; border-radius: 16px; padding: 16px 20px; font-size: 16px; font-weight: 500; outline: none; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);" placeholder="Имя">
-            <input type="text" id="new-user-surname" style="width: 100%; box-sizing: border-box; background: white; border: none; border-radius: 16px; padding: 16px 20px; font-size: 16px; font-weight: 500; outline: none; box-shadow: 0 2px 8px rgba(0,0,0,0.02);" placeholder="Фамилия">
+            <input type="text" id="new-user-name" style="width: 100%; box-sizing: border-box; background: white; border: none; border-radius: 16px; padding: 16px 20px; font-size: 16px; font-weight: 500; outline: none; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);" placeholder="Имя / Название">
+            <input type="text" id="new-user-surname" style="width: 100%; box-sizing: border-box; background: white; border: none; border-radius: 16px; padding: 16px 20px; font-size: 16px; font-weight: 500; outline: none; box-shadow: 0 2px 8px rgba(0,0,0,0.02);" placeholder="Фамилия / Сфера">
         </div>
         
         <div style="text-align: center; margin-bottom: 12px; color: var(--text-secondary); font-size: 15px; font-weight: 500;">Придумайте 6-значный PIN-код</div>
@@ -994,8 +1040,21 @@
         return total;
     }
 
+    // --- ФУНКЦИИ ВЫБОРА ТИПА АККАУНТА ПРИ РЕГИСТРАЦИИ ---
+    function selectProfileType(type) {
+        document.getElementById('new-user-type').value = type;
+        document.getElementById('btn-type-personal').classList.toggle('active', type === 'personal');
+        document.getElementById('btn-type-business').classList.toggle('active', type === 'business');
+    }
+
     function login(user) {
         currentUser = user;
+        
+        // МИГРАЦИЯ: Присваиваем тип 'personal' всем, у кого его нет
+        if (!currentUser.account_type) {
+            currentUser.account_type = 'personal';
+        }
+
         localStorage.setItem('budget_saved_user_id', user.id);
         
         document.getElementById('auth-overlay').classList.remove('active');
@@ -1016,33 +1075,72 @@
         }
 
         if (!globalData.jars[user.id] || globalData.jars[user.id].length === 0) {
-            const oldTotal = calculateTotalSavingsOldLogic(user.id);
-            globalData.jars[user.id] = [{
-                id: Date.now(),
-                name: "Мои сбережения",
-                goal: 0,
-                balance: oldTotal,
-                isMain: true
-            }];
+            if (currentUser.account_type === 'business') {
+                globalData.jars[user.id] = [
+                    { id: Date.now(), name: "Основной фонд", goal: 0, balance: 0, isMain: true }
+                ];
+            } else {
+                const oldTotal = calculateTotalSavingsOldLogic(user.id);
+                globalData.jars[user.id] = [{
+                    id: Date.now(),
+                    name: "Мои сбережения",
+                    goal: 0,
+                    balance: oldTotal,
+                    isMain: true
+                }];
+            }
         } else {
             if (!globalData.jars[user.id].some(j => j.isMain)) {
                 globalData.jars[user.id][0].isMain = true;
             }
         }
 
+        // Применяем визуал в зависимости от типа
+        applyUIForAccountType();
+
         if (!appData[currentYear]) appData[currentYear] = {};
         if (!appData[currentYear][currentMonth]) {
-            appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
+            appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type: 'percent', value: 0} };
         }
         
         const hasAnyData = Object.keys(appData).some(y => Object.keys(appData[y]).some(m => appData[y][m].initialized));
         if (!hasAnyData) {
-            appData[currentYear][currentMonth] = { initialized: true, incomes: [{id: Date.now(), name: "Основной", amount: 0, currency: "UAH"}], expenses: JSON.parse(JSON.stringify(defaultCategories)) };
+            appData[currentYear][currentMonth] = { initialized: true, incomes: [{id: Date.now(), name: "Основной", amount: 0, currency: "UAH"}], expenses: JSON.parse(JSON.stringify(defaultCategories)), cogs: {type: 'percent', value: 0} };
         }
 
         renderCalendar();
         applyMonthData();
         updateSavingsDisplay();
+    }
+
+    function applyUIForAccountType() {
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        
+        const badge = document.getElementById('account-type-badge');
+        badge.style.display = 'inline-block';
+        badge.innerText = isBiz ? 'Бизнес' : 'Физ. лицо';
+        badge.className = isBiz ? 'badge-type badge-business' : 'badge-type';
+
+        document.getElementById('title-sources').innerText = isBiz ? 'Оборот по счетам за месяц' : 'Источники дохода';
+        document.getElementById('title-incomes').innerText = isBiz ? 'Оборот' : 'Доходы';
+        
+        // Меняем тексты для рабочего дня/часа
+        document.getElementById('label-daily').innerText = isBiz ? 'Средний оборот за день:' : 'В рабочий день:';
+        document.getElementById('label-hourly').innerText = isBiz ? 'Средний оборот в час:' : 'Стоимость 1 часа:';
+        document.getElementById('daily-rate-usd-container').style.display = isBiz ? 'none' : 'inline';
+        document.getElementById('hourly-rate-usd-container').style.display = isBiz ? 'none' : 'inline';
+        document.getElementById('yearly-income-usd-container').style.display = isBiz ? 'none' : 'inline';
+
+        document.getElementById('title-remaining').innerText = isBiz ? 'Чистая прибыль:' : 'Остается в мес:';
+        document.getElementById('label-yearly-remaining').innerText = isBiz ? 'Чистая прибыль за год' : 'Чистыми за год';
+        document.getElementById('text-transfer').innerText = isBiz ? 'Распределить прибыль' : 'Перенести в конверт';
+        
+        document.getElementById('savings-title').innerText = isBiz ? 'Фонды бизнеса:' : 'Мои сбережения:';
+        document.getElementById('transfer-modal-title').innerText = isBiz ? 'Пополнить фонд' : 'Отложить в конверт';
+        document.getElementById('jars-modal-title').innerText = isBiz ? 'Фонды бизнеса' : 'Мои конверты';
+
+        document.getElementById('cogs-block').style.display = isBiz ? 'block' : 'none';
+        document.getElementById('cogs-flow').style.display = isBiz ? 'flex' : 'none';
     }
 
     function showCreateProfile() {
@@ -1052,6 +1150,7 @@
         document.getElementById('new-user-pin').value = '';
         document.getElementById('new-user-pin').style.borderColor = 'rgba(0,122,255,0.1)';
         document.getElementById('create-error').style.display = 'none';
+        selectProfileType('personal'); // По умолчанию физлицо
     }
 
     function hideCreateProfile() {
@@ -1065,10 +1164,11 @@
         const name = document.getElementById('new-user-name').value.trim();
         const surname = document.getElementById('new-user-surname').value.trim();
         const pin = document.getElementById('new-user-pin').value.trim();
+        const accType = document.getElementById('new-user-type').value;
         const errorDiv = document.getElementById('create-error');
         
         if (!name || !surname) {
-            errorDiv.innerText = 'Введите имя и фамилию';
+            errorDiv.innerText = 'Введите данные для профиля';
             errorDiv.style.display = 'block';
             errorDiv.style.animation = 'shake 0.4s';
             setTimeout(() => errorDiv.style.animation = '', 400);
@@ -1086,7 +1186,8 @@
             id: Date.now().toString(),
             name: name,
             surname: surname,
-            pin: pin
+            pin: pin,
+            account_type: accType
         };
 
         globalData.users.push(newUser);
@@ -1162,8 +1263,25 @@
         return null;
     }
 
+    function updateCOGS(val) {
+        if (!appData[currentYear][currentMonth].cogs) appData[currentYear][currentMonth].cogs = { type: 'percent', value: 0 };
+        appData[currentYear][currentMonth].cogs.value = parseFloat(val) || 0;
+        saveData();
+        updateAll();
+    }
+
+    function selectCOGSType(event, type) {
+        if(event) event.stopPropagation();
+        if (!appData[currentYear][currentMonth].cogs) appData[currentYear][currentMonth].cogs = { type: 'percent', value: 0 };
+        appData[currentYear][currentMonth].cogs.type = type;
+        document.getElementById('cogs-type-display').innerText = type === 'percent' ? '%' : 'Фикс (₴)';
+        document.getElementById('cogs-type-display').closest('.custom-dropdown').classList.remove('open');
+        saveData();
+        updateAll();
+    }
+
     function applyMonthData() {
-        const data = appData[currentYear][currentMonth] || { initialized: false, incomes: [], expenses: [] };
+        const data = appData[currentYear][currentMonth] || { initialized: false, incomes: [], expenses: [], cogs: {type:'percent', value:0} };
         
         if (data.initialized) {
             document.getElementById('main-dashboard').classList.remove('blurred');
@@ -1174,6 +1292,10 @@
             }
 
             expenses = data.expenses || [];
+
+            if (!data.cogs) data.cogs = { type: 'percent', value: 0 };
+            document.getElementById('cogs-value').value = data.cogs.value || '';
+            document.getElementById('cogs-type-display').innerText = data.cogs.type === 'percent' ? '%' : 'Фикс (₴)';
             
             renderIncomes();
             renderExpenses(); 
@@ -1213,14 +1335,16 @@
                 appData[currentYear][currentMonth] = {
                     initialized: true,
                     incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: Date.now(), name: "Основной", amount: prev.data.usd || 0, currency: "USD" }])),
-                    expenses: JSON.parse(JSON.stringify(prev.data.expenses || []))
+                    expenses: JSON.parse(JSON.stringify(prev.data.expenses || [])),
+                    cogs: JSON.parse(JSON.stringify(prev.data.cogs || {type:'percent', value:0}))
                 };
             }
         } else {
             appData[currentYear][currentMonth] = {
                 initialized: true,
                 incomes: [{id: Date.now(), name: "Основной", amount: 0, currency: "UAH"}],
-                expenses: JSON.parse(JSON.stringify(defaultCategories)) 
+                expenses: JSON.parse(JSON.stringify(defaultCategories)),
+                cogs: {type: 'percent', value: 0}
             };
         }
         
@@ -1233,7 +1357,7 @@
             "Очистить месяц", 
             "Вы уверены, что хотите полностью очистить данные за этот месяц? Действие нельзя отменить.", 
             () => {
-                appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
+                appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type:'percent', value:0} };
                 saveData();
                 renderCalendar(); 
                 applyMonthData(); 
@@ -1396,16 +1520,7 @@
         saveData(); 
 
         currentIncomeUah = totalUah; 
-        document.getElementById('income-display').innerText = totalUah.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); 
-        document.getElementById('yearly-income-display').innerText = (totalUah * 12).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
-        document.getElementById('yearly-income-usd').innerText = (totalUsdEquivalent * 12).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
-
-        const workingDays = 21, workingHours = workingDays * 8; 
-        document.getElementById('daily-rate-usd').innerText = (totalUsdEquivalent > 0 ? (totalUsdEquivalent / workingDays) : 0).toFixed(2);
-        document.getElementById('daily-rate-uah').innerText = (totalUah > 0 ? (totalUah / workingDays) : 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 }); 
-        document.getElementById('hourly-rate-usd').innerText = (totalUsdEquivalent > 0 ? (totalUsdEquivalent / workingHours) : 0).toFixed(2);
-        document.getElementById('hourly-rate-uah').innerText = (totalUah > 0 ? (totalUah / workingHours) : 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
+        window.currentIncomeUsd = totalUsdEquivalent; // Сохраняем USD-эквивалент для физлиц
         updateAll(); 
     }
 
@@ -1423,7 +1538,15 @@
     function renderExpenses() {
         const list = document.getElementById('expenses-list');
         list.innerHTML = '';
-        const income = currentIncomeUah; 
+        
+        // Для процентов расходов используем уже рассчитанную Валовую прибыль из updateAll (или базовый доход, если COGS нет)
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        let displayIncome = currentIncomeUah;
+        if (isBiz && appData[currentYear] && appData[currentYear][currentMonth].cogs) {
+            const cogs = appData[currentYear][currentMonth].cogs;
+            const cogsAmount = cogs.type === 'percent' ? currentIncomeUah * (cogs.value / 100) : cogs.value;
+            displayIncome = currentIncomeUah - cogsAmount;
+        }
         
         let totals = expenses.map(e => getCategoryTotal(e)).filter(t => t > 0);
         let uniqueTotals = [...new Set(totals)].sort((a,b) => b - a);
@@ -1433,7 +1556,7 @@
 
         expenses.forEach(exp => {
             const totalAmount = getCategoryTotal(exp);
-            const percent = income > 0 ? ((totalAmount / income) * 100).toFixed(1) : 0;
+            const percent = displayIncome > 0 ? ((totalAmount / displayIncome) * 100).toFixed(1) : 0;
             const cost10Years = totalAmount * 120;
             
             let rankClass = '';
@@ -1678,9 +1801,45 @@
     }
 
     function updateAll() {
+        const isBiz = currentUser && currentUser.account_type === 'business';
         const totalExp = expenses.reduce((sum, exp) => sum + getCategoryTotal(exp), 0);
-        const remaining = currentIncomeUah - totalExp;
-        const percent = currentIncomeUah > 0 ? ((remaining / currentIncomeUah) * 100).toFixed(1) : 0;
+        
+        let cogsAmount = 0;
+        // Расчет себестоимости ТОЛЬКО если это бизнес
+        if (isBiz) {
+            const cogs = appData[currentYear][currentMonth].cogs || { type: 'percent', value: 0 };
+            if (cogs.type === 'percent') {
+                cogsAmount = currentIncomeUah * (cogs.value / 100);
+            } else {
+                cogsAmount = cogs.value;
+            }
+            document.getElementById('cogs-calculated-amount').innerText = cogsAmount.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+        }
+
+        // ВАЖНО: Высчитываем реальный доход для отображения (с вычетом COGS для бизнеса)
+        const displayIncomeUah = currentIncomeUah - cogsAmount;
+        const displayIncomeUsd = window.currentIncomeUsd || 0;
+
+        // Обновляем блок ДОХОДЫ (ОБОРОТ)
+        document.getElementById('income-display').innerText = displayIncomeUah.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        document.getElementById('yearly-income-display').innerText = (displayIncomeUah * 12).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+
+        if (!isBiz) {
+            document.getElementById('yearly-income-usd').innerText = (displayIncomeUsd * 12).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+        }
+
+        const workingDays = 21, workingHours = workingDays * 8;
+        document.getElementById('daily-rate-uah').innerText = (displayIncomeUah > 0 ? (displayIncomeUah / workingDays) : 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+        document.getElementById('hourly-rate-uah').innerText = (displayIncomeUah > 0 ? (displayIncomeUah / workingHours) : 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        if (!isBiz) {
+            document.getElementById('daily-rate-usd').innerText = (displayIncomeUsd > 0 ? (displayIncomeUsd / workingDays) : 0).toFixed(2);
+            document.getElementById('hourly-rate-usd').innerText = (displayIncomeUsd > 0 ? (displayIncomeUsd / workingHours) : 0).toFixed(2);
+        }
+
+        // Обновляем блок СВОДКА
+        const remaining = displayIncomeUah - totalExp;
+        const percent = displayIncomeUah > 0 ? ((remaining / displayIncomeUah) * 100).toFixed(1) : 0;
 
         document.getElementById('total-expenses').innerText = totalExp.toLocaleString('ru-RU');
         document.getElementById('remaining-money').innerText = remaining.toLocaleString('ru-RU');
@@ -1695,38 +1854,31 @@
             summaryCard.classList.remove('danger');
         }
 
-        const remainingPercentVal = currentIncomeUah > 0 ? ((remaining / currentIncomeUah) * 100) : 0;
+        const remainingPercentVal = displayIncomeUah > 0 ? ((remaining / displayIncomeUah) * 100) : 0;
         const progressWidth = Math.max(0, Math.min(100, remainingPercentVal));
         document.getElementById('summary-progress').style.width = progressWidth + '%';
 
-        const percentElements = document.querySelectorAll('.expense-info.tabular');
-        expenses.forEach((exp, index) => {
-            const totalAmount = getCategoryTotal(exp);
-            const catPercent = currentIncomeUah > 0 ? ((totalAmount / currentIncomeUah) * 100).toFixed(1) : 0;
-            if (percentElements[index]) {
-                percentElements[index].innerText = catPercent + '%';
-            }
-        });
-
-// Дневной лимит (всегда делим на полное количество дней в месяце)
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
+        // Дневной лимит (скрываем для бизнеса)
         const dailyLimitVal = document.getElementById('daily-limit-val');
         const dailyLimitBox = document.getElementById('daily-limit-box');
-        const trendBox = document.getElementById('trend-box');
         
-        dailyLimitBox.style.display = 'flex';
-        
-        if (remaining > 0) {
-            const currentDailyLimit = remaining / daysInMonth;
-            dailyLimitVal.innerText = currentDailyLimit.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
-            dailyLimitVal.style.color = 'var(--sys-green)';
+        if (isBiz) {
+            dailyLimitBox.style.display = 'none';
         } else {
-            dailyLimitVal.innerText = '0';
-            dailyLimitVal.style.color = 'var(--sys-red)';
+            dailyLimitBox.style.display = 'flex';
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            if (remaining > 0) {
+                const currentDailyLimit = remaining / daysInMonth;
+                dailyLimitVal.innerText = currentDailyLimit.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+                dailyLimitVal.style.color = 'var(--sys-green)';
+            } else {
+                dailyLimitVal.innerText = '0';
+                dailyLimitVal.style.color = 'var(--sys-red)';
+            }
         }
 
         // Анализ тенденции - СРАВНИВАЕМ ОБЩИЙ ОСТАТОК (REMAINING)
+        const trendBox = document.getElementById('trend-box');
         let prevYear = currentYear;
         let prevMonth = currentMonth - 1;
         if (prevMonth < 0) {
@@ -1746,12 +1898,21 @@
                 prevIncome = (prevData.usd || 0) * currentExchangeRate;
             }
 
+            let prevCogsAmount = 0;
+            if (isBiz && prevData.cogs) {
+                if (prevData.cogs.type === 'percent') {
+                    prevCogsAmount = prevIncome * (prevData.cogs.value / 100);
+                } else {
+                    prevCogsAmount = prevData.cogs.value;
+                }
+            }
+
             let prevExp = 0;
             if (prevData.expenses) {
                 prevExp = prevData.expenses.reduce((sum, exp) => sum + exp.items.reduce((s, item) => s + (parseFloat(item.amount) || 0), 0), 0);
             }
 
-            let prevRemaining = prevIncome - prevExp;
+            let prevRemaining = prevIncome - prevCogsAmount - prevExp;
 
             const iconGood = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>`;
             const iconBad = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>`;
@@ -1797,6 +1958,16 @@
             `;
             trendBox.style.display = 'flex';
         }
+
+        // Обновляем проценты расходов уже относительно очищенного дохода (после себестоимости)
+        const percentElements = document.querySelectorAll('.expense-info.tabular');
+        expenses.forEach((exp, index) => {
+            const totalAmount = getCategoryTotal(exp);
+            const catPercent = displayIncomeUah > 0 ? ((totalAmount / displayIncomeUah) * 100).toFixed(1) : 0;
+            if (percentElements[index]) {
+                percentElements[index].innerText = catPercent + '%';
+            }
+        });
 
         updateChart();
     }
@@ -1920,7 +2091,16 @@
 
     function openTransferModal() {
         const totalExp = expenses.reduce((sum, exp) => sum + getCategoryTotal(exp), 0);
-        const remaining = currentIncomeUah - totalExp;
+        let cogsAmount = 0;
+        if (currentUser && currentUser.account_type === 'business') {
+            const cogs = appData[currentYear][currentMonth].cogs || { type: 'percent', value: 0 };
+            if (cogs.type === 'percent') {
+                cogsAmount = currentIncomeUah * (cogs.value / 100);
+            } else {
+                cogsAmount = cogs.value;
+            }
+        }
+        const remaining = currentIncomeUah - cogsAmount - totalExp;
         
         const optionsContainer = document.getElementById('transfer-jar-options');
         optionsContainer.innerHTML = '';
@@ -2056,6 +2236,7 @@
         const barColors = [];
 
         const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
+        const isBiz = currentUser && currentUser.account_type === 'business';
         
         years.forEach(year => {
             const months = Object.keys(appData[year]).map(Number).sort((a, b) => a - b);
@@ -2073,15 +2254,27 @@
                     } else {
                         income = (data.usd || 0) * currentExchangeRate;
                     }
-                    incomeData.push(income);
                     
+                    let cogsAmount = 0;
+                    if (isBiz && data.cogs) {
+                        if (data.cogs.type === 'percent') {
+                            cogsAmount = income * (data.cogs.value / 100);
+                        } else {
+                            cogsAmount = data.cogs.value;
+                        }
+                    }
+                    
+                    // В графике линия дохода будет показывать чистый доход после себестоимости (Валовая прибыль)
+                    const displayIncome = income - cogsAmount;
+                    incomeData.push(displayIncome);
+
                     let expensesTotal = 0;
                     if (data.expenses) {
                         expensesTotal = data.expenses.reduce((sum, exp) => sum + exp.items.reduce((s, item) => s + (parseFloat(item.amount) || 0), 0), 0);
                     }
                     expenseData.push(expensesTotal);
                     
-                    const freeMoney = income - expensesTotal;
+                    const freeMoney = displayIncome - expensesTotal;
                     freeMoneyData.push(freeMoney);
 
                     if (freeMoney < 0) {
@@ -2107,7 +2300,7 @@
                 datasets: [
                     {
                         type: 'bar',
-                        label: 'Чистый остаток',
+                        label: isBiz ? 'Чистая прибыль' : 'Чистый остаток',
                         data: freeMoneyData,
                         backgroundColor: barColors,
                         borderRadius: 6,
@@ -2117,7 +2310,7 @@
                     },
                     {
                         type: 'line',
-                        label: 'Доход',
+                        label: isBiz ? 'Оборот (маржа)' : 'Доход',
                         data: incomeData,
                         borderColor: 'rgba(0, 122, 255, 0.6)',
                         borderWidth: 2,
@@ -2170,7 +2363,7 @@
                         cornerRadius: 16,
                         callbacks: {
                             label: function(context) {
-                                let prefix = context.dataset.label === 'Чистый остаток' && context.parsed.y > 0 ? '+' : '';
+                                let prefix = (context.dataset.label === 'Чистая прибыль' || context.dataset.label === 'Чистый остаток') && context.parsed.y > 0 ? '+' : '';
                                 return context.dataset.label + ': ' + prefix + context.parsed.y.toLocaleString('ru-RU') + ' ₴';
                             }
                         }
