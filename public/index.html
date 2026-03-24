@@ -354,8 +354,13 @@
         .expense-item input.input-name:focus { background: white; border-color: rgba(0, 122, 255, 0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
         .amount-column { position: relative; flex: 0 0 auto; }
-        .calculated-amount-btn { min-width: 120px; height: 44px; background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: flex-end; padding: 0 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.2s; font-variant-numeric: tabular-nums; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+        .calculated-amount-btn { min-width: 120px; height: 44px; background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 0 16px; font-size: 16px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: all 0.2s; font-variant-numeric: tabular-nums; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
         .calculated-amount-btn:hover { background: #f8f8f8; border-color: rgba(0,0,0,0.15); }
+        
+        /* СТИЛЬ ОПЛАЧЕННОЙ КАТЕГОРИИ */
+        .expense-item.fully-paid .calculated-amount-btn { background: rgba(52, 199, 89, 0.1); border-color: rgba(52, 199, 89, 0.3); color: var(--sys-green); }
+        .paid-tick { display: none; }
+        .expense-item.fully-paid .paid-tick { display: block; color: var(--sys-green); }
         
         .preview-tooltip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%) translateY(10px) scale(0.95); background: rgba(28, 28, 30, 0.85); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: white; padding: 14px 18px; border-radius: 16px; font-size: 14px; font-weight: 500; z-index: 50; opacity: 0; visibility: hidden; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 12px 32px rgba(0,0,0,0.2); pointer-events: none; width: max-content; max-width: 240px; text-align: left; }
         .preview-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: rgba(28, 28, 30, 0.85) transparent transparent transparent; }
@@ -404,6 +409,15 @@
         .btn-sub-delete { background: white; color: var(--sys-gray); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 6px rgba(0,0,0,0.02); flex-shrink: 0;}
         .btn-sub-delete:hover { background: rgba(255, 59, 48, 0.1); color: var(--sys-red); border-color: transparent;}
         
+        /* КАСТОМНЫЙ ЧЕК-БОКС */
+        .check-container { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; border: 2px solid rgba(0,0,0,0.15); cursor: pointer; flex-shrink: 0; transition: all 0.2s; background: white;}
+        .check-container.checked { background: var(--sys-green); border-color: var(--sys-green); }
+        .check-container svg { display: none; stroke: white; stroke-width: 3; }
+        .check-container.checked svg { display: block; animation: scaleIn 0.2s ease forwards; }
+        
+        /* СТИЛЬ ОПЛАЧЕННОГО ИНПУТА */
+        .sub-item-amount.paid-amount { color: var(--sys-green); font-weight: 600; background: rgba(52, 199, 89, 0.05); }
+
         .btn-modal-done { background: var(--sys-blue); color: white; width: 100%; padding: 16px; border-radius: 16px; font-size: 17px; font-weight: 600; margin-top: 12px; transition: all 0.2s;}
         .btn-modal-done:hover { background: #0062cc; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,122,255,0.3);}
 
@@ -416,6 +430,12 @@
         
         .summary-progress { position: absolute; top: 0; left: 0; bottom: 0; z-index: 0; transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
         
+        /* БЛОК CASHFLOW (ОПЛАТЫ) */
+        .cashflow-box { background: rgba(0, 0, 0, 0.03); border-radius: 16px; padding: 16px; border: 1px solid rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px;}
+        .cf-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+        .cf-val { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums;}
+        .cf-divider { height: 1px; background: rgba(0,0,0,0.06); margin: 2px 0; }
+
         .chart-container { position: relative; width: 100%; height: 220px; margin: 0 auto; transition: all 0.5s; }
         .chart-container:hover { transform: scale(1.02); }
         .currency-symbol { font-weight: 500; opacity: 0.6; margin-left: 2px;}
@@ -661,6 +681,13 @@
                         <div class="daily-limit-val" id="daily-limit-val-container"><span id="daily-limit-val">0</span> ₴</div>
                     </div>
                     
+                    <div id="cashflow-box" class="cashflow-box" style="display: none;">
+                        <div class="cf-row"><span>План расходов:</span> <span class="cf-val" id="cf-plan">0 ₴</span></div>
+                        <div class="cf-row"><span>Уже оплачено:</span> <span class="cf-val" id="cf-paid" style="color: var(--sys-green);">0 ₴</span></div>
+                        <div class="cf-divider"></div>
+                        <div class="cf-row"><span style="font-weight: 600; color: var(--text-primary);">Остаток к оплате:</span> <span class="cf-val" id="cf-left" style="color: var(--sys-red); font-size: 16px;">0 ₴</span></div>
+                    </div>
+                    
                     <div id="trend-box" class="trend-box trend-empty" style="display: none;"></div>
 
                     <div class="chart-container">
@@ -672,7 +699,7 @@
                             <div id="label-yearly-remaining" style="font-size: 13px; color: var(--sys-blue); font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Чистыми за год</div>
                             <div class="tabular" style="font-weight: 700; font-size: 18px; color: var(--text-primary);"><span id="yearly-remaining">0</span> ₴</div>
                         </div>
-                        <div style="background: rgba(0, 0, 0, 0.03); padding: 16px; border-radius: 16px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.05);">
+                        <div id="old-expenses-box" style="background: rgba(0, 0, 0, 0.03); padding: 16px; border-radius: 16px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.05);">
                             <div style="font-size: 13px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Расходы за месяц</div>
                             <div class="tabular" style="font-weight: 700; font-size: 18px; color: var(--text-primary);"><span id="total-expenses">0</span> ₴</div>
                         </div>
@@ -1141,6 +1168,17 @@
 
         document.getElementById('cogs-block').style.display = isBiz ? 'block' : 'none';
         document.getElementById('cogs-flow').style.display = isBiz ? 'flex' : 'none';
+
+        // CASHFLOW БЛОКИ
+        if (isBiz) {
+            document.getElementById('daily-limit-box').style.display = 'none';
+            document.getElementById('cashflow-box').style.display = 'flex';
+            document.getElementById('old-expenses-box').style.display = 'none'; // Скрываем старый квадрат
+        } else {
+            document.getElementById('daily-limit-box').style.display = 'flex';
+            document.getElementById('cashflow-box').style.display = 'none';
+            document.getElementById('old-expenses-box').style.display = 'block';
+        }
     }
 
     function showCreateProfile() {
@@ -1332,10 +1370,14 @@
         if (usePrev) {
             const prev = getLastInitializedData();
             if (prev) {
+                // Копируем структуру, сбрасывая чекбоксы оплат
+                let copiedExpenses = JSON.parse(JSON.stringify(prev.data.expenses || []));
+                copiedExpenses.forEach(cat => cat.items.forEach(item => item.isPaid = false));
+                
                 appData[currentYear][currentMonth] = {
                     initialized: true,
                     incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: Date.now(), name: "Основной", amount: prev.data.usd || 0, currency: "USD" }])),
-                    expenses: JSON.parse(JSON.stringify(prev.data.expenses || [])),
+                    expenses: copiedExpenses,
                     cogs: JSON.parse(JSON.stringify(prev.data.cogs || {type:'percent', value:0}))
                 };
             }
@@ -1559,6 +1601,10 @@
             const percent = displayIncome > 0 ? ((totalAmount / displayIncome) * 100).toFixed(1) : 0;
             const cost10Years = totalAmount * 120;
             
+            // ПРОВЕРЯЕМ СТАТУС ОПЛАТЫ КАТЕГОРИИ
+            const allItemsPaid = exp.items.length > 0 && exp.items.every(item => item.isPaid === true);
+            const paidClass = (allItemsPaid && isBiz) ? 'fully-paid' : '';
+            
             let rankClass = '';
             let badgeHtml = '';
             
@@ -1569,13 +1615,16 @@
             }
             
             let tooltipHtml = exp.items.length > 0 
-                ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${i.name || 'Без названия'}</span><span class="preview-item-amount">${(parseFloat(i.amount)||0).toLocaleString('ru-RU')} ₴</span></div>`).join('')
+                ? exp.items.map(i => {
+                    const paidIndicator = i.isPaid ? ' <span style="color: #34c759;">✓</span>' : '';
+                    return `<div class="preview-item"><span class="preview-item-name">${i.name || 'Без названия'}</span><span class="preview-item-amount">${(parseFloat(i.amount)||0).toLocaleString('ru-RU')} ₴${paidIndicator}</span></div>`;
+                }).join('')
                 : '<div style="opacity:0.7;">Нет добавленных статей</div>';
 
             const isSavingsClass = exp.isSavings ? 'color: var(--sys-green); font-weight: 600;' : '';
 
             const div = document.createElement('div');
-            div.className = `expense-item ${rankClass}`;
+            div.className = `expense-item ${rankClass} ${paidClass}`;
             div.innerHTML = `
                 ${badgeHtml}
                 <input class="input-name" type="text" value="${exp.name}" placeholder="Название категории" oninput="updateCategoryName(${exp.id}, this.value)" style="${isSavingsClass}">
@@ -1584,7 +1633,10 @@
                     <div class="expense-10y tabular" title="${cost10Years.toLocaleString('ru-RU')} ₴ за 10 лет">
                         <span class="val-10y">${formatNumberShort(cost10Years)}</span> за 10 лет
                     </div>
-                    <button class="calculated-amount-btn" onclick="openModal(${exp.id})">${totalAmount.toLocaleString('ru-RU')} ₴</button>
+                    <button class="calculated-amount-btn" onclick="openModal(${exp.id})">
+                        ${totalAmount.toLocaleString('ru-RU')} ₴
+                        <svg class="paid-tick" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
                     <div class="preview-tooltip">${tooltipHtml}</div>
                 </div>
                 
@@ -1668,6 +1720,7 @@
         list.innerHTML = '';
 
         const tops = getTop3SubItems(category);
+        const isBiz = currentUser && currentUser.account_type === 'business';
 
         category.items.forEach(item => {
             let amt = parseFloat(item.amount) || 0;
@@ -1685,13 +1738,22 @@
                 ? `<div class="badge-wrapper" style="display:flex; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge ${badgeClass}">${badgeText}</span></div>` 
                 : `<div class="badge-wrapper" style="display:none; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge"></span></div>`;
 
+            const isChecked = item.isPaid ? 'checked' : '';
+            const paidClass = item.isPaid ? 'paid-amount' : '';
+            
+            // Чек-бокс выводим только для бизнеса
+            const checkboxHtml = isBiz 
+                ? `<div class="check-container ${isChecked}" onclick="togglePaidStatus(${item.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>` 
+                : '';
+
             const div = document.createElement('div');
             div.className = `sub-item ${rankClass}`;
             div.innerHTML = `
                 ${badgeHtml}
                 <div class="sub-item-row">
+                    ${checkboxHtml}
                     <input type="text" class="sub-item-name" value="${item.name}" placeholder="Название статьи" oninput="updateSubItemName(${item.id}, this.value)">
-                    <input type="number" class="sub-item-amount" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${item.id}, this.value)">
+                    <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${item.id}, this.value)">
                     <button class="btn-sub-delete" onclick="deleteSubItem(${item.id})">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
@@ -1701,6 +1763,19 @@
         });
 
         document.getElementById('modal-category-total').innerText = getCategoryTotal(category).toLocaleString('ru-RU');
+    }
+
+    // НОВАЯ ФУНКЦИЯ ДЛЯ ЧЕК-БОКСА
+    function togglePaidStatus(subId) {
+        const category = expenses.find(e => e.id === activeCategoryId);
+        const item = category.items.find(i => i.id === subId);
+        if (item) {
+            item.isPaid = !item.isPaid;
+            saveData();
+            renderModalItems(); 
+            renderExpenses();
+            updateAll();
+        }
     }
 
     function updateTopSubItemBadges(category) {
@@ -1732,7 +1807,7 @@
 
     function addSubItem() {
         const category = expenses.find(e => e.id === activeCategoryId);
-        category.items.push({ id: Date.now(), name: "", amount: null });
+        category.items.push({ id: Date.now(), name: "", amount: null, isPaid: false });
         renderModalItems();
     }
 
@@ -1802,7 +1877,17 @@
 
     function updateAll() {
         const isBiz = currentUser && currentUser.account_type === 'business';
-        const totalExp = expenses.reduce((sum, exp) => sum + getCategoryTotal(exp), 0);
+        
+        let totalExp = 0;
+        let paidExp = 0; // Сумма оплаченных расходов (по чек-боксам)
+        
+        expenses.forEach(exp => {
+            exp.items.forEach(item => {
+                const amt = parseFloat(item.amount) || 0;
+                totalExp += amt;
+                if (item.isPaid) paidExp += amt;
+            });
+        });
         
         let cogsAmount = 0;
         // Расчет себестоимости ТОЛЬКО если это бизнес
@@ -1842,6 +1927,15 @@
         const percent = displayIncomeUah > 0 ? ((remaining / displayIncomeUah) * 100).toFixed(1) : 0;
 
         document.getElementById('total-expenses').innerText = totalExp.toLocaleString('ru-RU');
+        
+        // ОБНОВЛЕНИЕ БЛОКА CASHFLOW
+        if (isBiz) {
+            const leftToPay = totalExp - paidExp;
+            document.getElementById('cf-plan').innerText = totalExp.toLocaleString('ru-RU') + ' ₴';
+            document.getElementById('cf-paid').innerText = paidExp.toLocaleString('ru-RU') + ' ₴';
+            document.getElementById('cf-left').innerText = leftToPay.toLocaleString('ru-RU') + ' ₴';
+        }
+
         document.getElementById('remaining-money').innerText = remaining.toLocaleString('ru-RU');
         document.getElementById('remaining-percent').innerText = percent;
         document.getElementById('yearly-remaining').innerText = (remaining * 12).toLocaleString('ru-RU');
@@ -1862,10 +1956,7 @@
         const dailyLimitVal = document.getElementById('daily-limit-val');
         const dailyLimitBox = document.getElementById('daily-limit-box');
         
-        if (isBiz) {
-            dailyLimitBox.style.display = 'none';
-        } else {
-            dailyLimitBox.style.display = 'flex';
+        if (!isBiz) {
             const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
             if (remaining > 0) {
                 const currentDailyLimit = remaining / daysInMonth;
