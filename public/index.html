@@ -807,10 +807,24 @@
     </div>
 </div>
 
+<div id="account-select-overlay" class="auth-glass-overlay">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-icon">👤</div>
+            <h2 class="auth-title">Выберите профиль</h2>
+            <p class="auth-subtitle">На эту почту найдено несколько аккаунтов</p>
+        </div>
+        
+        <div id="account-select-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;"></div>
+        
+        <button class="btn-init-secondary" style="background: transparent;" onclick="cancelAccountSelect()">Отмена</button>
+    </div>
+</div>
+
 <script>
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 
-    const API_URL = 'https://api.budgetfreeapp.workers.dev'; 
+    const API_URL = 'https://my-budget-backend.antipovmaxdp.workers.dev'; 
 
     let globalData = { jars: {} }; 
     let currentUser = null;
@@ -830,7 +844,6 @@
 
     const appleColors = [ '#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#5ac8fa', '#007aff', '#5856d6', '#af52de', '#ff2d55', '#32ade6' ];
 
-    // Глобальное закрытие всех кастомных dropdown-ов при клике вне их области
     window.addEventListener('click', function() {
         document.querySelectorAll('.custom-dropdown').forEach(el => el.classList.remove('open'));
     });
@@ -850,10 +863,6 @@
         }
     }
 
-    // ==========================================
-    // ЛОГИКА АВТОРИЗАЦИИ OTP (ПИСЬМО НА ПОЧТУ)
-    // ==========================================
-
     let tempAuthData = null; 
     let otpTimer = null;
 
@@ -869,7 +878,7 @@
 
         otpTimer = setInterval(() => {
             timeLeft--;
-            btn.innerText = `Повторная отправка через ${timeLeft} с`;
+            btn.innerText = `Повторная отправка через ${timeLeft}с`;
             
             if (timeLeft <= 0) {
                 clearInterval(otpTimer);
@@ -941,7 +950,6 @@
             const data = await response.json();
             
             if (!response.ok) {
-                // Если код 429 и в ответе есть инфа о секундах -> код еще жив
                 if (response.status === 429 && data.error.includes('через')) {
                     tempAuthData = payload;
                     document.getElementById('auth-overlay').classList.remove('active');
@@ -970,7 +978,7 @@
                 document.getElementById('otp-error').style.display = 'none';
                 document.getElementById('otp-overlay').classList.add('active');
                 
-                startOtpCountdown('btn-otp-resend', 300); // 5 минут на повторную отправку
+                startOtpCountdown('btn-otp-resend', 300); 
                 btn.innerText = 'Получить код';
                 btn.disabled = false;
             }
@@ -1006,18 +1014,71 @@
             } else {
                 if (otpTimer) clearInterval(otpTimer);
                 document.getElementById('otp-overlay').classList.remove('active');
-                
-                // ИСПРАВЛЕНИЕ: Возвращаем кнопку в нормальное состояние после успешного входа
                 btn.innerText = 'Подтвердить';
                 btn.disabled = false;
                 
-                await performLogin(data.user);
+                // Проверяем количество аккаунтов. Если больше одного - рисуем выбор.
+                if (data.users && data.users.length > 1) {
+                    showAccountSelect(data.users);
+                } else {
+                    // Если только один аккаунт (или старый формат data.user), пускаем сразу
+                    await performLogin(data.users ? data.users[0] : data.user);
+                }
             }
         } catch (err) {
             showError(errorDiv, 'Ошибка соединения');
             btn.innerText = 'Подтвердить';
             btn.disabled = false;
         }
+    }
+
+    function showAccountSelect(users) {
+        const list = document.getElementById('account-select-list');
+        list.innerHTML = '';
+        
+        users.forEach(u => {
+            const isBiz = u.account_type === 'business';
+            const icon = isBiz ? '💼' : '🧍‍♂️';
+            const typeName = isBiz ? 'Бизнес профиль' : 'Личный профиль';
+            
+            const btn = document.createElement('button');
+            btn.className = 'btn-init-secondary';
+            btn.style.display = 'flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'flex-start';
+            btn.style.gap = '16px';
+            btn.style.padding = '16px';
+            btn.style.margin = '0';
+            btn.style.background = 'white';
+            btn.style.border = '1px solid rgba(0,0,0,0.05)';
+            btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.04)';
+            
+            btn.innerHTML = `
+                <div style="font-size: 28px; background: rgba(0,0,0,0.04); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px;">${icon}</div>
+                <div style="text-align: left;">
+                    <div style="font-weight: 600; color: var(--text-primary); font-size: 16px;">${typeName}</div>
+                    <div style="font-size: 14px; color: var(--text-secondary); margin-top: 2px;">${u.name} ${u.surname}</div>
+                </div>
+            `;
+            
+            btn.onclick = () => {
+                document.getElementById('account-select-overlay').classList.remove('active');
+                performLogin(u);
+            };
+            
+            // Легкий ховер эффект
+            btn.onmouseover = () => btn.style.transform = 'scale(1.02)';
+            btn.onmouseout = () => btn.style.transform = 'scale(1)';
+            
+            list.appendChild(btn);
+        });
+        
+        document.getElementById('account-select-overlay').classList.add('active');
+    }
+
+    function cancelAccountSelect() {
+        document.getElementById('account-select-overlay').classList.remove('active');
+        showAuthScreen();
     }
 
     function resendOtp() {
@@ -1043,10 +1104,6 @@
         element.style.animation = 'shake 0.4s';
         setTimeout(() => element.style.animation = '', 400);
     }
-
-    // ==========================================
-    // ЛОГИКА ПРИЛОЖЕНИЯ
-    // ==========================================
 
     async function performLogin(user) {
         currentUser = user;
@@ -1192,13 +1249,12 @@
         setTimeout(() => showAuthScreen(), 300);
     }
 
-function deleteProfile() {
+    function deleteProfile() {
         showConfirm(
             "Удалить аккаунт и данные?", 
             "Все ваши данные (доходы, расходы, конверты) будут удалены с сервера навсегда. Это действие нельзя отменить. Вы уверены?", 
             async () => {
                 try {
-                    // Отправляем запрос на сервер для полного удаления
                     const response = await fetch(`${API_URL}/api/user`, {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
@@ -1206,7 +1262,6 @@ function deleteProfile() {
                     });
                     
                     if (response.ok) {
-                        // Если сервер успешно всё удалил, выходим из аккаунта
                         logout(); 
                     } else {
                         const data = await response.json();
@@ -1549,8 +1604,6 @@ function deleteProfile() {
         renderExpenses(); saveData(); updateAll();
     }
 
-
-
     function openModal(categoryId) {
         activeCategoryId = categoryId;
         const category = expenses.find(e => e.id === categoryId);
@@ -1645,10 +1698,6 @@ function deleteProfile() {
         const item = expenses.find(e => e.id === activeCategoryId).items.find(i => i.id === subId);
         if (item) item.name = val;
     }
-
-
-
-  
 
     function showConfirm(title, message, callback) {
         document.getElementById('confirm-title').innerText = title;
@@ -1793,8 +1842,6 @@ function deleteProfile() {
     function openEnvelopesModal() { renderEnvelopes(); document.getElementById('jars-modal').classList.add('active'); }
     function closeEnvelopesModal(e) { if (!e || e.target.id === 'jars-modal' || e.target.className === 'btn-close-modal') document.getElementById('jars-modal').classList.remove('active'); }
 
-
-
     function renderEnvelopes() {
         const list = document.getElementById('jars-list');
         list.innerHTML = '';
@@ -1822,8 +1869,6 @@ function deleteProfile() {
         document.getElementById('new-jar-name').value = ''; document.getElementById('new-jar-goal').value = '';
         saveGlobalData(); renderEnvelopes(); updateSavingsDisplay();
     }
-
- 
 
     function selectTransferJar(event, id, text) {
         if(event) event.stopPropagation();
@@ -1860,7 +1905,7 @@ function deleteProfile() {
 
     function closeTransferModal(e) { if (!e || e.target.id === 'transfer-modal' || e.target.className === 'btn-close-modal') document.getElementById('transfer-modal').classList.remove('active'); }
 
-function deleteCategory(id) {
+    function deleteCategory(id) {
         showConfirm("Удаление категории", "Удалить эту категорию со всеми расходами?", () => {
             const category = expenses.find(e => e.id === id);
             if (category && category.isSavings) {
