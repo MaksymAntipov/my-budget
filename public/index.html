@@ -216,6 +216,18 @@
         .left-panel .glass-card:nth-child(1) { animation-delay: 0.1s; }
         .left-panel .glass-card:nth-child(3) { animation-delay: 0.2s; } 
         .right-panel .glass-card { animation-delay: 0.3s; }
+        .right-panel {
+    position: relative;
+    height: 100%; /* Позволяет карточке знать границы для прилипания */
+}
+
+/* Находим карточку сводки и заставляем её липнуть */
+.right-panel .glass-card {
+    position: -webkit-sticky; /* Для поддержки Safari */
+    position: sticky;
+    top: 20px; /* Отступ от верхнего края экрана при скролле */
+    z-index: 100; /* Чтобы сводка всегда была поверх декоративных элементов */
+}
 
         h1, h2 { margin-top: 0; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary); }
         h1 { font-size: 24px; margin-bottom: 24px; }
