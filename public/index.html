@@ -878,7 +878,7 @@
 
         otpTimer = setInterval(() => {
             timeLeft--;
-            btn.innerText = `Повторная отправка через ${timeLeft}с`;
+            btn.innerText = `Повторная отправка через ${timeLeft} с`;
             
             if (timeLeft <= 0) {
                 clearInterval(otpTimer);
