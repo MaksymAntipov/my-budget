@@ -1640,7 +1640,7 @@
             if (globalData.debts && globalData.debts[currentUser.id]) {
                 let debtsChanged = false;
                 globalData.debts[currentUser.id].forEach(debt => {
-                    if (debt.is_archived === viewDate) {
+                    if (Math.abs(debt.is_archived) === viewDate) {
                         debt.is_archived = 0;
                         debtsChanged = true;
                     }
@@ -2027,6 +2027,7 @@
         showConfirm("Удаление категории", "Удалить эту категорию со всеми расходами?", () => {
             const category = expenses.find(e => e.id === id);
             let debtsToSync = new Set();
+            
             if (category) {
                 category.items.forEach(item => {
                     if (category.isSavings && item.envelopeId) {
@@ -2036,13 +2037,21 @@
                     if (item.debtId) debtsToSync.add(item.debtId);
                 });
             }
+            
             expenses = expenses.filter(e => e.id !== id);
             
+            if (appData[currentYear] && appData[currentYear][currentMonth]) {
+                appData[currentYear][currentMonth].expenses = expenses;
+            }
+            
             debtsToSync.forEach(debtId => syncGlobalDebtBalance(debtId));
-            if (debtsToSync.size > 0) { saveGlobalData(); updateDebtsDisplay(); }
 
-            renderExpenses(); updateAll(); updateSavingsDisplay();
-            saveData(); 
+            renderExpenses(); 
+            updateAll(); 
+            updateSavingsDisplay(); 
+            updateDebtsDisplay();
+            
+            saveDataToServer(); 
         });
     }
 
@@ -2064,8 +2073,11 @@
                 if (debt && debt.currency === 'USD') newDeduction = newVal / currentExchangeRate; 
                 item.debtDeduction = newDeduction;
                 
+                if (appData[currentYear] && appData[currentYear][currentMonth]) {
+                    appData[currentYear][currentMonth].expenses = expenses;
+                }
+                
                 syncGlobalDebtBalance(item.debtId);
-                saveGlobalData();
                 updateDebtsDisplay();
             }
             document.getElementById('modal-category-total').innerText = formatMoney(getCategoryTotal(category));
@@ -2085,9 +2097,12 @@
         
         category.items = category.items.filter(i => i.id !== subId);
         
+        if (appData[currentYear] && appData[currentYear][currentMonth]) {
+            appData[currentYear][currentMonth].expenses = expenses;
+        }
+        
         if (debtIdToSync) {
             syncGlobalDebtBalance(debtIdToSync);
-            saveGlobalData();
             updateDebtsDisplay();
         }
         renderModalItems();
@@ -2098,12 +2113,19 @@
         const item = category.items.find(i => i.id === subId);
         if (item) { 
             item.isPaid = !item.isPaid; 
+            
+            if (appData[currentYear] && appData[currentYear][currentMonth]) {
+                appData[currentYear][currentMonth].expenses = expenses;
+            }
+
             if (item.debtId) {
                 syncGlobalDebtBalance(item.debtId);
-                saveGlobalData();
                 updateDebtsDisplay();
             }
-            saveData(); renderModalItems(); renderExpenses(); updateAll(); 
+            renderModalItems(); 
+            renderExpenses(); 
+            updateAll(); 
+            saveDataToServer(); 
         }
     }
 
@@ -2299,8 +2321,11 @@
                     expenses = expenses.filter(e => e.id !== savingsCat.id);
                 }
             }
+            if (appData[currentYear] && appData[currentYear][currentMonth]) {
+                appData[currentYear][currentMonth].expenses = expenses;
+            }
             renderEnvelopes(); renderExpenses(); updateAll(); updateSavingsDisplay();
-            saveData(); 
+            saveDataToServer(); 
         });
     }
 
@@ -2349,8 +2374,12 @@
         const jar = globalData.jars[currentUser.id].find(j => j.id == jarId);
         if(jar) { jar.balance += val; savingsCat.items.push({ id: Date.now(), name: "В конверт: " + jar.name, amount: val, envelopeId: jarId }); }
         
+        if (appData[currentYear] && appData[currentYear][currentMonth]) {
+            appData[currentYear][currentMonth].expenses = expenses;
+        }
+
         renderExpenses(); updateAll(); updateSavingsDisplay(); closeTransferModal();
-        saveData(); 
+        saveDataToServer(); 
     }
 
     // ==========================================
@@ -2459,8 +2488,8 @@
         const allUserDebts = globalData.debts[currentUser.id] || [];
         const userDebts = allUserDebts.filter(isDebtActiveInCurrentMonth);
 
-        const activeDebts = userDebts.filter(d => !d.is_archived || d.is_archived === 0 || viewDate < d.is_archived);
-        const archivedDebts = userDebts.filter(d => d.is_archived > 0 && viewDate >= d.is_archived);
+        const activeDebts = userDebts.filter(d => !d.is_archived || d.is_archived === 0 || viewDate < Math.abs(d.is_archived));
+        const archivedDebts = userDebts.filter(d => d.is_archived !== 0 && viewDate >= Math.abs(d.is_archived));
 
         if (userDebts.length === 0) return list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 20px; font-weight: 500;">В этом месяце обязательств нет. Вы восхитительны!</div>';
 
@@ -2498,11 +2527,16 @@
             
             archivedDebts.forEach(debt => {
                 const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
-                const isFullyPaid = historicalRemaining <= 0;
-                const statusText = isFullyPaid ? '✓ Выплачен' : 'Отменен / Заморожен';
-                const statusColor = isFullyPaid ? 'var(--sys-green)' : 'var(--text-secondary)';
+                const isAutoArchived = debt.is_archived > 0;
+                const statusText = isAutoArchived ? '✓ Выплачен' : 'Отменен / Заморожен';
+                const statusColor = isAutoArchived ? 'var(--sys-green)' : 'var(--text-secondary)';
                 const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
                 
+                let deleteBtnHtml = '';
+                if (historicalRemaining === debt.total_amount) {
+                    deleteBtnHtml = `<button onclick="hardDeleteDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; color: white; border-color: transparent;" onmouseout="this.style.background='rgba(255,255,255,0.05)'; color: var(--text-secondary); border-color: rgba(255,255,255,0.1);">✕</button>`;
+                }
+
                 list.innerHTML += `
                 <div class="jar-card" style="background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); opacity: 0.7; padding: 16px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -2511,6 +2545,7 @@
                             <div style="color: ${statusColor}; font-size: 14px; margin-top: 6px; font-weight: 700;">${statusText}</div>
                             <div style="font-size: 13px; margin-top: 4px; color: var(--text-tertiary); font-weight: 500;">Сумма: ${formatMoney(debt.total_amount)} ${currencySymbol}</div>
                         </div>
+                        ${deleteBtnHtml}
                     </div>
                 </div>`;
             });
@@ -2532,10 +2567,17 @@
             });
         } else {
             showConfirm("Отправить в архив?", "Начиная с этого месяца долг уйдет в архив, а в прошлых месяцах останется активным для сохранения истории.", () => {
-                debt.is_archived = viewDate; 
+                debt.is_archived = -viewDate; 
                 saveGlobalData(); renderDebts(); updateDebtsDisplay();
             });
         }
+    }
+
+    function hardDeleteDebt(id) {
+        showConfirm("Удалить навсегда?", "По этому долгу не осталось платежей. Он будет полностью удален из базы.", () => {
+            globalData.debts[currentUser.id] = globalData.debts[currentUser.id].filter(d => d.id != id);
+            saveGlobalData(); renderDebts(); updateDebtsDisplay();
+        });
     }
 
     function updateDebtsDisplay() {
@@ -2547,7 +2589,7 @@
         allUserDebts.forEach(debt => {
             if (!isDebtActiveInCurrentMonth(debt)) return; 
             
-            const isActive = !debt.is_archived || debt.is_archived === 0 || viewDate < debt.is_archived;
+            const isActive = !debt.is_archived || debt.is_archived === 0 || viewDate < Math.abs(debt.is_archived);
             
             if (isActive) {
                 const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
@@ -2604,16 +2646,20 @@
             debtDeduction: amountToDeduct 
         });
 
+        if (appData[currentYear] && appData[currentYear][currentMonth]) {
+            appData[currentYear][currentMonth].expenses = expenses;
+        }
+
         syncGlobalDebtBalance(debt.id); 
         
         closePayDebtModal();
-        saveGlobalData(); 
-        saveData();       
         
         renderDebts();
         updateDebtsDisplay();
         renderExpenses();
         updateAll(); 
+        
+        saveDataToServer();
     }
 
     // ==========================================
