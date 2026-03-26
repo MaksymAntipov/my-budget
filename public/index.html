@@ -2082,7 +2082,7 @@
 
     function closeTransferModal(e) { if (!e || e.target.id === 'transfer-modal' || e.target.className === 'btn-close-modal') document.getElementById('transfer-modal').classList.remove('active'); }
 
-    function deleteCategory(id) {
+function deleteCategory(id) {
         showConfirm("Удаление категории", "Удалить эту категорию со всеми расходами?", () => {
             const category = expenses.find(e => e.id === id);
             if (category && category.isSavings) {
@@ -2092,21 +2092,22 @@
                         if (jar) jar.balance -= (item.amount || 0);
                     }
                 });
-                saveGlobalData(); updateSavingsDisplay();
             }
             expenses = expenses.filter(e => e.id !== id);
-            renderExpenses(); saveData(); updateAll();
+            renderExpenses(); updateAll(); updateSavingsDisplay();
+            saveData(); // ОДИН ВЫЗОВ, исключает баг с перезаписью
         });
     }
 
-    function updateSubItemAmount(subId, val) {
+function updateSubItemAmount(subId, val) {
         const category = expenses.find(e => e.id === activeCategoryId);
         const item = category.items.find(i => i.id === subId);
         if (item) {
             const newVal = parseFloat(val) || 0;
             if (category.isSavings && item.envelopeId) {
                 const jar = globalData.jars[currentUser.id].find(j => j.id == item.envelopeId);
-                if (jar) { jar.balance += (newVal - (item.amount || 0)); saveGlobalData(); updateSavingsDisplay(); }
+                // Только обновляем локально, сохранение будет при закрытии окна
+                if (jar) { jar.balance += (newVal - (item.amount || 0)); updateSavingsDisplay(); }
             }
             item.amount = newVal;
             document.getElementById('modal-category-total').innerText = formatMoney(getCategoryTotal(category));
@@ -2114,32 +2115,49 @@
         }
     }
 
-    function deleteSubItem(subId) {
+function deleteSubItem(subId) {
         const category = expenses.find(e => e.id === activeCategoryId);
         const item = category.items.find(i => i.id === subId);
         if (category.isSavings && item && item.envelopeId) {
             const jar = globalData.jars[currentUser.id].find(j => j.id == item.envelopeId);
-            if (jar) { jar.balance -= (item.amount || 0); saveGlobalData(); updateSavingsDisplay(); }
+            if (jar) { jar.balance -= (item.amount || 0); updateSavingsDisplay(); }
         }
         category.items = category.items.filter(i => i.id !== subId);
         renderModalItems();
     }
 
-    function updateMainJarBalance(id, val) {
+function updateMainJarBalance(id, val) {
         const jar = globalData.jars[currentUser.id].find(j => j.id == id);
-        if (jar) { jar.balance = parseFloat(val) || 0; saveGlobalData(); updateSavingsDisplay(); }
+        if (jar) { jar.balance = parseFloat(val) || 0; updateSavingsDisplay(); saveData(); }
     }
 
-    function deleteEnvelope(id) {
+function deleteEnvelope(id) {
         showConfirm("Удалить конверт?", "Средства, отложенные в этом месяце, вернутся в свободный остаток.", () => {
+            // 1. Удаляем сам конверт из глобального массива
             globalData.jars[currentUser.id] = globalData.jars[currentUser.id].filter(j => j.id != id);
+            
+            // 2. Ищем категорию расходов "Сбережения"
             let savingsCat = expenses.find(e => e.isSavings);
-            if (savingsCat) savingsCat.items = savingsCat.items.filter(item => item.envelopeId != id && !item.name.includes("В конверт: ") && !item.name.includes("В банку: "));
-            saveGlobalData(); saveData(); renderEnvelopes(); renderExpenses(); updateAll(); updateSavingsDisplay();
+            if (savingsCat) {
+                // ИСПРАВЛЕНИЕ: Оставляем все статьи, КРОМЕ той, которая привязана к удаленному конверту!
+                savingsCat.items = savingsCat.items.filter(item => item.envelopeId != id);
+                
+                // 3. Если после удаления конверта категория Сбережения стала пустой, удаляем и её саму
+                if (savingsCat.items.length === 0) {
+                    expenses = expenses.filter(e => e.id !== savingsCat.id);
+                }
+            }
+            
+            // 4. Перерисовываем интерфейс и сохраняем на сервер
+            renderEnvelopes(); 
+            renderExpenses(); 
+            updateAll(); 
+            updateSavingsDisplay();
+            saveData(); 
         });
     }
 
-    function executeTransfer() {
+function executeTransfer() {
         const val = parseFloat(document.getElementById('transfer-amount').value), jarId = document.getElementById('transfer-jar-select').value;
         if (!val || val <= 0 || !jarId) return;
 
@@ -2149,7 +2167,8 @@
         const jar = globalData.jars[currentUser.id].find(j => j.id == jarId);
         if(jar) { jar.balance += val; savingsCat.items.push({ id: Date.now(), name: "В конверт: " + jar.name, amount: val, envelopeId: jarId }); }
         
-        saveGlobalData(); saveData(); renderExpenses(); updateAll(); updateSavingsDisplay(); closeTransferModal();
+        renderExpenses(); updateAll(); updateSavingsDisplay(); closeTransferModal();
+        saveData(); // ОДИН ВЫЗОВ
     }
 
     function initChart() {
