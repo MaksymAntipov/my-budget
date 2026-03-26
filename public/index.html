@@ -2054,7 +2054,7 @@
         document.getElementById('transfer-jar-dropdown').classList.remove('open');
     }
 
-    function openTransferModal() {
+function openTransferModal() {
         const totalExp = expenses.reduce((sum, exp) => sum + getCategoryTotal(exp), 0);
         let cogsAmount = currentUser && currentUser.account_type === 'business' ? (appData[currentYear][currentMonth].cogs?.type === 'percent' ? currentIncomeUah * (appData[currentYear][currentMonth].cogs.value / 100) : (appData[currentYear][currentMonth].cogs?.value || 0)) : 0;
         const remaining = currentIncomeUah - cogsAmount - totalExp;
@@ -2075,7 +2075,9 @@
             selectTransferJar(null, firstJarId, firstJarName);
         }
 
-        document.getElementById('transfer-amount').value = remaining > 0 ? remaining : '';
+        // --- ИСПРАВЛЕНО: Жестко округляем до 2 знаков после запятой ---
+        document.getElementById('transfer-amount').value = remaining > 0 ? parseFloat(remaining.toFixed(2)) : '';
+        
         document.getElementById('transfer-modal').classList.add('active');
         setTimeout(() => document.getElementById('transfer-amount').focus(), 300);
     }
