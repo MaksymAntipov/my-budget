@@ -1165,6 +1165,11 @@
                 btn.innerText = 'Подтвердить';
                 btn.disabled = false;
                 
+                // === JWT: СОХРАНЯЕМ ТОКЕН ===
+                if (data.token) {
+                    localStorage.setItem('budget_auth_token', data.token);
+                }
+
                 if (data.users && data.users.length > 1) {
                     showAccountSelect(data.users);
                 } else {
@@ -1315,7 +1320,13 @@
 
     async function loadDataFromServer(userId) {
         try {
-            const response = await fetch(`${API_URL}/api/data?userId=${userId}`);
+            // === JWT: ПОЛУЧАЕМ И ПЕРЕДАЕМ ТОКЕН ===
+            const token = localStorage.getItem('budget_auth_token');
+            const response = await fetch(`${API_URL}/api/data?userId=${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const data = await response.json();
 
             if (!response.ok) return console.error("Ошибка загрузки:", data.error);
@@ -1334,10 +1345,17 @@
             if (data.monthsData) {
                 data.monthsData.forEach(row => {
                     if (!appData[row.year]) appData[row.year] = {};
+                    
+                    const parsedIncomes = JSON.parse(row.incomes_json || '[]');
+                    const parsedExpenses = JSON.parse(row.expenses_json || '[]');
+                    
+                    // ФИКС ЗЕЛЕНЫХ МЕСЯЦЕВ: если массивы пустые, значит данные были стерты пользователем
+                    const isCleared = parsedIncomes.length === 0 && parsedExpenses.length === 0;
+
                     appData[row.year][row.month] = {
-                        initialized: row.is_initialized === 1,
-                        incomes: JSON.parse(row.incomes_json || '[]'),
-                        expenses: JSON.parse(row.expenses_json || '[]'),
+                        initialized: (row.is_initialized === 1) && !isCleared,
+                        incomes: parsedIncomes,
+                        expenses: parsedExpenses,
                         cogs: JSON.parse(row.cogs_json || '{"type":"percent","value":0}')
                     };
                 });
@@ -1368,7 +1386,16 @@
             jars: globalData.jars[currentUser.id] || []
         };
         try {
-            await fetch(`${API_URL}/api/data`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            // === JWT: ПОЛУЧАЕМ И ПЕРЕДАЕМ ТОКЕН ПРИ СОХРАНЕНИИ ===
+            const token = localStorage.getItem('budget_auth_token');
+            await fetch(`${API_URL}/api/data`, { 
+                method: 'POST', 
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }, 
+                body: JSON.stringify(payload) 
+            });
         } catch (e) {
             console.error("Ошибка сохранения на сервер:", e);
         }
@@ -1393,6 +1420,8 @@
         
         localStorage.removeItem('budget_saved_user_id');
         localStorage.removeItem('budget_saved_user_info');
+        // === JWT: УДАЛЯЕМ ТОКЕН ПРИ ВЫХОДЕ ===
+        localStorage.removeItem('budget_auth_token');
         
         document.getElementById('app-container').style.opacity = '0';
         document.getElementById('app-container').style.pointerEvents = 'none';
@@ -1405,9 +1434,14 @@
             "Все ваши данные (доходы, расходы, конверты) будут удалены с сервера навсегда. Это действие нельзя отменить. Вы уверены?", 
             async () => {
                 try {
+                    // === JWT: ПЕРЕДАЕМ ТОКЕН ПРИ УДАЛЕНИИ ===
+                    const token = localStorage.getItem('budget_auth_token');
                     const response = await fetch(`${API_URL}/api/user`, {
                         method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
                         body: JSON.stringify({ userId: currentUser.id })
                     });
                     
