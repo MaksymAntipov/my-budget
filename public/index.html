@@ -6,6 +6,8 @@
     <title>My budget</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%232c2c2e%22/><text y=%2265%22 x=%2220%22 font-size=%2260%22>💎</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         :root {
             /* Apple & Monobank Premium Palette - Dark Mode */
@@ -707,8 +709,8 @@
                     
                     <div id="trend-box" class="trend-box trend-empty" style="display: none;"></div>
 
-                    <div class="chart-container">
-                        <canvas id="budgetChart"></canvas>
+                    <div class="chart-container" style="height: 340px;" id="budgetChartContainer">
+                        <div id="sankey_basic" style="width: 100%; height: 100%;"></div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 28px; margin-bottom: 28px;">
@@ -2173,21 +2175,118 @@ function executeTransfer() {
         saveData(); // ОДИН ВЫЗОВ
     }
 
+// ==========================================
+    // ИНИЦИАЛИЗАЦИЯ И ОТРИСОВКА SANKEY DIAGRAM
+    // ==========================================
+    google.charts.load('current', {'packages':['sankey']});
+    let googleChartsLoaded = false;
+    
+    google.charts.setOnLoadCallback(() => {
+        googleChartsLoaded = true;
+        if (appData && Object.keys(appData).length > 0) updateChart();
+    });
+
+    // Делаем график адаптивным при ресайзе окна/повороте телефона
+    window.addEventListener('resize', () => {
+        if (googleChartsLoaded && document.getElementById('sankey_basic').innerHTML !== '') updateChart();
+    });
+
     function initChart() {
+        // Оставляем базовые настройки для графика аналитики (Chart.js), который в модалке
         Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
         Chart.defaults.color = '#86868b'; 
-        myChart = new Chart(document.getElementById('budgetChart').getContext('2d'), {
-            type: 'doughnut',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: appleColors, borderWidth: 3, borderColor: '#1c1c1e', hoverOffset: 8 }] },
-            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { font: { family: '-apple-system', size: 14, weight: '600' }, usePointStyle: true, padding: 20 } }, tooltip: { backgroundColor: 'rgba(44, 44, 46, 0.95)', titleFont: { size: 14, weight: '500' }, bodyFont: { size: 16, weight: 'bold' }, padding: 16, cornerRadius: 16, callbacks: { label: function(c) { let l = c.label || ''; if(l) l += ': '; if(c.parsed !== null) l += formatMoney(c.parsed) + ' ₴'; return l; } } } }, animation: { animateScale: true, animateRotate: true } }
-        });
     }
 
     function updateChart() {
-        if (!myChart) return;
-        const labels = [], data = [];
-        expenses.forEach(exp => { const total = getCategoryTotal(exp); if (total > 0) { labels.push(exp.name || 'Без названия'); data.push(total); } });
-        myChart.data.labels = labels; myChart.data.datasets[0].data = data; myChart.update();
+        if (!googleChartsLoaded) return;
+        
+        const container = document.getElementById('sankey_basic');
+        if (!container) return;
+
+        let totalIncome = 0;
+        const currentMonthData = appData[currentYear] ? appData[currentYear][currentMonth] : null;
+        
+        if (!currentMonthData || !currentMonthData.initialized) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const data = new google.visualization.DataTable();
+        data.addColumn('string', 'Откуда');
+        data.addColumn('string', 'Куда');
+        data.addColumn('number', 'Сумма (₴)');
+
+        const rows = [];
+        const isBiz = currentUser && currentUser.account_type === 'business';
+
+        // 1. Потоки: Источники дохода -> Общий Бюджет
+        if (currentMonthData.incomes) {
+            currentMonthData.incomes.forEach(inc => {
+                let amt = inc.currency === 'USD' ? inc.amount * currentExchangeRate : inc.amount;
+                if (amt > 0) {
+                    rows.push([inc.name + ' (Доход)', 'Ваш Бюджет', amt]); 
+                    totalIncome += amt;
+                }
+            });
+        }
+
+        if (totalIncome <= 0) {
+            container.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding-top:150px; font-weight:600;">Добавьте доходы для графика</div>';
+            return;
+        }
+
+        // 2. Поток: Бюджет -> Себестоимость (Только для бизнеса)
+        let cogsAmount = 0;
+        if (isBiz && currentMonthData.cogs) {
+            cogsAmount = currentMonthData.cogs.type === 'percent' ? totalIncome * (currentMonthData.cogs.value / 100) : (currentMonthData.cogs.value || 0);
+            if (cogsAmount > 0) {
+                rows.push(['Ваш Бюджет', 'Себестоимость', cogsAmount]);
+            }
+        }
+
+        // 3. Потоки: Бюджет -> Расходы
+        let totalExp = 0;
+        expenses.forEach(exp => {
+            const catTotal = getCategoryTotal(exp);
+            if (catTotal > 0) {
+                rows.push(['Ваш Бюджет', exp.name, catTotal]);
+                totalExp += catTotal;
+            }
+        });
+
+        // 4. Поток: Бюджет -> Свободный остаток
+        const remaining = totalIncome - cogsAmount - totalExp;
+        if (remaining > 0) {
+            rows.push(['Ваш Бюджет', 'Свободный остаток', remaining]);
+        } else if (remaining < 0) {
+            // КИЛЛЕР-ФИЧА: Если перерасход, рисуем красный поток "Дефицит", который вливается в бюджет!
+             rows.push(['Дефицит', 'Ваш Бюджет', Math.abs(remaining)]);
+        }
+
+        if (rows.length === 0) return;
+        data.addRows(rows);
+
+        // Премиальные цвета в стиле Apple
+        const colors = ['#0a84ff', '#32d74b', '#ff9f0a', '#ff453a', '#ffd60a', '#5e5ce6', '#bf5af2', '#66d4cf', '#8e8e93'];
+
+        const options = {
+            backgroundColor: 'transparent',
+            sankey: {
+                node: {
+                    colors: colors,
+                    nodePadding: 24,
+                    width: 12,
+                    label: { color: '#ffffff', fontSize: 13, bold: true, fontName: '-apple-system' }
+                },
+                link: {
+                    colorMode: 'gradient',
+                    colors: colors
+                }
+            }
+        };
+
+        const chart = new google.visualization.Sankey(container);
+        chart.draw(data, options);
     }
 
     function openAnalyticsModal() { document.getElementById('analytics-modal').classList.add('active'); renderAnalyticsChart(); }
