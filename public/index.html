@@ -2255,7 +2255,7 @@ function executeTransfer() {
         Chart.defaults.color = '#86868b'; 
     }
 
-    function updateChart() {
+function updateChart() {
         if (!googleChartsLoaded) return;
         
         const container = document.getElementById('sankey_basic');
@@ -2277,12 +2277,15 @@ function executeTransfer() {
         const rows = [];
         const isBiz = currentUser && currentUser.account_type === 'business';
 
+        // --- ИСПРАВЛЕНИЕ: Функция жесткого округления до целого числа ---
+        const roundNum = (num) => Math.round(num);
+
         // 1. Потоки: Источники дохода -> Общий Бюджет
         if (currentMonthData.incomes) {
             currentMonthData.incomes.forEach(inc => {
                 let amt = inc.currency === 'USD' ? inc.amount * currentExchangeRate : inc.amount;
                 if (amt > 0) {
-                    rows.push([inc.name + ' (Доход)', 'Ваш Бюджет', amt]); 
+                    rows.push([inc.name + ' (Доход)', 'Ваш Бюджет', roundNum(amt)]); 
                     totalIncome += amt;
                 }
             });
@@ -2298,7 +2301,7 @@ function executeTransfer() {
         if (isBiz && currentMonthData.cogs) {
             cogsAmount = currentMonthData.cogs.type === 'percent' ? totalIncome * (currentMonthData.cogs.value / 100) : (currentMonthData.cogs.value || 0);
             if (cogsAmount > 0) {
-                rows.push(['Ваш Бюджет', 'Себестоимость', cogsAmount]);
+                rows.push(['Ваш Бюджет', 'Себестоимость', roundNum(cogsAmount)]);
             }
         }
 
@@ -2307,7 +2310,7 @@ function executeTransfer() {
         expenses.forEach(exp => {
             const catTotal = getCategoryTotal(exp);
             if (catTotal > 0) {
-                rows.push(['Ваш Бюджет', exp.name, catTotal]);
+                rows.push(['Ваш Бюджет', exp.name, roundNum(catTotal)]);
                 totalExp += catTotal;
             }
         });
@@ -2315,22 +2318,20 @@ function executeTransfer() {
         // 4. Поток: Бюджет -> Свободный остаток
         const remaining = totalIncome - cogsAmount - totalExp;
         if (remaining > 0) {
-            rows.push(['Ваш Бюджет', 'Свободный остаток', remaining]);
+            rows.push(['Ваш Бюджет', 'Свободный остаток', roundNum(remaining)]);
         } else if (remaining < 0) {
-            // КИЛЛЕР-ФИЧА: Если перерасход, рисуем красный поток "Дефицит", который вливается в бюджет!
-             rows.push(['Дефицит', 'Ваш Бюджет', Math.abs(remaining)]);
+             rows.push(['Дефицит', 'Ваш Бюджет', roundNum(Math.abs(remaining))]);
         }
 
         if (rows.length === 0) return;
         data.addRows(rows);
 
-        // --- ИСПРАВЛЕНИЕ: Убираем знаки после запятой во всплывающих подсказках ---
+        // Делаем красивые пробелы между тысячами (например: 51 363)
         const formatter = new google.visualization.NumberFormat({
-            fractionDigits: 0, // 0 знаков после запятой
-            groupingSymbol: ' ' // Пробел как разделитель тысяч (например: 1 234)
+            fractionDigits: 0, 
+            groupingSymbol: ' ' 
         });
-        formatter.format(data, 2); // Применяем форматирование к 3-й колонке (числам)
-        // ----------------------------------------------------------------------
+        formatter.format(data, 2); 
 
         // Премиальные цвета в стиле Apple
         const colors = ['#0a84ff', '#32d74b', '#ff9f0a', '#ff453a', '#ffd60a', '#5e5ce6', '#bf5af2', '#66d4cf', '#8e8e93'];
