@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My budget</title>
+    <title>Мій бюджет</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%232c2c2e%22/><text y=%2265%22 x=%2220%22 font-size=%2260%22>💎</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
-        /* HERO БЛОК АВТОРИЗАЦИИ */
+        /* HERO БЛОК АВТОРИЗАЦИЇ */
         .auth-hero {
             text-align: center;
             margin-bottom: 32px;
@@ -213,7 +213,7 @@
         }
         .auth-glass-overlay.active .auth-footer-security { transform: translateY(0); }
 
-        /* СТИЛИ ДЛЯ СЧЕТЧИКА ПРОФИЛЕЙ */
+        /* СТИЛІ ДЛЯ ЛІЧИЛЬНИКА ПРОФІЛІВ */
         .auth-stats-badge {
             position: absolute;
             top: 24px;
@@ -550,7 +550,7 @@
         .jar-progress-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);}
         .jar-progress-fill { height: 100%; background: linear-gradient(90deg, var(--sys-green), #1e702e); border-radius: 4px; box-shadow: 0 0 10px rgba(46, 160, 67, 0.5);}
 
-        /* СТИЛИ ФУТЕРА */
+        /* СТИЛІ ФУТЕРА */
         .security-footer {
             text-align: center;
             padding: 40px 20px;
@@ -637,12 +637,12 @@
                     <div id="nav-avatar" style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2), 0 4px 8px rgba(10,132,255,0.3);"></div>
                     <div style="display: flex; align-items: center;">
                         <span id="current-user-name-display" style="font-weight: 700; font-size: 16px; color: var(--text-primary); letter-spacing: -0.3px;"></span>
-                        <span id="account-type-badge" class="badge-type" style="display: none;">Физ. лицо</span>
+                        <span id="account-type-badge" class="badge-type" style="display: none;">Фіз. особа</span>
                     </div>
                 </div>
                 <div class="user-nav-actions">
-                    <button style="background: transparent; color: var(--sys-red); border: none; font-size: 14px; font-weight: 600; cursor: pointer; padding: 8px;" onclick="deleteProfile()">Удалить данные</button>
-                    <button style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" onclick="logout()">Выйти</button>
+                    <button style="background: transparent; color: var(--sys-red); border: none; font-size: 14px; font-weight: 600; cursor: pointer; padding: 8px;" onclick="deleteProfile()">Видалити дані</button>
+                    <button style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" onclick="logout()">Вийти</button>
                 </div>
             </div>
             <div class="year-selector">
@@ -652,14 +652,14 @@
             </div>
             <div class="months-carousel" id="months-container"></div>
             <div class="savings-container">
-                <span id="savings-title">Мои сбережения:</span>
+                <span id="savings-title">Мої заощадження:</span>
                 <span class="savings-amount tabular" onclick="openEnvelopesModal()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
                     <span id="total-savings-display">0</span> ₴
                 </span>
             </div>
             <div class="savings-container" style="padding-top: 12px; border-top: none;">
-                <span id="debts-title" style="color: var(--text-secondary);">Обязательства:</span>
+                <span id="debts-title" style="color: var(--text-secondary);">Зобов'язання:</span>
                 <span class="debt-amount tabular" onclick="openDebtsModal()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                     <span id="debt-minus-sign" style="display: none;">-</span><span id="total-debts-display">0</span> ₴
@@ -676,14 +676,14 @@
                 <div class="init-icon">
                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                 </div>
-                <div class="init-title">Новый месяц</div>
-                <div class="init-subtitle" id="init-subtitle-text">В этом месяце еще нет записей. Как вы хотите начать?</div>
+                <div class="init-title">Новий місяць</div>
+                <div class="init-subtitle" id="init-subtitle-text">У цьому місяці ще немає записів. Як ви хочете почати?</div>
                 
                 <button id="btn-copy-prev" class="btn-init-primary" onclick="initializeMonth(true)">
-                    Перенести данные
+                    Перенести дані
                 </button>
                 <button class="btn-init-secondary" onclick="initializeMonth(false)">
-                    Начать с чистого листа
+                    Почати з чистого аркуша
                 </button>
             </div>
         </div>
@@ -692,11 +692,11 @@
             <div class="left-panel">
                 <div class="glass-card" style="margin-bottom: 0;">
                     <div class="converter-header">
-                        <h2 id="title-sources">Источники дохода</h2>
-                        <div class="rate-badge" id="rate-info">Загрузка...</div>
+                        <h2 id="title-sources">Джерела доходу</h2>
+                        <div class="rate-badge" id="rate-info">Завантаження...</div>
                     </div>
                     <div id="incomes-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
-                    <button class="btn-add" style="margin-top: 12px; padding: 14px; font-size: 15px;" onclick="addIncome()">+ Добавить источник</button>
+                    <button class="btn-add" style="margin-top: 12px; padding: 14px; font-size: 15px;" onclick="addIncome()">+ Додати джерело</button>
                 </div>
 
                 <div class="flow-container">
@@ -704,21 +704,21 @@
                 </div>
 
                 <div id="cogs-block" class="glass-card" style="margin-bottom: 0; display: none;">
-                    <h2>Себестоимость</h2>
+                    <h2>Собівартість</h2>
                     <div class="info-block" style="padding: 20px 24px;">
-                        <div style="font-size: 15px; color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;">Процент или сумма расходов на реализацию (отнимается от оборота)</div>
+                        <div style="font-size: 15px; color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;">Відсоток або сума витрат на реалізацію (віднімається від обороту)</div>
                         <div class="cogs-input-group">
-                            <input type="number" id="cogs-value" placeholder="Например, 30" oninput="updateCOGS(this.value)">
+                            <input type="number" id="cogs-value" placeholder="Наприклад, 30" oninput="updateCOGS(this.value)">
                             <div class="custom-dropdown" style="width: 110px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
                                 <div class="custom-dropdown-selected" id="cogs-type-display" style="height: 52px; padding: 0 36px 0 16px; border-radius: 16px;">%</div>
                                 <div class="custom-dropdown-options" style="min-width: 110px;">
                                     <div class="custom-dropdown-option" onclick="selectCOGSType(event, 'percent')">%</div>
-                                    <div class="custom-dropdown-option" onclick="selectCOGSType(event, 'fixed')">Фикс (₴)</div>
+                                    <div class="custom-dropdown-option" onclick="selectCOGSType(event, 'fixed')">Фікс (₴)</div>
                                 </div>
                             </div>
                         </div>
                         <div style="margin-top: 20px; font-size: 16px; font-weight: 600; display: flex; justify-content: space-between;">
-                            <span>Сумма себестоимости:</span>
+                            <span>Сума собівартості:</span>
                             <span class="tabular" style="font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="cogs-calculated-amount">0.00</span> ₴</span>
                         </div>
                     </div>
@@ -729,24 +729,24 @@
                 </div>
 
                 <div class="glass-card" style="margin-bottom: 0;">
-                    <h1 id="title-incomes">Доходы</h1>
+                    <h1 id="title-incomes">Доходи</h1>
                     <div class="info-block">
                         <div class="info-row">
-                            <span class="text-label">В месяц:</span>
+                            <span class="text-label">За місяць:</span>
                             <span class="text-value value-main tabular"><span id="income-display">0.00</span><span class="currency-symbol">₴</span></span>
                         </div>
                         <div class="info-row">
-                            <span class="text-label">За год:</span>
+                            <span class="text-label">За рік:</span>
                             <span class="text-value tabular"><span id="yearly-income-display">0.00</span><span class="currency-symbol">₴</span> <span style="color: var(--text-tertiary); font-weight: 500; font-size: 14px; margin-left: 6px;" id="yearly-income-usd-container">($<span id="yearly-income-usd">0.00</span>)</span></span>
                         </div>
                     </div>
                     <div class="info-block">
                         <div class="info-row">
-                            <span class="text-label" id="label-daily">В рабочий день:</span>
+                            <span class="text-label" id="label-daily">У робочий день:</span>
                             <span class="text-value tabular"><span id="daily-rate-usd-container" style="color: var(--text-tertiary); font-weight: 500;">$<span id="daily-rate-usd">0.00</span> <span style="margin: 0 4px;">/</span> </span><span id="daily-rate-uah">0.00</span><span class="currency-symbol">₴</span></span>
                         </div>
                         <div class="info-row">
-                            <span class="text-label" id="label-hourly">Стоимость 1 часа:</span>
+                            <span class="text-label" id="label-hourly">Вартість 1 години:</span>
                             <span class="text-value tabular"><span id="hourly-rate-usd-container" style="color: var(--text-tertiary); font-weight: 500;">$<span id="hourly-rate-usd">0.00</span> <span style="margin: 0 4px;">/</span> </span><span id="hourly-rate-uah">0.00</span><span class="currency-symbol">₴</span></span>
                         </div>
                     </div>
@@ -757,20 +757,20 @@
                 </div>
 
                 <div class="glass-card">
-                    <h2>Расходы</h2>
+                    <h2>Витрати</h2>
                     <div class="expenses-container" id="expenses-list"></div>
-                    <button class="btn-add" onclick="addCategory()">+ Добавить категорию</button>
+                    <button class="btn-add" onclick="addCategory()">+ Додати категорію</button>
                 </div>
             </div>
 
             <div class="right-panel">
                 <div class="glass-card" style="position: sticky; top: 20px;">
-                    <h2 style="margin-bottom: 20px;">Сводка</h2>
+                    <h2 style="margin-bottom: 20px;">Зведення</h2>
                     
                     <div id="summary-card" class="summary-box summary-main" style="margin-bottom: 16px; flex-direction: row; align-items: center; justify-content: space-between;">
                         <div id="summary-progress" class="summary-progress" style="width: 0%;"></div>
                         <div class="summary-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; z-index: 1; position: relative;">
-                            <div id="title-remaining" style="font-size: 17px; font-weight: 700; color: inherit; letter-spacing: -0.3px;">Остается в мес:</div>
+                            <div id="title-remaining" style="font-size: 17px; font-weight: 700; color: inherit; letter-spacing: -0.3px;">Залишається в міс:</div>
                             <div class="tabular" style="font-size: 26px; font-weight: 800; color: inherit;">
                                 <span id="remaining-money">0.00</span> <span class="currency-symbol">₴</span>
                                 <span style="opacity: 0.9; font-weight: 700; font-size: 15px; margin-left: 8px; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 10px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);"><span id="remaining-percent">0</span>%</span>
@@ -779,15 +779,15 @@
                     </div>
 
                     <div id="daily-limit-box" class="daily-limit-box">
-                        <div class="daily-limit-title">Сегодня вы можете потратить:</div>
+                        <div class="daily-limit-title">Сьогодні ви можете витратити:</div>
                         <div class="daily-limit-val" id="daily-limit-val-container"><span id="daily-limit-val">0.00</span> ₴</div>
                     </div>
                     
                     <div id="cashflow-box" class="cashflow-box" style="display: none;">
-                        <div class="cf-row"><span>План расходов:</span> <span class="cf-val" id="cf-plan">0.00 ₴</span></div>
-                        <div class="cf-row"><span>Уже оплачено:</span> <span class="cf-val" id="cf-paid" style="color: var(--sys-green);">0.00 ₴</span></div>
+                        <div class="cf-row"><span>План витрат:</span> <span class="cf-val" id="cf-plan">0.00 ₴</span></div>
+                        <div class="cf-row"><span>Вже оплачено:</span> <span class="cf-val" id="cf-paid" style="color: var(--sys-green);">0.00 ₴</span></div>
                         <div class="cf-divider"></div>
-                        <div class="cf-row"><span style="font-weight: 700; color: var(--text-primary);">Остаток к оплате:</span> <span class="cf-val" id="cf-left" style="color: var(--sys-red); font-size: 16px;">0.00 ₴</span></div>
+                        <div class="cf-row"><span style="font-weight: 700; color: var(--text-primary);">Залишок до оплати:</span> <span class="cf-val" id="cf-left" style="color: var(--sys-red); font-size: 16px;">0.00 ₴</span></div>
                     </div>
                     
                     <div id="trend-box" class="trend-box trend-empty" style="display: none;"></div>
@@ -798,11 +798,11 @@
 
                     <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 28px; margin-bottom: 28px;">
                         <div style="background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.15)); padding: 20px; border-radius: 20px; text-align: center; border: 1px solid rgba(10, 132, 255, 0.2); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
-                            <div id="label-yearly-remaining" style="font-size: 14px; color: var(--sys-blue); font-weight: 700; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Чистыми за год</div>
+                            <div id="label-yearly-remaining" style="font-size: 14px; color: var(--sys-blue); font-weight: 700; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Чистими за рік</div>
                             <div class="tabular" style="font-weight: 800; font-size: 20px; color: var(--text-primary);"><span id="yearly-remaining">0.00</span> ₴</div>
                         </div>
                         <div id="old-expenses-box" style="background: rgba(0, 0, 0, 0.3); padding: 20px; border-radius: 20px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
-                            <div style="font-size: 14px; color: var(--text-secondary); font-weight: 700; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Расходы за месяц</div>
+                            <div style="font-size: 14px; color: var(--text-secondary); font-weight: 700; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Витрати за місяць</div>
                             <div class="tabular" style="font-weight: 800; font-size: 20px; color: var(--text-primary);"><span id="total-expenses">0.00</span> ₴</div>
                         </div>
                     </div>
@@ -810,16 +810,16 @@
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <button class="btn-init-primary btn-green" style="margin:0; padding: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px;" onclick="openTransferModal()">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                            <span id="text-transfer">Перенести в конверт</span>
+                            <span id="text-transfer">Відкласти в конверт</span>
                         </button>
                         <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px;">
                             <button class="btn-init-secondary" style="margin:0; padding: 16px; font-size: 15px; color: var(--sys-blue); display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.15)); border-color: rgba(10, 132, 255, 0.2);" onclick="openAnalyticsModal()">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                                Динамика
+                                Динаміка
                             </button>
                             <button class="btn-init-secondary" style="margin:0; padding: 16px; font-size: 15px; color: var(--sys-red); background: linear-gradient(135deg, rgba(255, 69, 58, 0.1), rgba(255, 69, 58, 0.15)); border-color: rgba(255, 69, 58, 0.2); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="clearCurrentMonth()">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                Очистить
+                                Очистити
                             </button>
                         </div>
                     </div>
@@ -832,7 +832,7 @@
                 <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
                 </svg>
-                <span>За безопасность данных отвечает Cloudflare</span>
+                <span>За безпеку даних відповідає Cloudflare</span>
             </div>
         </div>
     </div>
@@ -842,13 +842,13 @@
     <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
             <div class="modal-title-group">
-                <h3 id="modal-category-name">Категория</h3>
-                <div class="modal-total">Итого: <span id="modal-category-total" class="tabular" style="font-weight: 700; color: var(--text-primary);">0.00</span> ₴</div>
+                <h3 id="modal-category-name">Категорія</h3>
+                <div class="modal-total">Всього: <span id="modal-category-total" class="tabular" style="font-weight: 700; color: var(--text-primary);">0.00</span> ₴</div>
             </div>
             <button class="btn-close-modal" onclick="closeModal()">✕</button>
         </div>
         <div id="modal-subitems-list" class="modal-items-container"></div>
-        <button class="btn-add" style="margin-top:0; margin-bottom: 24px;" onclick="addSubItem()">+ Добавить статью расходов</button>
+        <button class="btn-add" style="margin-top:0; margin-bottom: 24px;" onclick="addSubItem()">+ Додати статтю витрат</button>
         <button class="btn-modal-done" onclick="closeModal()">Готово</button>
     </div>
 </div>
@@ -856,10 +856,10 @@
 <div id="confirm-modal" class="modal-overlay" onclick="closeConfirmModal(event)" style="z-index: 1050;">
     <div class="modal-content" style="max-width: 400px; padding: 40px 32px 32px; text-align: center;" onclick="event.stopPropagation()">
         <div style="font-size: 56px; margin-bottom: 20px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));">⚠️</div>
-        <h3 id="confirm-title" style="margin-bottom: 16px; font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Подтвердите действие</h3>
-        <p id="confirm-text" style="color: var(--text-secondary); font-size: 16px; margin-bottom: 36px; line-height: 1.5; font-weight: 500;">Вы уверены?</p>
+        <h3 id="confirm-title" style="margin-bottom: 16px; font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Підтвердіть дію</h3>
+        <p id="confirm-text" style="color: var(--text-secondary); font-size: 16px; margin-bottom: 36px; line-height: 1.5; font-weight: 500;">Ви впевнені?</p>
         <div style="display: flex; gap: 16px;">
-            <button class="btn-init-secondary" style="margin: 0; flex: 1;" onclick="closeConfirmModal()">Отмена</button>
+            <button class="btn-init-secondary" style="margin: 0; flex: 1;" onclick="closeConfirmModal()">Скасувати</button>
             <button class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; flex: 1; box-shadow: 0 8px 16px rgba(10,132,255,0.3);" onclick="executeConfirm()">ОК</button>
         </div>
     </div>
@@ -868,14 +868,14 @@
 <div id="transfer-modal" class="modal-overlay" onclick="closeTransferModal(event)">
     <div class="modal-content" style="max-width: 420px;" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h3 style="margin: 0;" id="transfer-modal-title">Отложить в конверт</h3>
+            <h3 style="margin: 0;" id="transfer-modal-title">Відкласти в конверт</h3>
             <button class="btn-close-modal" onclick="closeTransferModal()">✕</button>
         </div>
-        <p style="color: var(--text-secondary); font-size: 16px; font-weight: 500; margin-top: -12px; margin-bottom: 24px;">Укажите сумму, которую хотите отложить, и выберите конверт.</p>
+        <p style="color: var(--text-secondary); font-size: 16px; font-weight: 500; margin-top: -12px; margin-bottom: 24px;">Вкажіть суму, яку хочете відкласти, та виберіть конверт.</p>
         
         <div class="custom-dropdown" id="transfer-jar-dropdown" onclick="event.stopPropagation(); this.classList.toggle('open')" style="width: 100%; margin-bottom: 20px;">
             <div class="custom-dropdown-selected" id="transfer-jar-selected" style="height: 60px; font-weight: 600; font-size: 16px;">
-                Выберите конверт
+                Виберіть конверт
             </div>
             <div class="custom-dropdown-options" id="transfer-jar-options"></div>
         </div>
@@ -892,17 +892,17 @@
 <div id="jars-modal" class="modal-overlay" onclick="closeEnvelopesModal(event)">
     <div class="modal-content" style="max-width: 520px;" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h3 style="margin: 0;" id="jars-modal-title">Мои конверты</h3>
+            <h3 style="margin: 0;" id="jars-modal-title">Мої конверти</h3>
             <button class="btn-close-modal" onclick="closeEnvelopesModal()">✕</button>
         </div>
         
         <div id="jars-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; max-height: 45vh; overflow-y: auto; padding-right: 8px;"></div>
         
         <div style="background: rgba(0,0,0,0.3); padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
-            <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">Создать новый</h4>
-            <input type="text" id="new-jar-name" class="ios-input" placeholder="Название (например, На машину)" style="margin-bottom: 12px; height: 56px;">
-            <input type="number" id="new-jar-goal" class="ios-input" placeholder="Цель (сумма, необязательно)" style="margin-bottom: 20px; height: 56px;">
-            <button class="btn-init-primary" style="margin: 0; height: 56px;" onclick="createNewEnvelope()">Создать</button>
+            <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">Створити новий</h4>
+            <input type="text" id="new-jar-name" class="ios-input" placeholder="Назва (наприклад, На авто)" style="margin-bottom: 12px; height: 56px;">
+            <input type="number" id="new-jar-goal" class="ios-input" placeholder="Ціль (сума, необов'язково)" style="margin-bottom: 20px; height: 56px;">
+            <button class="btn-init-primary" style="margin: 0; height: 56px;" onclick="createNewEnvelope()">Створити</button>
         </div>
     </div>
 </div>
@@ -910,19 +910,19 @@
 <div id="debts-modal" class="modal-overlay" onclick="closeDebtsModal(event)">
     <div class="modal-content" style="max-width: 520px;" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h3 style="margin: 0; color: var(--sys-red);" id="debts-modal-title">Долговые обязательства</h3>
+            <h3 style="margin: 0; color: var(--sys-red);" id="debts-modal-title">Боргові зобов'язання</h3>
             <button class="btn-close-modal" onclick="closeDebtsModal()">✕</button>
         </div>
         
         <div id="debts-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; max-height: 45vh; overflow-y: auto; padding-right: 8px;"></div>
         
         <div style="background: rgba(255, 69, 58, 0.1); padding: 24px; border-radius: 24px; border: 1px solid rgba(255, 69, 58, 0.2); box-shadow: inset 0 2px 4px rgba(255, 69, 58, 0.05);">
-            <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: var(--sys-red);">Добавить долг / рассрочку</h4>
-            <input type="text" id="new-debt-name" class="ios-input" placeholder="Название (например, MacBook)" style="margin-bottom: 12px; height: 56px;">
+            <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: var(--sys-red);">Додати борг / розстрочку</h4>
+            <input type="text" id="new-debt-name" class="ios-input" placeholder="Назва (наприклад, MacBook)" style="margin-bottom: 12px; height: 56px;">
             
             <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                <input type="number" id="new-debt-amount" class="ios-input" placeholder="Сумма долга" style="flex: 2; height: 56px;">
-                <input type="number" id="new-debt-interest" class="ios-input" placeholder="% в мес." style="flex: 1; height: 56px;">
+                <input type="number" id="new-debt-amount" class="ios-input" placeholder="Сума боргу" style="flex: 2; height: 56px;">
+                <input type="number" id="new-debt-interest" class="ios-input" placeholder="% в міс." style="flex: 1; height: 56px;">
                 <div class="custom-dropdown" style="flex: 1;" onclick="event.stopPropagation(); this.classList.toggle('open')">
                     <div class="custom-dropdown-selected" id="new-debt-currency" style="height: 56px; padding: 0 32px 0 16px; border-radius: 14px;">UAH</div>
                     <div class="custom-dropdown-options">
@@ -932,7 +932,7 @@
                 </div>
             </div>
             
-            <button class="btn-init-primary" style="margin: 0; height: 56px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" onclick="createNewDebt()">Добавить</button>
+            <button class="btn-init-primary" style="margin: 0; height: 56px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" onclick="createNewDebt()">Додати</button>
         </div>
     </div>
 </div>
@@ -940,23 +940,23 @@
 <div id="pay-debt-modal" class="modal-overlay" onclick="closePayDebtModal(event)" style="z-index: 1050;">
     <div class="modal-content" style="max-width: 420px;" onclick="event.stopPropagation()">
         <div class="modal-header">
-            <h3 style="margin: 0; color: var(--sys-red);">Внести платеж</h3>
+            <h3 style="margin: 0; color: var(--sys-red);">Внести платіж</h3>
             <button class="btn-close-modal" onclick="closePayDebtModal()">✕</button>
         </div>
-        <p style="color: var(--text-secondary); margin-top: -12px; margin-bottom: 24px;">Любое обязательство погашается в гривне. Сумма автоматически конвертируется.</p>
+        <p style="color: var(--text-secondary); margin-top: -12px; margin-bottom: 24px;">Будь-яке зобов'язання погашається у гривні. Сума автоматично конвертується.</p>
         <input type="hidden" id="pay-debt-id">
         <div class="usd-input-wrapper" style="margin-bottom: 28px;">
             <span style="color: var(--sys-red); font-size: 24px;">₴</span>
             <input type="number" id="pay-debt-amount" style="color: var(--sys-red); font-size: 28px;" placeholder="0">
         </div>
-        <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" onclick="executeDebtPayment()">Погасить</button>
+        <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" onclick="executeDebtPayment()">Погасити</button>
     </div>
 </div>
 
 <div id="analytics-modal" class="modal-overlay" onclick="closeAnalyticsModal(event)">
     <div class="modal-content" style="max-width: 850px; width: 95%; padding: 32px;" onclick="event.stopPropagation()">
         <div class="modal-header" style="margin-bottom: 24px;">
-            <h3 style="margin: 0;">Динамика бюджета</h3>
+            <h3 style="margin: 0;">Динаміка бюджету</h3>
             <button class="btn-close-modal" onclick="closeAnalyticsModal()">✕</button>
         </div>
         
@@ -969,16 +969,16 @@
 <div id="auth-overlay" class="auth-glass-overlay">
     <div class="auth-stats-badge" id="auth-stats-badge" style="display: none;">
         <div class="pulse-dot"></div>
-        Создано профилей: <span id="auth-stats-count" style="margin-left: 6px; font-weight: 700; color: white;">0</span>
+        Створено профілів: <span id="auth-stats-count" style="margin-left: 6px; font-weight: 700; color: white;">0</span>
     </div>
 
     <div class="auth-hero">
-        <h1 class="auth-hero-title">Анализ и стратегия вашего капитала</h1>
-        <p class="auth-hero-subtitle">Всё в одном решении</p>
+        <h1 class="auth-hero-title">Аналіз та стратегія вашого капіталу</h1>
+        <p class="auth-hero-subtitle">Все в одному рішенні</p>
         
         <a href="https://send.monobank.ua/jar/j1zt56TSC" target="_blank" class="auth-hero-donate">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ff453a;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-            <div>Проект на 100% бесплатен. <span>Поддержать развитие</span></div>
+            <div>Проєкт на 100% безкоштовний. <span>Підтримати розвиток</span></div>
         </a>
     </div>
 
@@ -987,8 +987,8 @@
             <div class="auth-icon">
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </div>
-            <h2 class="auth-title">Вход в систему</h2>
-            <p class="auth-subtitle">Введите email для получения кода</p>
+            <h2 class="auth-title">Вхід у систему</h2>
+            <p class="auth-subtitle">Введіть email для отримання коду</p>
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px;">
@@ -996,16 +996,16 @@
             <div id="login-error" style="color: var(--sys-red); font-size: 14px; text-align: center; display: none; font-weight: 600;"></div>
         </div>
         
-        <button class="btn-init-primary" id="btn-login-send" onclick="sendAuthOtp(false)">Получить код</button>
+        <button class="btn-init-primary" id="btn-login-send" onclick="sendAuthOtp(false)">Отримати код</button>
         <button class="btn-init-secondary" style="margin-top: 12px;" onclick="showCreateProfileFromAuth()">
-            Создать новый профиль
+            Створити новий профіль
         </button>
     </div>
     <div class="auth-footer-security">
         <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
         </svg>
-        За безопасность данных отвечает Cloudflare
+        За безпеку даних відповідає Cloudflare
     </div>
 </div>
 
@@ -1015,32 +1015,32 @@
             <div class="auth-icon">
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
             </div>
-            <h2 class="auth-title">Новый профиль</h2>
-            <p class="auth-subtitle">Начните управлять бюджетом</p>
+            <h2 class="auth-title">Новий профіль</h2>
+            <p class="auth-subtitle">Почніть керувати бюджетом</p>
         </div>
         
         <div class="type-selector">
-            <button id="btn-type-personal" class="type-btn active" onclick="selectProfileType('personal')">Для себя</button>
-            <button id="btn-type-business" class="type-btn" onclick="selectProfileType('business')">Для бизнеса</button>
+            <button id="btn-type-personal" class="type-btn active" onclick="selectProfileType('personal')">Для себе</button>
+            <button id="btn-type-business" class="type-btn" onclick="selectProfileType('business')">Для бізнесу</button>
         </div>
         <input type="hidden" id="new-user-type" value="personal">
 
         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
-            <input type="text" id="new-user-name" class="ios-input" placeholder="Имя / Название">
-            <input type="text" id="new-user-surname" class="ios-input" placeholder="Фамилия / Сфера">
-            <input type="email" id="new-user-email" class="ios-input" placeholder="Email (для входа)">
+            <input type="text" id="new-user-name" class="ios-input" placeholder="Ім'я / Назва">
+            <input type="text" id="new-user-surname" class="ios-input" placeholder="Прізвище / Сфера">
+            <input type="email" id="new-user-email" class="ios-input" placeholder="Email (для входу)">
         </div>
         
         <div id="create-error" style="color: white; font-size: 14px; margin-bottom: 20px; text-align: center; display: none; font-weight: 700; background: linear-gradient(135deg, #ff453a, #d70015); padding: 14px; border-radius: 14px; box-shadow: 0 4px 12px rgba(255,69,58,0.3);"></div>
 
-        <button class="btn-init-primary" id="btn-create-send" style="height: 60px; font-size: 18px;" onclick="sendAuthOtp(true)">Получить код</button>
-        <button class="btn-init-secondary" style="background: transparent;" onclick="hideCreateProfile()">Отмена</button>
+        <button class="btn-init-primary" id="btn-create-send" style="height: 60px; font-size: 18px;" onclick="sendAuthOtp(true)">Отримати код</button>
+        <button class="btn-init-secondary" style="background: transparent;" onclick="hideCreateProfile()">Скасувати</button>
     </div>
     <div class="auth-footer-security">
         <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
         </svg>
-        За безопасность данных отвечает Cloudflare
+        За безпеку даних відповідає Cloudflare
     </div>
 </div>
 
@@ -1050,8 +1050,8 @@
             <div class="auth-icon">
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
             </div>
-            <h2 class="auth-title">Введите код</h2>
-            <p class="auth-subtitle" id="otp-subtitle">Код отправлен на почту</p>
+            <h2 class="auth-title">Введіть код</h2>
+            <p class="auth-subtitle" id="otp-subtitle">Код відправлено на пошту</p>
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px;">
@@ -1059,15 +1059,15 @@
             <div id="otp-error" style="color: var(--sys-red); font-size: 14px; text-align: center; display: none; font-weight: 600;"></div>
         </div>
         
-        <button class="btn-init-primary" id="btn-otp-verify" onclick="verifyAuthOtp()">Подтвердить</button>
-        <button class="btn-init-secondary" id="btn-otp-resend" style="margin-top: 12px; display: none;" onclick="resendOtp()">Отправить повторно</button>
-        <button class="btn-init-secondary" style="margin-top: 12px; background: transparent;" onclick="cancelOtp()">Отмена</button>
+        <button class="btn-init-primary" id="btn-otp-verify" onclick="verifyAuthOtp()">Підтвердити</button>
+        <button class="btn-init-secondary" id="btn-otp-resend" style="margin-top: 12px; display: none;" onclick="resendOtp()">Відправити повторно</button>
+        <button class="btn-init-secondary" style="margin-top: 12px; background: transparent;" onclick="cancelOtp()">Скасувати</button>
     </div>
     <div class="auth-footer-security">
         <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
         </svg>
-        За безопасность данных отвечает Cloudflare
+        За безпеку даних відповідає Cloudflare
     </div>
 </div>
 
@@ -1077,19 +1077,19 @@
             <div class="auth-icon">
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             </div>
-            <h2 class="auth-title">Выберите профиль</h2>
-            <p class="auth-subtitle">На эту почту найдено несколько аккаунтов</p>
+            <h2 class="auth-title">Виберіть профіль</h2>
+            <p class="auth-subtitle">На цю пошту знайдено кілька акаунтів</p>
         </div>
         
         <div id="account-select-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px;"></div>
         
-        <button class="btn-init-secondary" style="background: transparent;" onclick="cancelAccountSelect()">Отмена</button>
+        <button class="btn-init-secondary" style="background: transparent;" onclick="cancelAccountSelect()">Скасувати</button>
     </div>
     <div class="auth-footer-security">
         <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
         </svg>
-        За безопасность данных отвечает Cloudflare
+        За безпеку даних відповідає Cloudflare
     </div>
 </div>
 
@@ -1102,13 +1102,11 @@
             if (data.success && data.total > 0) {
                 const badge = document.getElementById('auth-stats-badge');
                 const counterElement = document.getElementById('auth-stats-count');
-                badge.style.display = 'flex'; // Показываем бейдж
+                badge.style.display = 'flex'; 
                 
-                // Анимация бегущих цифр
                 let startValue = 0;
                 const endValue = data.total;
-                const duration = 1500; // 1.5 секунды на анимацию
-                // Рассчитываем задержку так, чтобы успеть за 1.5 секунды
+                const duration = 1500; 
                 const stepTime = Math.abs(Math.floor(duration / endValue)); 
                 
                 const timer = setInterval(() => {
@@ -1121,13 +1119,13 @@
                 }, stepTime > 0 ? stepTime : 10);
             }
         } catch (e) {
-            console.error("Ошибка загрузки статистики", e);
+            console.error("Помилка завантаження статистики", e);
         }
     }
     // ==========================================
     // 1. КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
     // ==========================================
-    const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+    const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
     const API_URL = 'https://api.budgetfreeapp.workers.dev';
     const appleColors = [ '#ff453a', '#ff9f0a', '#ffd60a', '#2ea043', '#66d4cf', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#32ade6' ];
 
@@ -1151,7 +1149,7 @@
     // 2. УТИЛИТЫ И БАЗОВЫЕ ФУНКЦИИ
     // ==========================================
     function formatMoney(amount) {
-        return Number(amount || 0).toLocaleString('ru-RU', {
+        return Number(amount || 0).toLocaleString('uk-UA', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
@@ -1160,7 +1158,7 @@
     function formatNumberShort(num) {
         if (num === 0) return '0.00';
         if (num >= 1000000) return formatMoney(num / 1000000) + ' млн';
-        if (num >= 1000) return formatMoney(num / 1000) + ' тыс.';
+        if (num >= 1000) return formatMoney(num / 1000) + ' тис.';
         return formatMoney(num);
     }
 
@@ -1201,23 +1199,23 @@
 
         otpTimer = setInterval(() => {
             timeLeft--;
-            btn.innerText = `Повторная отправка через ${timeLeft} с`;
+            btn.innerText = `Повторна відправка через ${timeLeft} с`;
             
             if (timeLeft <= 0) {
                 clearInterval(otpTimer);
                 btn.disabled = false;
-                btn.innerText = 'Отправить повторно';
-                document.getElementById('otp-subtitle').innerText = `Срок действия кода истек. Отправьте новый.`;
+                btn.innerText = 'Відправити повторно';
+                document.getElementById('otp-subtitle').innerText = `Термін дії коду минув. Відправте новий.`;
             }
         }, 1000);
     }
 
-function showAuthScreen() {
+    function showAuthScreen() {
         document.getElementById('auth-overlay').classList.add('active');
         document.getElementById('login-email').value = '';
         document.getElementById('login-error').style.display = 'none';
         
-        loadAuthStats(); // <--- ДОБАВИЛИ ВЫЗОВ ЗДЕСЬ
+        loadAuthStats(); 
     }
 
     function showCreateProfile() {
@@ -1257,19 +1255,19 @@ function showAuthScreen() {
             payload.surname = document.getElementById('new-user-surname').value.trim();
             payload.email = document.getElementById('new-user-email').value.trim();
             payload.account_type = document.getElementById('new-user-type').value;
-            if (!payload.name || !payload.email) return showError(errorDiv, 'Заполните обязательные поля');
+            if (!payload.name || !payload.email) return showError(errorDiv, 'Заповніть обов\'язкові поля');
         } else {
             payload.email = document.getElementById('login-email').value.trim();
-            if (!payload.email) return showError(errorDiv, 'Введите email');
+            if (!payload.email) return showError(errorDiv, 'Введіть email');
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(payload.email)) {
-            return showError(errorDiv, 'Введите корректный email');
+            return showError(errorDiv, 'Введіть коректный email');
         }
 
         try {
-            btn.innerText = 'Отправка...';
+            btn.innerText = 'Відправка...';
             btn.disabled = true;
 
             const response = await fetch(`${API_URL}/api/auth/send-otp`, {
@@ -1286,35 +1284,35 @@ function showAuthScreen() {
                     document.getElementById('create-profile-overlay').classList.remove('active');
                     
                     const seconds = parseInt(data.error.match(/\d+/)[0]) || 300;
-                    document.getElementById('otp-subtitle').innerText = `Код уже был отправлен на ${payload.email}. Он еще действует.`;
+                    document.getElementById('otp-subtitle').innerText = `Код вже був відправлений на ${payload.email}. Він ще діє.`;
                     document.getElementById('otp-input').value = '';
                     document.getElementById('otp-error').style.display = 'none';
                     document.getElementById('otp-overlay').classList.add('active');
                     
                     startOtpCountdown('btn-otp-resend', seconds);
                 } else {
-                    showError(errorDiv, data.error || 'Ошибка');
+                    showError(errorDiv, data.error || 'Помилка');
                 }
                 
-                btn.innerText = 'Получить код';
+                btn.innerText = 'Отримати код';
                 btn.disabled = false;
             } else {
                 tempAuthData = payload;
                 document.getElementById('auth-overlay').classList.remove('active');
                 document.getElementById('create-profile-overlay').classList.remove('active');
                 
-                document.getElementById('otp-subtitle').innerText = `Код отправлен на ${payload.email}`;
+                document.getElementById('otp-subtitle').innerText = `Код відправлено на ${payload.email}`;
                 document.getElementById('otp-input').value = '';
                 document.getElementById('otp-error').style.display = 'none';
                 document.getElementById('otp-overlay').classList.add('active');
                 
                 startOtpCountdown('btn-otp-resend', 300); 
-                btn.innerText = 'Получить код';
+                btn.innerText = 'Отримати код';
                 btn.disabled = false;
             }
         } catch (err) {
-            showError(errorDiv, 'Ошибка соединения');
-            btn.innerText = 'Получить код';
+            showError(errorDiv, 'Помилка з\'єднання');
+            btn.innerText = 'Отримати код';
             btn.disabled = false;
         }
     }
@@ -1324,10 +1322,10 @@ function showAuthScreen() {
         const errorDiv = document.getElementById('otp-error');
         const btn = document.getElementById('btn-otp-verify');
 
-        if (!otp || otp.length !== 6) return showError(errorDiv, 'Введите 6 цифр');
+        if (!otp || otp.length !== 6) return showError(errorDiv, 'Введіть 6 цифр');
 
         try {
-            btn.innerText = 'Проверка...';
+            btn.innerText = 'Перевірка...';
             btn.disabled = true;
 
             const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
@@ -1338,13 +1336,13 @@ function showAuthScreen() {
             const data = await response.json();
             
             if (!response.ok) {
-                showError(errorDiv, data.error || 'Неверный код');
-                btn.innerText = 'Подтвердить';
+                showError(errorDiv, data.error || 'Невірний код');
+                btn.innerText = 'Підтвердити';
                 btn.disabled = false;
             } else {
                 if (otpTimer) clearInterval(otpTimer);
                 document.getElementById('otp-overlay').classList.remove('active');
-                btn.innerText = 'Подтвердить';
+                btn.innerText = 'Підтвердити';
                 btn.disabled = false;
                 
                 if (data.token) {
@@ -1358,8 +1356,8 @@ function showAuthScreen() {
                 }
             }
         } catch (err) {
-            showError(errorDiv, 'Ошибка соединения');
-            btn.innerText = 'Подтвердить';
+            showError(errorDiv, 'Помилка з\'єднання');
+            btn.innerText = 'Підтвердити';
             btn.disabled = false;
         }
     }
@@ -1374,7 +1372,7 @@ function showAuthScreen() {
                 ? '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>'
                 : '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--sys-blue)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
 
-            const typeName = isBiz ? 'Бизнес профиль' : 'Личный профиль';
+            const typeName = isBiz ? 'Бізнес профіль' : 'Особистий профіль';
             
             const btn = document.createElement('button');
             btn.className = 'btn-init-secondary';
@@ -1463,25 +1461,25 @@ function showAuthScreen() {
         
         const badge = document.getElementById('account-type-badge');
         badge.style.display = 'inline-block';
-        badge.innerText = isBiz ? 'Бизнес' : 'Физ. лицо';
+        badge.innerText = isBiz ? 'Бізнес' : 'Фіз. особа';
         badge.className = isBiz ? 'badge-type badge-business' : 'badge-type';
 
-        document.getElementById('title-sources').innerText = isBiz ? 'Оборот по счетам за месяц' : 'Источники дохода';
-        document.getElementById('title-incomes').innerText = isBiz ? 'Оборот' : 'Доходы';
+        document.getElementById('title-sources').innerText = isBiz ? 'Оборот за рахунками за місяць' : 'Джерела доходу';
+        document.getElementById('title-incomes').innerText = isBiz ? 'Оборот' : 'Доходи';
         
-        document.getElementById('label-daily').innerText = isBiz ? 'Средний оборот за день:' : 'В рабочий день:';
-        document.getElementById('label-hourly').innerText = isBiz ? 'Средний оборот в час:' : 'Стоимость 1 часа:';
+        document.getElementById('label-daily').innerText = isBiz ? 'Середній оборот за день:' : 'У робочий день:';
+        document.getElementById('label-hourly').innerText = isBiz ? 'Середній оборот за годину:' : 'Вартість 1 години:';
         document.getElementById('daily-rate-usd-container').style.display = isBiz ? 'none' : 'inline';
         document.getElementById('hourly-rate-usd-container').style.display = isBiz ? 'none' : 'inline';
         document.getElementById('yearly-income-usd-container').style.display = isBiz ? 'none' : 'inline';
 
-        document.getElementById('title-remaining').innerText = isBiz ? 'Чистая прибыль:' : 'Остается в мес:';
-        document.getElementById('label-yearly-remaining').innerText = isBiz ? 'Чистая прибыль за год' : 'Чистыми за год';
-        document.getElementById('text-transfer').innerText = isBiz ? 'Распределить прибыль' : 'Перенести в конверт';
+        document.getElementById('title-remaining').innerText = isBiz ? 'Чистий прибуток:' : 'Залишається в міс:';
+        document.getElementById('label-yearly-remaining').innerText = isBiz ? 'Чистий прибуток за рік' : 'Чистими за рік';
+        document.getElementById('text-transfer').innerText = isBiz ? 'Розподілити прибуток' : 'Відкласти в конверт';
         
-        document.getElementById('savings-title').innerText = isBiz ? 'Фонды бизнеса:' : 'Мои сбережения:';
-        document.getElementById('transfer-modal-title').innerText = isBiz ? 'Пополнить фонд' : 'Отложить в конверт';
-        document.getElementById('jars-modal-title').innerText = isBiz ? 'Фонды бизнеса' : 'Мои конверты';
+        document.getElementById('savings-title').innerText = isBiz ? 'Фонди бізнесу:' : 'Мої заощадження:';
+        document.getElementById('transfer-modal-title').innerText = isBiz ? 'Поповнити фонд' : 'Відкласти в конверт';
+        document.getElementById('jars-modal-title').innerText = isBiz ? 'Фонди бізнесу' : 'Мої конверти';
 
         document.getElementById('cogs-block').style.display = isBiz ? 'block' : 'none';
         document.getElementById('cogs-flow').style.display = isBiz ? 'flex' : 'none';
@@ -1507,7 +1505,7 @@ function showAuthScreen() {
             });
             const data = await response.json();
 
-            if (!response.ok) return console.error("Ошибка загрузки:", data.error);
+            if (!response.ok) return console.error("Помилка завантаження:", data.error);
 
             if (!globalData.jars) globalData.jars = {};
             globalData.jars[userId] = data.jars || [];
@@ -1518,7 +1516,7 @@ function showAuthScreen() {
             if (globalData.jars[userId].length === 0) {
                 const isBiz = currentUser.account_type === 'business';
                 globalData.jars[userId] = [{
-                    id: Date.now(), name: isBiz ? "Основной фонд" : "Мои сбережения", goal: 0, balance: 0, isMain: true
+                    id: Date.now(), name: isBiz ? "Основний фонд" : "Мої заощадження", goal: 0, balance: 0, isMain: true
                 }];
             }
 
@@ -1550,7 +1548,7 @@ function showAuthScreen() {
             applyMonthData();
             updateSavingsDisplay();
         } catch (e) {
-            console.error("Ошибка соединения с сервером при загрузке данных", e);
+            console.error("Помилка з'єднання з сервером під час завантаження даних", e);
         }
     }
 
@@ -1577,7 +1575,7 @@ function showAuthScreen() {
                 body: JSON.stringify(payload) 
             });
         } catch (e) {
-            console.error("Ошибка сохранения на сервер:", e);
+            console.error("Помилка збереження на сервер:", e);
         }
     }
 
@@ -1609,8 +1607,8 @@ function showAuthScreen() {
 
     function deleteProfile() {
         showConfirm(
-            "Удалить аккаунт и данные?", 
-            "Все ваши данные (доходы, расходы, конверты) будут удалены с сервера навсегда. Это действие нельзя отменить. Вы уверены?", 
+            "Видалити акаунт та дані?", 
+            "Всі ваші дані (доходи, витрати, конверти) будуть видалені із сервера назавжди. Цю дію неможливо скасувати. Ви впевнені?", 
             async () => {
                 try {
                     const token = localStorage.getItem('budget_auth_token');
@@ -1627,11 +1625,11 @@ function showAuthScreen() {
                         logout(); 
                     } else {
                         const data = await response.json();
-                        alert("Ошибка при удалении: " + (data.error || "Неизвестная ошибка"));
+                        alert("Помилка під час видалення: " + (data.error || "Невідома помилка"));
                     }
                 } catch (e) {
-                    console.error("Ошибка сети при удалении аккаунта", e);
-                    alert("Не удалось соединиться с сервером для удаления данных.");
+                    console.error("Помилка мережі під час видалення акаунта", e);
+                    alert("Не вдалося з'єднатися із сервером для видалення даних.");
                 }
             }
         );
@@ -1661,7 +1659,7 @@ function showAuthScreen() {
             if (prev) {
                 let copiedExpenses = JSON.parse(JSON.stringify(prev.data.expenses || []));
                 
-                copiedExpenses = copiedExpenses.filter(cat => cat.name !== "Погашение долгов" && !cat.isSavings);
+                copiedExpenses = copiedExpenses.filter(cat => cat.name !== "Погашення боргів" && !cat.isSavings);
                 
                 copiedExpenses.forEach(cat => {
                     cat.items.forEach(item => item.isPaid = false);
@@ -1688,7 +1686,7 @@ function showAuthScreen() {
                 
                 appData[currentYear][currentMonth] = {
                     initialized: true,
-                    incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: Date.now(), name: "Основной", amount: prev.data.usd || 0, currency: "USD" }])),
+                    incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: Date.now(), name: "Основний", amount: prev.data.usd || 0, currency: "USD" }])),
                     expenses: copiedExpenses,
                     cogs: JSON.parse(JSON.stringify(prev.data.cogs || {type:'percent', value:0}))
                 };
@@ -1696,7 +1694,7 @@ function showAuthScreen() {
         } else {
             appData[currentYear][currentMonth] = {
                 initialized: true,
-                incomes: [{id: Date.now(), name: "Основной", amount: 0, currency: "UAH"}],
+                incomes: [{id: Date.now(), name: "Основний", amount: 0, currency: "UAH"}],
                 expenses: JSON.parse(JSON.stringify(defaultCategories)),
                 cogs: {type: 'percent', value: 0}
             };
@@ -1707,7 +1705,7 @@ function showAuthScreen() {
     }
 
     function clearCurrentMonth() {
-        showConfirm("Очистить месяц", "Вы уверены, что хотите полностью очистить данные за этот месяц? Действие нельзя отменить.", () => {
+        showConfirm("Очистити місяць", "Ви впевнені, що хочете повністю очистити дані за цей місяць? Дію неможливо скасувати.", () => {
             appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type:'percent', value:0} };
             
             const viewDate = currentYear * 100 + currentMonth;
@@ -1775,13 +1773,13 @@ function showAuthScreen() {
             document.getElementById('main-dashboard').classList.remove('blurred');
             document.getElementById('init-overlay').classList.remove('active');
             
-            if (!data.incomes) data.incomes = [{ id: Date.now(), name: "Основной", amount: data.usd || 0, currency: "USD" }];
+            if (!data.incomes) data.incomes = [{ id: Date.now(), name: "Основний", amount: data.usd || 0, currency: "USD" }];
 
             expenses = data.expenses || [];
 
             if (!data.cogs) data.cogs = { type: 'percent', value: 0 };
             document.getElementById('cogs-value').value = data.cogs.value || '';
-            document.getElementById('cogs-type-display').innerText = data.cogs.type === 'percent' ? '%' : 'Фикс (₴)';
+            document.getElementById('cogs-type-display').innerText = data.cogs.type === 'percent' ? '%' : 'Фікс (₴)';
             
             renderIncomes();
             renderExpenses(); 
@@ -1803,11 +1801,11 @@ function showAuthScreen() {
             
             if (prev) {
                 copyBtn.style.display = 'block';
-                copyBtn.innerText = `Перенести из: ${prev.monthName} ${prev.year}`;
-                subtitle.innerText = "В этом месяце еще нет записей. Хотите перенести структуру и цифры из прошлого месяца?";
+                copyBtn.innerText = `Перенести з: ${prev.monthName} ${prev.year}`;
+                subtitle.innerText = "У цьому місяці ще немає записів. Хочете перенести структуру та цифри з минулого місяця?";
             } else {
                 copyBtn.style.display = 'none';
-                subtitle.innerText = "Начните планирование бюджета, создав пустую структуру. Прошлых данных не найдено.";
+                subtitle.innerText = "Почніть планування бюджету, створивши порожню структуру. Минулих даних не знайдено.";
             }
         }
         updateDebtsDisplay();
@@ -1827,7 +1825,7 @@ function showAuthScreen() {
                 convertCurrency(); 
             }
         } catch (error) {
-            document.getElementById('rate-info').innerText = "Курс недоступен";
+            document.getElementById('rate-info').innerText = "Курс недоступний";
         }
     }
 
@@ -1848,7 +1846,7 @@ function showAuthScreen() {
             div.className = 'expense-item'; 
             div.style = "padding: 16px; margin-bottom: 8px;";
             div.innerHTML = `
-                <input type="text" class="input-name" value="${inc.name}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Название">
+                <input type="text" class="input-name" value="${inc.name}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Назва">
                 <input type="number" class="input-name tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${inc.id}, 'amount', this.value)" style="text-align: right; margin: 0 8px; flex: 1; min-width: 80px;">
                 <div class="custom-dropdown" style="width: 100px; margin-right: 8px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
                     <div class="custom-dropdown-selected" style="height: 48px; padding: 0 32px 0 16px; border-radius: 14px;">${inc.currency}</div>
@@ -1867,7 +1865,7 @@ function showAuthScreen() {
 
     function addIncome() {
         if(!appData[currentYear][currentMonth].incomes) appData[currentYear][currentMonth].incomes = [];
-        appData[currentYear][currentMonth].incomes.push({id: Date.now(), name: 'Новый', amount: 0, currency: 'UAH'});
+        appData[currentYear][currentMonth].incomes.push({id: Date.now(), name: 'Новий', amount: 0, currency: 'UAH'});
         saveData();
         renderIncomes();
         convertCurrency();
@@ -1926,7 +1924,7 @@ function showAuthScreen() {
         if(event) event.stopPropagation();
         if (!appData[currentYear][currentMonth].cogs) appData[currentYear][currentMonth].cogs = { type: 'percent', value: 0 };
         appData[currentYear][currentMonth].cogs.type = type;
-        document.getElementById('cogs-type-display').innerText = type === 'percent' ? '%' : 'Фикс (₴)';
+        document.getElementById('cogs-type-display').innerText = type === 'percent' ? '%' : 'Фікс (₴)';
         document.getElementById('cogs-type-display').closest('.custom-dropdown').classList.remove('open');
         saveData();
         updateAll();
@@ -1965,14 +1963,14 @@ function showAuthScreen() {
             
             let rankClass = '', badgeHtml = '';
             if (totalAmount > 0) {
-                if (totalAmount === top1) { rankClass = 'top-expense-1'; badgeHtml = '<div class="top-expense-badge top-badge-1">🥇 1 место</div>'; }
-                else if (totalAmount === top2) { rankClass = 'top-expense-2'; badgeHtml = '<div class="top-expense-badge top-badge-2">🥈 2 место</div>'; }
-                else if (totalAmount === top3) { rankClass = 'top-expense-3'; badgeHtml = '<div class="top-expense-badge top-badge-3">🥉 3 место</div>'; }
+                if (totalAmount === top1) { rankClass = 'top-expense-1'; badgeHtml = '<div class="top-expense-badge top-badge-1">🥇 1 місце</div>'; }
+                else if (totalAmount === top2) { rankClass = 'top-expense-2'; badgeHtml = '<div class="top-expense-badge top-badge-2">🥈 2 місце</div>'; }
+                else if (totalAmount === top3) { rankClass = 'top-expense-3'; badgeHtml = '<div class="top-expense-badge top-badge-3">🥉 3 місце</div>'; }
             }
             
             let tooltipHtml = exp.items.length > 0 
-                ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${i.name || 'Без названия'}</span><span class="preview-item-amount">${formatMoney(parseFloat(i.amount)||0)} ₴${i.isPaid ? ' <span style="color: var(--sys-green);">✓</span>' : ''}</span></div>`).join('')
-                : '<div style="opacity:0.7;">Нет добавленных статей</div>';
+                ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${i.name || 'Без назви'}</span><span class="preview-item-amount">${formatMoney(parseFloat(i.amount)||0)} ₴${i.isPaid ? ' <span style="color: var(--sys-green);">✓</span>' : ''}</span></div>`).join('')
+                : '<div style="opacity:0.7;">Немає доданих статей</div>';
 
             const isSavingsClass = exp.isSavings ? 'color: var(--sys-green); font-weight: 700;' : '';
 
@@ -1980,9 +1978,9 @@ function showAuthScreen() {
             div.className = `expense-item ${rankClass} ${paidClass}`;
             div.innerHTML = `
                 ${badgeHtml}
-                <input class="input-name" type="text" value="${exp.name}" placeholder="Название категории" oninput="updateCategoryName(${exp.id}, this.value)" style="${isSavingsClass}">
+                <input class="input-name" type="text" value="${exp.name}" placeholder="Назва категорії" oninput="updateCategoryName(${exp.id}, this.value)" style="${isSavingsClass}">
                 <div class="amount-column">
-                    <div class="expense-10y tabular" title="${formatMoney(cost10Years)} ₴ за 10 лет"><span class="val-10y">${formatNumberShort(cost10Years)}</span> за 10 лет</div>
+                    <div class="expense-10y tabular" title="${formatMoney(cost10Years)} ₴ за 10 років"><span class="val-10y">${formatNumberShort(cost10Years)}</span> за 10 років</div>
                     <button class="calculated-amount-btn" onclick="openModal(${exp.id})">
                         ${formatMoney(totalAmount)} ₴
                         <svg class="paid-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -1990,7 +1988,7 @@ function showAuthScreen() {
                     <div class="preview-tooltip">${tooltipHtml}</div>
                 </div>
                 <div class="expense-info tabular">${percent}%</div>
-                <button class="btn-delete" onclick="deleteCategory(${exp.id})" title="Удалить категорию">
+                <button class="btn-delete" onclick="deleteCategory(${exp.id})" title="Видалити категорію">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
             `;
@@ -2011,7 +2009,7 @@ function showAuthScreen() {
     function openModal(categoryId) {
         activeCategoryId = categoryId;
         const category = expenses.find(e => e.id === categoryId);
-        document.getElementById('modal-category-name').innerText = category.name || 'Без названия';
+        document.getElementById('modal-category-name').innerText = category.name || 'Без назви';
         renderModalItems();
         document.getElementById('category-modal').classList.add('active');
     }
@@ -2038,9 +2036,9 @@ function showAuthScreen() {
         category.items.forEach(item => {
             let amt = parseFloat(item.amount) || 0, rankClass = '', badgeClass = '', badgeText = '';
             if (amt > 0) {
-                if (amt === tops.top1) { rankClass = 'top-subitem-1'; badgeClass = 'top-badge-1'; badgeText = '🥇 1 место'; }
-                else if (amt === tops.top2) { rankClass = 'top-subitem-2'; badgeClass = 'top-badge-2'; badgeText = '🥈 2 место'; }
-                else if (amt === tops.top3) { rankClass = 'top-subitem-3'; badgeClass = 'top-badge-3'; badgeText = '🥉 3 место'; }
+                if (amt === tops.top1) { rankClass = 'top-subitem-1'; badgeClass = 'top-badge-1'; badgeText = '🥇 1 місце'; }
+                else if (amt === tops.top2) { rankClass = 'top-subitem-2'; badgeClass = 'top-badge-2'; badgeText = '🥈 2 місце'; }
+                else if (amt === tops.top3) { rankClass = 'top-subitem-3'; badgeClass = 'top-badge-3'; badgeText = '🥉 3 місце'; }
             }
             const badgeHtml = badgeText ? `<div class="badge-wrapper" style="display:flex; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge ${badgeClass}">${badgeText}</span></div>` : `<div class="badge-wrapper" style="display:none; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge"></span></div>`;
             const isChecked = item.isPaid ? 'checked' : '';
@@ -2053,7 +2051,7 @@ function showAuthScreen() {
                 ${badgeHtml}
                 <div class="sub-item-row">
                     ${checkboxHtml}
-                    <input type="text" class="sub-item-name" value="${item.name}" placeholder="Название статьи" oninput="updateSubItemName(${item.id}, this.value)">
+                    <input type="text" class="sub-item-name" value="${item.name}" placeholder="Назва статті" oninput="updateSubItemName(${item.id}, this.value)">
                     <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${item.id}, this.value)">
                     <button class="btn-sub-delete" onclick="deleteSubItem(${item.id})"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
@@ -2078,9 +2076,9 @@ function showAuthScreen() {
             
             if (amt > 0 && (amt === tops.top1 || amt === tops.top2 || amt === tops.top3)) {
                 badgeWrap.style.display = 'flex'; badgeSpan.className = 'top-subitem-badge'; 
-                if (amt === tops.top1) { domItem.classList.add('top-subitem-1'); badgeSpan.classList.add('top-badge-1'); badgeSpan.innerText = '🥇 1 место'; }
-                else if (amt === tops.top2) { domItem.classList.add('top-subitem-2'); badgeSpan.classList.add('top-badge-2'); badgeSpan.innerText = '🥈 2 место'; }
-                else if (amt === tops.top3) { domItem.classList.add('top-subitem-3'); badgeSpan.classList.add('top-badge-3'); badgeSpan.innerText = '🥉 3 место'; }
+                if (amt === tops.top1) { domItem.classList.add('top-subitem-1'); badgeSpan.classList.add('top-badge-1'); badgeSpan.innerText = '🥇 1 місце'; }
+                else if (amt === tops.top2) { domItem.classList.add('top-subitem-2'); badgeSpan.classList.add('top-badge-2'); badgeSpan.innerText = '🥈 2 місце'; }
+                else if (amt === tops.top3) { domItem.classList.add('top-subitem-3'); badgeSpan.classList.add('top-badge-3'); badgeSpan.innerText = '🥉 3 місце'; }
             } else {
                 if (badgeWrap) badgeWrap.style.display = 'none';
             }
@@ -2098,7 +2096,7 @@ function showAuthScreen() {
     }
 
     function deleteCategory(id) {
-        showConfirm("Удаление категории", "Удалить эту категорию со всеми расходами?", () => {
+        showConfirm("Видалити категорію", "Видалити цю категорію з усіма витратами?", () => {
             const category = expenses.find(e => e.id === id);
             let debtsToSync = new Set();
             
@@ -2294,18 +2292,18 @@ function showAuthScreen() {
 
             const trendHtml = (icon, cls, title, sub) => `<div class="trend-icon-wrapper ${cls}">${icon}</div><div class="trend-text"><div class="trend-title">${title}</div><div class="trend-sub">${sub}</div></div>`;
             
-            if (prevRemaining <= 0 && remaining <= 0) { trendBox.className = 'trend-box trend-bad'; trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', 'Бюджет в минусе', 'Ситуация не улучшилась с прошлого месяца.'); }
-            else if (prevRemaining <= 0 && remaining > 0) { trendBox.className = 'trend-box trend-good'; trendBox.innerHTML = trendHtml(iconGood, 'icon-good', 'Отличный прогресс!', 'Вы вышли в плюс. В прошлом месяце был минус.'); }
+            if (prevRemaining <= 0 && remaining <= 0) { trendBox.className = 'trend-box trend-bad'; trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', 'Бюджет у мінусі', 'Ситуація не покращилася з минулого місяця.'); }
+            else if (prevRemaining <= 0 && remaining > 0) { trendBox.className = 'trend-box trend-good'; trendBox.innerHTML = trendHtml(iconGood, 'icon-good', 'Чудовий прогрес!', 'Ви вийшли в плюс. У минулому місяці був мінус.'); }
             else {
                 let diffPercent = ((remaining - prevRemaining) / prevRemaining) * 100;
-                if (Math.abs(diffPercent) <= 5) { trendBox.className = 'trend-box trend-stable'; trendBox.innerHTML = trendHtml(iconStable, 'icon-stable', 'Финансы стабильны', 'Свободных денег остается примерно столько же.'); }
-                else if (diffPercent > 5) { trendBox.className = 'trend-box trend-good'; trendBox.innerHTML = trendHtml(iconGood, 'icon-good', `Свободных денег больше (+${diffPercent.toFixed(1)}%)`, 'У вас остается больше средств, чем в прошлом месяце.'); }
-                else { trendBox.className = 'trend-box trend-bad'; trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', `Свободных денег меньше (${Math.abs(diffPercent).toFixed(1)}%)`, 'Остаток на месяц ниже прошлого. Следите за расходами.'); }
+                if (Math.abs(diffPercent) <= 5) { trendBox.className = 'trend-box trend-stable'; trendBox.innerHTML = trendHtml(iconStable, 'icon-stable', 'Фінанси стабільні', 'Вільних грошей залишається приблизно стільки ж.'); }
+                else if (diffPercent > 5) { trendBox.className = 'trend-box trend-good'; trendBox.innerHTML = trendHtml(iconGood, 'icon-good', `Вільних грошей більше (+${diffPercent.toFixed(1)}%)`, 'У вас залишається більше коштів, ніж у минулому місяці.'); }
+                else { trendBox.className = 'trend-box trend-bad'; trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', `Вільних грошей менше (${Math.abs(diffPercent).toFixed(1)}%)`, 'Залишок на місяць нижчий за минулий. Слідкуйте за витратами.'); }
             }
             trendBox.style.display = 'flex';
         } else {
             trendBox.className = 'trend-box trend-empty';
-            trendBox.innerHTML = `<div class="trend-icon-wrapper icon-empty"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div><div class="trend-text"><div class="trend-title">Недостаточно данных</div><div class="trend-sub">Аналитика появится в следующем месяце.</div></div>`;
+            trendBox.innerHTML = `<div class="trend-icon-wrapper icon-empty"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div><div class="trend-text"><div class="trend-title">Недостатньо даних</div><div class="trend-sub">Аналітика з'явиться наступного місяця.</div></div>`;
             trendBox.style.display = 'flex';
         }
 
@@ -2357,17 +2355,17 @@ function showAuthScreen() {
         list.innerHTML = '';
         const userJars = globalData.jars[currentUser.id] || [];
         
-        if (userJars.length === 0) return list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 20px; font-weight: 500;">Нет созданных конвертов</div>';
+        if (userJars.length === 0) return list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 20px; font-weight: 500;">Немає створених конвертів</div>';
 
         userJars.forEach(jar => {
             const percent = jar.goal > 0 ? Math.min(100, (jar.balance / jar.goal) * 100) : 0;
-            const goalText = jar.goal > 0 ? `из ${formatMoney(jar.goal)} ₴` : '';
+            const goalText = jar.goal > 0 ? `з ${formatMoney(jar.goal)} ₴` : '';
             const balanceDisplay = jar.isMain 
                 ? `<input type="number" value="${jar.balance}" onchange="updateMainJarBalance(${jar.id}, this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; font-size: 26px; font-weight: 800; width: 150px; padding: 8px 16px; outline: none; transition: 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" onfocus="this.style.background='rgba(255,255,255,0.1)'" onblur="this.style.background='rgba(255,255,255,0.05)'"> <span style="margin-left: 8px;">₴</span>`
                 : `${formatMoney(jar.balance)} ₴`;
             const deleteBtn = jar.isMain ? '' : `<button onclick="deleteEnvelope(${jar.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; border-color: transparent; transform: rotate(90deg);" onmouseout="this.style.background='rgba(255,255,255,0.05)'; border-color: rgba(255,255,255,0.1); transform: rotate(0);">✕</button>`;
 
-            list.innerHTML += `<div class="jar-card"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><div><div class="jar-title">${jar.name}</div><div style="color: rgba(255,255,255,0.6); font-size: 15px; margin-top: 6px; font-weight: 500;">Собрано</div><div class="jar-balance" style="display: flex; align-items: center; margin-top: 6px;">${balanceDisplay}</div>${goalText ? `<div style="font-size: 15px; opacity: 0.7; margin-top: 8px; font-weight: 500;">${goalText}</div>` : ''}</div>${deleteBtn}</div>${jar.goal > 0 ? `<div class="jar-progress-bg"><div class="jar-progress-fill" style="width: ${percent}%;"></div></div>` : ''}</div>`;
+            list.innerHTML += `<div class="jar-card"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><div><div class="jar-title">${jar.name}</div><div style="color: rgba(255,255,255,0.6); font-size: 15px; margin-top: 6px; font-weight: 500;">Зібрано</div><div class="jar-balance" style="display: flex; align-items: center; margin-top: 6px;">${balanceDisplay}</div>${goalText ? `<div style="font-size: 15px; opacity: 0.7; margin-top: 8px; font-weight: 500;">${goalText}</div>` : ''}</div>${deleteBtn}</div>${jar.goal > 0 ? `<div class="jar-progress-bg"><div class="jar-progress-fill" style="width: ${percent}%;"></div></div>` : ''}</div>`;
         });
     }
 
@@ -2386,7 +2384,7 @@ function showAuthScreen() {
     }
 
     function deleteEnvelope(id) {
-        showConfirm("Удалить конверт?", "Средства, отложенные в этом месяце, вернутся в свободный остаток.", () => {
+        showConfirm("Видалити конверт?", "Кошти, відкладені цього місяця, повернуться у вільний залишок.", () => {
             globalData.jars[currentUser.id] = globalData.jars[currentUser.id].filter(j => j.id != id);
             let savingsCat = expenses.find(e => e.isSavings);
             if (savingsCat) {
@@ -2413,11 +2411,11 @@ function showAuthScreen() {
         const userJars = globalData.jars[currentUser.id] || [];
         
         if (userJars.length === 0) {
-            document.getElementById('transfer-jar-selected').innerHTML = "Нет конвертов"; document.getElementById('transfer-jar-select').value = "";
+            document.getElementById('transfer-jar-selected').innerHTML = "Немає конвертів"; document.getElementById('transfer-jar-select').value = "";
         } else {
             let firstJarId = null, firstJarName = '';
             userJars.forEach((jar, index) => {
-                const text = `${jar.name} (сейчас ${formatMoney(jar.balance)} ₴)`;
+                const text = `${jar.name} (зараз ${formatMoney(jar.balance)} ₴)`;
                 if (index === 0) { firstJarId = jar.id; firstJarName = text; }
                 optionsContainer.innerHTML += `<div class="custom-dropdown-option" onclick="selectTransferJar(event, ${jar.id}, '${text}')">${text}</div>`;
             });
@@ -2443,10 +2441,10 @@ function showAuthScreen() {
         if (!val || val <= 0 || !jarId) return;
 
         let savingsCat = expenses.find(e => e.isSavings);
-        if (!savingsCat) { savingsCat = { id: Date.now(), name: "Сбережения", isSavings: true, items: [] }; expenses.push(savingsCat); }
+        if (!savingsCat) { savingsCat = { id: Date.now(), name: "Заощадження", isSavings: true, items: [] }; expenses.push(savingsCat); }
         
         const jar = globalData.jars[currentUser.id].find(j => j.id == jarId);
-        if(jar) { jar.balance += val; savingsCat.items.push({ id: Date.now(), name: "В конверт: " + jar.name, amount: val, envelopeId: jarId }); }
+        if(jar) { jar.balance += val; savingsCat.items.push({ id: Date.now(), name: "У конверт: " + jar.name, amount: val, envelopeId: jarId }); }
         
         if (appData[currentYear] && appData[currentYear][currentMonth]) {
             appData[currentYear][currentMonth].expenses = expenses;
@@ -2565,27 +2563,27 @@ function showAuthScreen() {
         const activeDebts = userDebts.filter(d => !d.is_archived || d.is_archived === 0 || viewDate < Math.abs(d.is_archived));
         const archivedDebts = userDebts.filter(d => d.is_archived !== 0 && viewDate >= Math.abs(d.is_archived));
 
-        if (userDebts.length === 0) return list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 20px; font-weight: 500;">В этом месяце обязательств нет. Вы восхитительны!</div>';
+        if (userDebts.length === 0) return list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 20px; font-weight: 500;">У цьому місяці зобов\'язань немає. Ви чудові!</div>';
 
         activeDebts.forEach(debt => {
             const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
             const percent = debt.total_amount > 0 ? Math.min(100, ((debt.total_amount - historicalRemaining) / debt.total_amount) * 100) : 0;
             const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
-            const interestTag = debt.interest_rate > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.2); padding: 2px 6px; border-radius: 6px; color: #ff453a; margin-left: 6px;">${debt.interest_rate}% / мес</span>` : '';
+            const interestTag = debt.interest_rate > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.2); padding: 2px 6px; border-radius: 6px; color: #ff453a; margin-left: 6px;">${debt.interest_rate}% / міс.</span>` : '';
 
             const isPaidOff = historicalRemaining <= 0;
             const payBtnHtml = isPaidOff 
-                ? `<div style="text-align: center; margin-top: 12px; color: var(--sys-green); font-weight: 700; font-size: 14px;">✓ Полностью погашен (Уйдет в архив)</div>`
-                : `<button onclick="payDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 10px 16px; border-radius: 14px; color: white; font-weight: 600; cursor: pointer; margin-top: 16px; width: 100%; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">Внести платеж</button>`;
+                ? `<div style="text-align: center; margin-top: 12px; color: var(--sys-green); font-weight: 700; font-size: 14px;">✓ Повністю погашено (Піде в архів)</div>`
+                : `<button onclick="payDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 10px 16px; border-radius: 14px; color: white; font-weight: 600; cursor: pointer; margin-top: 16px; width: 100%; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">Внести платіж</button>`;
 
             list.innerHTML += `
             <div class="jar-card" style="background: linear-gradient(135deg, #2c1a1a 0%, #1a0f0f 100%); border-color: rgba(255, 69, 58, 0.2);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div style="width: 100%;">
                         <div class="jar-title" style="color: #ff453a;">${debt.name} <span style="font-size: 12px; background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 6px; color: white;">${debt.currency}</span>${interestTag}</div>
-                        <div style="color: rgba(255,255,255,0.6); font-size: 15px; margin-top: 6px; font-weight: 500;">Осталось выплатить</div>
+                        <div style="color: rgba(255,255,255,0.6); font-size: 15px; margin-top: 6px; font-weight: 500;">Залишилось виплатити</div>
                         <div class="jar-balance" style="display: flex; align-items: center; margin-top: 6px; ${isPaidOff ? 'color: var(--sys-green);' : ''}">${formatMoney(historicalRemaining)} ${currencySymbol}</div>
-                        <div style="font-size: 15px; opacity: 0.7; margin-top: 8px; font-weight: 500;">из ${formatMoney(debt.total_amount)} ${currencySymbol}</div>
+                        <div style="font-size: 15px; opacity: 0.7; margin-top: 8px; font-weight: 500;">з ${formatMoney(debt.total_amount)} ${currencySymbol}</div>
                     </div>
                     <button onclick="deleteDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; border-color: transparent; transform: rotate(90deg);" onmouseout="this.style.background='rgba(255,255,255,0.05)'; border-color: rgba(255,255,255,0.1); transform: rotate(0);">✕</button>
                 </div>
@@ -2597,12 +2595,12 @@ function showAuthScreen() {
         });
 
         if (archivedDebts.length > 0) {
-            list.innerHTML += `<div style="margin-top: 16px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Архив (закрыто / отменено)</div>`;
+            list.innerHTML += `<div style="margin-top: 16px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Архів (закрито / скасовано)</div>`;
             
             archivedDebts.forEach(debt => {
                 const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
                 const isAutoArchived = debt.is_archived > 0;
-                const statusText = isAutoArchived ? '✓ Выплачен' : 'Отменен / Заморожен';
+                const statusText = isAutoArchived ? '✓ Виплачено' : 'Скасовано / Заморожено';
                 const statusColor = isAutoArchived ? 'var(--sys-green)' : 'var(--text-secondary)';
                 const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
                 
@@ -2617,7 +2615,7 @@ function showAuthScreen() {
                         <div style="width: 100%;">
                             <div class="jar-title" style="color: var(--text-secondary); font-size: 16px;">${debt.name} <span style="font-size: 11px; background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 6px; color: white;">${debt.currency}</span></div>
                             <div style="color: ${statusColor}; font-size: 14px; margin-top: 6px; font-weight: 700;">${statusText}</div>
-                            <div style="font-size: 13px; margin-top: 4px; color: var(--text-tertiary); font-weight: 500;">Сумма: ${formatMoney(debt.total_amount)} ${currencySymbol}</div>
+                            <div style="font-size: 13px; margin-top: 4px; color: var(--text-tertiary); font-weight: 500;">Сума: ${formatMoney(debt.total_amount)} ${currencySymbol}</div>
                         </div>
                         ${deleteBtnHtml}
                     </div>
@@ -2635,12 +2633,12 @@ function showAuthScreen() {
         const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
 
         if (historicalRemaining === debt.total_amount && viewDate === startDate) {
-            showConfirm("Удалить долг?", "Вы уверены? По долгу не было платежей, он будет удален навсегда.", () => {
+            showConfirm("Видалити борг?", "Ви впевнені? За боргом не було платежів, його буде видалено назавжди.", () => {
                 globalData.debts[currentUser.id] = globalData.debts[currentUser.id].filter(d => d.id != id);
                 saveGlobalData(); renderDebts(); updateDebtsDisplay();
             });
         } else {
-            showConfirm("Отправить в архив?", "Начиная с этого месяца долг уйдет в архив, а в прошлых месяцах останется активным для сохранения истории.", () => {
+            showConfirm("Відправити в архів?", "Починаючи з цього місяця борг піде в архів, а в минулих місяцях залишиться активним для збереження історії.", () => {
                 debt.is_archived = -viewDate; 
                 saveGlobalData(); renderDebts(); updateDebtsDisplay();
             });
@@ -2648,7 +2646,7 @@ function showAuthScreen() {
     }
 
     function hardDeleteDebt(id) {
-        showConfirm("Удалить навсегда?", "По этому долгу не осталось платежей. Он будет полностью удален из базы.", () => {
+        showConfirm("Видалити назавжди?", "За цим боргом не залишилося платежів. Його буде повністю видалено з бази.", () => {
             globalData.debts[currentUser.id] = globalData.debts[currentUser.id].filter(d => d.id != id);
             saveGlobalData(); renderDebts(); updateDebtsDisplay();
         });
@@ -2705,15 +2703,15 @@ function showAuthScreen() {
         let amountToDeduct = amountInUah;
         if (debt.currency === 'USD') amountToDeduct = amountInUah / currentExchangeRate;
 
-        let debtCat = expenses.find(e => e.name === "Погашение долгов");
+        let debtCat = expenses.find(e => e.name === "Погашення боргів");
         if (!debtCat) {
-            debtCat = { id: Date.now(), name: "Погашение долгов", items: [] };
+            debtCat = { id: Date.now(), name: "Погашення боргів", items: [] };
             expenses.push(debtCat);
         }
 
         debtCat.items.push({
             id: Date.now(),
-            name: `Платеж: ${debt.name}`,
+            name: `Платіж: ${debt.name}`,
             amount: amountInUah,
             isPaid: true,
             debtId: debt.id,
@@ -2771,9 +2769,9 @@ function showAuthScreen() {
         }
 
         const data = new google.visualization.DataTable();
-        data.addColumn('string', 'Откуда');
-        data.addColumn('string', 'Куда');
-        data.addColumn('number', 'Сумма (₴)');
+        data.addColumn('string', 'Звідки');
+        data.addColumn('string', 'Куди');
+        data.addColumn('number', 'Сума (₴)');
 
         const rows = [];
         const isBiz = currentUser && currentUser.account_type === 'business';
@@ -2784,14 +2782,14 @@ function showAuthScreen() {
             currentMonthData.incomes.forEach(inc => {
                 let amt = inc.currency === 'USD' ? inc.amount * currentExchangeRate : inc.amount;
                 if (amt > 0) {
-                    rows.push([inc.name + ' (Доход)', 'Ваш Бюджет', roundNum(amt)]); 
+                    rows.push([inc.name + ' (Дохід)', 'Ваш Бюджет', roundNum(amt)]); 
                     totalIncome += amt;
                 }
             });
         }
 
         if (totalIncome <= 0) {
-            container.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding-top:150px; font-weight:600;">Добавьте доходы для графика</div>';
+            container.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding-top:150px; font-weight:600;">Додайте доходи для графіка</div>';
             return;
         }
 
@@ -2799,7 +2797,7 @@ function showAuthScreen() {
         if (isBiz && currentMonthData.cogs) {
             cogsAmount = currentMonthData.cogs.type === 'percent' ? totalIncome * (currentMonthData.cogs.value / 100) : (currentMonthData.cogs.value || 0);
             if (cogsAmount > 0) {
-                rows.push(['Ваш Бюджет', 'Себестоимость', roundNum(cogsAmount)]);
+                rows.push(['Ваш Бюджет', 'Собівартість', roundNum(cogsAmount)]);
             }
         }
 
@@ -2814,9 +2812,9 @@ function showAuthScreen() {
 
         const remaining = totalIncome - cogsAmount - totalExp;
         if (remaining > 0) {
-            rows.push(['Ваш Бюджет', 'Свободный остаток', roundNum(remaining)]);
+            rows.push(['Ваш Бюджет', 'Вільний залишок', roundNum(remaining)]);
         } else if (remaining < 0) {
-             rows.push(['Дефицит', 'Ваш Бюджет', roundNum(Math.abs(remaining))]);
+             rows.push(['Дефіцит', 'Ваш Бюджет', roundNum(Math.abs(remaining))]);
         }
 
         if (rows.length === 0) return;
@@ -2909,7 +2907,7 @@ function showAuthScreen() {
                 datasets: [ 
                     { 
                         type: 'bar', 
-                        label: isBiz ? 'Чистая прибыль' : 'Чистый остаток', 
+                        label: isBiz ? 'Чистий прибуток' : 'Чистий залишок', 
                         data: freeMoneyData, 
                         backgroundColor: dynamicBarColors, 
                         borderRadius: 12, 
@@ -2920,7 +2918,7 @@ function showAuthScreen() {
                     }, 
                     { 
                         type: 'line', 
-                        label: isBiz ? 'Оборот (маржа)' : 'Доход', 
+                        label: isBiz ? 'Оборот (маржа)' : 'Дохід', 
                         data: incomeData, 
                         borderColor: '#0a84ff', 
                         backgroundColor: gradientBlue, 
@@ -2937,7 +2935,7 @@ function showAuthScreen() {
                     }, 
                     { 
                         type: 'line', 
-                        label: 'Расход', 
+                        label: 'Витрата', 
                         data: expenseData, 
                         borderColor: '#ff9f0a', 
                         backgroundColor: gradientOrange, 
@@ -2982,7 +2980,7 @@ function showAuthScreen() {
                         borderWidth: 1,
                         callbacks: { 
                             label: function(context) { 
-                                let prefix = (context.dataset.label === 'Чистая прибыль' || context.dataset.label === 'Чистый остаток') && context.parsed.y > 0 ? '+' : ''; 
+                                let prefix = (context.dataset.label === 'Чистий прибуток' || context.dataset.label === 'Чистий залишок') && context.parsed.y > 0 ? '+' : ''; 
                                 return context.dataset.label + ': ' + prefix + formatMoney(context.parsed.y) + ' ₴'; 
                             } 
                         } 
