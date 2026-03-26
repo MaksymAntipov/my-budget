@@ -9,6 +9,54 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
+        /* HERO БЛОК АВТОРИЗАЦИИ */
+        .auth-hero {
+            text-align: center;
+            margin-bottom: 32px;
+            max-width: 420px;
+            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        .auth-hero-title {
+            font-size: 34px;
+            font-weight: 300; /* Тонкий, дорогой шрифт */
+            color: #ffffff;
+            margin: 0 0 12px 0;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+        .auth-hero-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin: 0 0 24px 0;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+        .auth-hero-donate {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px 20px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 13px;
+            color: var(--text-secondary);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .auth-hero-donate:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        .auth-hero-donate span {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
         :root {
             /* Apple & Monobank Premium Palette - Dark Mode */
             --sys-blue: #0a84ff;
@@ -840,6 +888,16 @@
 </div>
 
 <div id="auth-overlay" class="auth-glass-overlay">
+<div class="auth-hero">
+        <h1 class="auth-hero-title">Анализ и стратегия вашего капитала</h1>
+        <p class="auth-hero-subtitle">Всё в одном решении</p>
+        
+        <a href="https://send.monobank.ua/jar/j1zt56TSC" target="_blank" class="auth-hero-donate">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ff453a;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            <div>Проект на 100% бесплатен. <span>Поддержать развитие</span></div>
+        </a>
+    </div>
+
     <div class="auth-card">
         <div class="auth-header">
             <div class="auth-icon">
