@@ -2300,11 +2300,12 @@ function executeTransfer() {
     function openAnalyticsModal() { document.getElementById('analytics-modal').classList.add('active'); renderAnalyticsChart(); }
     function closeAnalyticsModal(e) { if (!e || e.target.id === 'analytics-modal' || e.target.className === 'btn-close-modal') document.getElementById('analytics-modal').classList.remove('active'); }
 
-    function renderAnalyticsChart() {
-        const labels = [], freeMoneyData = [], incomeData = [], expenseData = [], barColors = [];
+ function renderAnalyticsChart() {
+        const labels = [], freeMoneyData = [], incomeData = [], expenseData = [];
         const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
         const isBiz = currentUser && currentUser.account_type === 'business';
         
+        // Сбор данных
         years.forEach(year => {
             const months = Object.keys(appData[year]).map(Number).sort((a, b) => a - b);
             months.forEach(month => {
@@ -2322,17 +2323,148 @@ function executeTransfer() {
                     
                     const freeMoney = displayIncome - expensesTotal;
                     freeMoneyData.push(freeMoney);
-                    barColors.push(freeMoney < 0 ? 'rgba(255, 69, 58, 0.9)' : 'rgba(46, 160, 67, 0.9)');
                 }
             });
         });
 
         if (analyticsChart) analyticsChart.destroy();
-        const maxTurnover = Math.max(...incomeData, ...expenseData, 0);
         
-        analyticsChart = new Chart(document.getElementById('analyticsChartCanvas').getContext('2d'), {
-            data: { labels, datasets: [ { type: 'bar', label: isBiz ? 'Чистая прибыль' : 'Чистый остаток', data: freeMoneyData, backgroundColor: barColors, borderRadius: 8, borderWidth: 0, yAxisID: 'y', order: 2 }, { type: 'line', label: isBiz ? 'Оборот (маржа)' : 'Доход', data: incomeData, borderColor: 'rgba(10, 132, 255, 0.8)', borderWidth: 3, tension: 0.4, pointRadius: 0, pointHoverRadius: 8, pointBackgroundColor: '#1c1c1e', pointBorderColor: 'rgba(10, 132, 255, 1)', pointBorderWidth: 3, yAxisID: 'y1', order: 1 }, { type: 'line', label: 'Расход', data: expenseData, borderColor: 'rgba(255, 159, 10, 0.8)', borderWidth: 3, borderDash: [8, 6], tension: 0.4, pointRadius: 0, pointHoverRadius: 8, pointBackgroundColor: '#1c1c1e', pointBorderColor: 'rgba(255, 159, 10, 1)', pointBorderWidth: 3, yAxisID: 'y1', order: 1 } ] },
-            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 12, font: {family: '-apple-system', size: 14, weight: '600'} } }, tooltip: { backgroundColor: 'rgba(44, 44, 46, 0.95)', titleColor: '#a1a1a6', titleFont: { size: 14, weight: '500' }, bodyFont: { size: 16, weight: 'bold' }, padding: 18, cornerRadius: 16, callbacks: { label: function(context) { let prefix = (context.dataset.label === 'Чистая прибыль' || context.dataset.label === 'Чистый остаток') && context.parsed.y > 0 ? '+' : ''; return context.dataset.label + ': ' + prefix + formatMoney(context.parsed.y) + ' ₴'; } } } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 13, family: '-apple-system', weight: '600' }, color: '#a1a1a6' } }, y: { type: 'linear', position: 'left', grid: { color: 'rgba(255,255,255,0.05)', borderDash: [5, 5] }, ticks: { color: '#a1a1a6', font: { size: 13, family: '-apple-system', weight: '500' }, callback: function(value) { if (value >= 1000000 || value <= -1000000) return formatMoney(value / 1000000) + 'M'; if (value >= 1000 || value <= -1000) return formatMoney(value / 1000) + 'k'; return formatMoney(value); } } }, y1: { type: 'linear', position: 'right', display: false, suggestedMin: 0, suggestedMax: maxTurnover * 1.3 } } }
+        const canvas = document.getElementById('analyticsChartCanvas');
+        const ctx = canvas.getContext('2d');
+        const maxTurnover = Math.max(...incomeData, ...expenseData, 0);
+
+        // --- СОЗДАЕМ ПРЕМИАЛЬНЫЕ ГРАДИЕНТЫ ---
+        // Зеленый для прибыли
+        const gradientGreen = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientGreen.addColorStop(0, 'rgba(46, 160, 67, 0.9)');
+        gradientGreen.addColorStop(1, 'rgba(46, 160, 67, 0.1)');
+
+        // Красный для убытка
+        const gradientRed = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientRed.addColorStop(0, 'rgba(255, 69, 58, 0.9)');
+        gradientRed.addColorStop(1, 'rgba(255, 69, 58, 0.1)');
+
+        // Синее свечение под линией дохода
+        const gradientBlue = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientBlue.addColorStop(0, 'rgba(10, 132, 255, 0.3)');
+        gradientBlue.addColorStop(1, 'rgba(10, 132, 255, 0.0)');
+
+        // Оранжевое свечение под линией расхода
+        const gradientOrange = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientOrange.addColorStop(0, 'rgba(255, 159, 10, 0.3)');
+        gradientOrange.addColorStop(1, 'rgba(255, 159, 10, 0.0)');
+
+        // Применяем градиент к барам в зависимости от плюса или минуса
+        const dynamicBarColors = freeMoneyData.map(val => val < 0 ? gradientRed : gradientGreen);
+
+        analyticsChart = new Chart(ctx, {
+            data: { 
+                labels, 
+                datasets: [ 
+                    { 
+                        type: 'bar', 
+                        label: isBiz ? 'Чистая прибыль' : 'Чистый остаток', 
+                        data: freeMoneyData, 
+                        backgroundColor: dynamicBarColors, 
+                        borderRadius: 12, // Скругленные столбики
+                        borderSkipped: false,
+                        borderWidth: 0, 
+                        yAxisID: 'y', 
+                        order: 2 
+                    }, 
+                    { 
+                        type: 'line', 
+                        label: isBiz ? 'Оборот (маржа)' : 'Доход', 
+                        data: incomeData, 
+                        borderColor: '#0a84ff', 
+                        backgroundColor: gradientBlue, // Заливка под линией
+                        fill: true, // Включаем свечение
+                        borderWidth: 4, 
+                        tension: 0.4, // Плавные изгибы
+                        pointRadius: 4, 
+                        pointHoverRadius: 8, 
+                        pointBackgroundColor: '#1c1c1e', 
+                        pointBorderColor: '#0a84ff', 
+                        pointBorderWidth: 3, 
+                        yAxisID: 'y1', 
+                        order: 1 
+                    }, 
+                    { 
+                        type: 'line', 
+                        label: 'Расход', 
+                        data: expenseData, 
+                        borderColor: '#ff9f0a', 
+                        backgroundColor: gradientOrange, // Заливка под линией
+                        fill: true, // Включаем свечение
+                        borderWidth: 4, 
+                        tension: 0.4, 
+                        pointRadius: 4, 
+                        pointHoverRadius: 8, 
+                        pointBackgroundColor: '#1c1c1e', 
+                        pointBorderColor: '#ff9f0a', 
+                        pointBorderWidth: 3, 
+                        yAxisID: 'y1', 
+                        order: 1 
+                    } 
+                ] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                interaction: { mode: 'index', intersect: false }, 
+                plugins: { 
+                    legend: { 
+                        display: true, 
+                        position: 'top', 
+                        labels: { 
+                            usePointStyle: true, 
+                            padding: 20,
+                            boxWidth: 12, 
+                            font: {family: '-apple-system', size: 14, weight: '600'},
+                            color: '#a1a1a6'
+                        } 
+                    }, 
+                    tooltip: { 
+                        backgroundColor: 'rgba(28, 28, 30, 0.95)', // Стеклянный тултип
+                        titleColor: '#a1a1a6', 
+                        titleFont: { size: 14, weight: '500' }, 
+                        bodyFont: { size: 16, weight: 'bold' }, 
+                        bodySpacing: 8,
+                        padding: 18, 
+                        cornerRadius: 16, 
+                        borderColor: 'rgba(255,255,255,0.1)', // Тонкая рамка
+                        borderWidth: 1,
+                        callbacks: { 
+                            label: function(context) { 
+                                let prefix = (context.dataset.label === 'Чистая прибыль' || context.dataset.label === 'Чистый остаток') && context.parsed.y > 0 ? '+' : ''; 
+                                return context.dataset.label + ': ' + prefix + formatMoney(context.parsed.y) + ' ₴'; 
+                            } 
+                        } 
+                    } 
+                }, 
+                scales: { 
+                    x: { 
+                        grid: { display: false }, 
+                        ticks: { font: { size: 13, family: '-apple-system', weight: '600' }, color: '#a1a1a6', padding: 10 } 
+                    }, 
+                    y: { 
+                        type: 'linear', 
+                        position: 'left', 
+                        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false }, // Убрали пунктиры, сделали сплошную тонкую линию
+                        ticks: { 
+                            color: '#a1a1a6', 
+                            font: { size: 13, family: '-apple-system', weight: '500' }, 
+                            padding: 10,
+                            callback: function(value) { 
+                                if (value >= 1000000 || value <= -1000000) return formatMoney(value / 1000000) + 'M'; 
+                                if (value >= 1000 || value <= -1000) return formatMoney(value / 1000) + 'k'; 
+                                return formatMoney(value); 
+                            } 
+                        } 
+                    }, 
+                    y1: { type: 'linear', position: 'right', display: false, suggestedMin: 0, suggestedMax: maxTurnover * 1.3 } 
+                } 
+            } 
         });
     }
 
