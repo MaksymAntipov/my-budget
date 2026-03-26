@@ -213,6 +213,43 @@
         }
         .auth-glass-overlay.active .auth-footer-security { transform: translateY(0); }
 
+        /* СТИЛИ ДЛЯ СЧЕТЧИКА ПРОФИЛЕЙ */
+        .auth-stats-badge {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: rgba(30, 30, 32, 0.6);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 100;
+            opacity: 0;
+            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            animation-delay: 0.3s;
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--sys-green);
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 8px var(--sys-green);
+            animation: pulse-animation 2s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 160, 67, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 160, 67, 0); }
+        }
+
         .type-selector { display: flex; gap: 8px; margin-bottom: 20px; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.05);}
         .type-btn { flex: 1; padding: 12px; border: none; background: transparent; border-radius: 14px; font-size: 15px; font-weight: 600; color: #a1a1a6; cursor: pointer; transition: 0.3s; }
         .type-btn.active { background: linear-gradient(135deg, #3a3a3c, #2c2c2e); color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);}
@@ -930,6 +967,11 @@
 </div>
 
 <div id="auth-overlay" class="auth-glass-overlay">
+    <div class="auth-stats-badge" id="auth-stats-badge" style="display: none;">
+        <div class="pulse-dot"></div>
+        Создано профилей: <span id="auth-stats-count" style="margin-left: 6px; font-weight: 700; color: white;">0</span>
+    </div>
+
     <div class="auth-hero">
         <h1 class="auth-hero-title">Анализ и стратегия вашего капитала</h1>
         <p class="auth-hero-subtitle">Всё в одном решении</p>
@@ -1052,6 +1094,36 @@
 </div>
 
 <script>
+    async function loadAuthStats() {
+        try {
+            const response = await fetch(`${API_URL}/api/stats`);
+            const data = await response.json();
+            
+            if (data.success && data.total > 0) {
+                const badge = document.getElementById('auth-stats-badge');
+                const counterElement = document.getElementById('auth-stats-count');
+                badge.style.display = 'flex'; // Показываем бейдж
+                
+                // Анимация бегущих цифр
+                let startValue = 0;
+                const endValue = data.total;
+                const duration = 1500; // 1.5 секунды на анимацию
+                // Рассчитываем задержку так, чтобы успеть за 1.5 секунды
+                const stepTime = Math.abs(Math.floor(duration / endValue)); 
+                
+                const timer = setInterval(() => {
+                    startValue += 1;
+                    counterElement.innerText = startValue;
+                    if (startValue >= endValue) {
+                        clearInterval(timer);
+                        counterElement.innerText = endValue;
+                    }
+                }, stepTime > 0 ? stepTime : 10);
+            }
+        } catch (e) {
+            console.error("Ошибка загрузки статистики", e);
+        }
+    }
     // ==========================================
     // 1. КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
     // ==========================================
@@ -1140,10 +1212,12 @@
         }, 1000);
     }
 
-    function showAuthScreen() {
+function showAuthScreen() {
         document.getElementById('auth-overlay').classList.add('active');
         document.getElementById('login-email').value = '';
         document.getElementById('login-error').style.display = 'none';
+        
+        loadAuthStats(); // <--- ДОБАВИЛИ ВЫЗОВ ЗДЕСЬ
     }
 
     function showCreateProfile() {
