@@ -2266,6 +2266,14 @@ function executeTransfer() {
         if (rows.length === 0) return;
         data.addRows(rows);
 
+        // --- ИСПРАВЛЕНИЕ: Убираем знаки после запятой во всплывающих подсказках ---
+        const formatter = new google.visualization.NumberFormat({
+            fractionDigits: 0, // 0 знаков после запятой
+            groupingSymbol: ' ' // Пробел как разделитель тысяч (например: 1 234)
+        });
+        formatter.format(data, 2); // Применяем форматирование к 3-й колонке (числам)
+        // ----------------------------------------------------------------------
+
         // Премиальные цвета в стиле Apple
         const colors = ['#0a84ff', '#32d74b', '#ff9f0a', '#ff453a', '#ffd60a', '#5e5ce6', '#bf5af2', '#66d4cf', '#8e8e93'];
 
