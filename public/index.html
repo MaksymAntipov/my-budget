@@ -81,29 +81,29 @@
 
         * { box-sizing: border-box; }
         /* КАСТОМНИЙ СКРОЛБАР ДЛЯ ВСЬОГО ПРОЄКТУ */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
 
-::-webkit-scrollbar-track {
-    background: transparent; 
-}
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
 
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-}
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
 
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
 
-/* Для Firefox */
-* {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
+        /* Для Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
 
         body {
             background-color: #000000; 
@@ -814,7 +814,7 @@
                         <div class="daily-limit-val" id="daily-limit-val-container"><span id="daily-limit-val">0.00</span> ₴</div>
                     </div>
                     
-                    <div id="cashflow-box" class="cashflow-box" style="display: none;">
+                    <div id="cashflow-box" class="cashflow-box">
                         <div class="cf-row"><span>План витрат:</span> <span class="cf-val" id="cf-plan">0.00 ₴</span></div>
                         <div class="cf-row"><span>Вже оплачено:</span> <span class="cf-val" id="cf-paid" style="color: var(--sys-green);">0.00 ₴</span></div>
                         <div class="cf-divider"></div>
@@ -827,14 +827,13 @@
                         <div id="sankey_basic" style="width: 100%; height: 100%;"></div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 28px; margin-bottom: 28px;">
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 28px; margin-bottom: 28px;">
                         <div style="background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.15)); padding: 20px; border-radius: 20px; text-align: center; border: 1px solid rgba(10, 132, 255, 0.2); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
                             <div id="label-yearly-remaining" style="font-size: 14px; color: var(--sys-blue); font-weight: 700; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Чистими за рік</div>
                             <div class="tabular" style="font-weight: 800; font-size: 20px; color: var(--text-primary);"><span id="yearly-remaining">0.00</span> ₴</div>
                         </div>
-                        <div id="old-expenses-box" style="background: rgba(0, 0, 0, 0.3); padding: 20px; border-radius: 20px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
-                            <div style="font-size: 14px; color: var(--text-secondary); font-weight: 700; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Витрати за місяць</div>
-                            <div class="tabular" style="font-weight: 800; font-size: 20px; color: var(--text-primary);"><span id="total-expenses">0.00</span> ₴</div>
+                        <div id="old-expenses-box" style="display: none;">
+                            <span id="total-expenses">0.00</span>
                         </div>
                     </div>
                     
@@ -1480,7 +1479,6 @@ async function performLogin(user) {
         document.getElementById('nav-avatar').innerText = user.name.charAt(0).toUpperCase();
         document.getElementById('nav-avatar').style.background = `linear-gradient(135deg, ${color}, #000)`;
         
-        // --- ИСПРАВЛЕНИЕ: Возвращаем блок на экран перед анимацией прозрачности ---
         const appContainer = document.getElementById('app-container');
         appContainer.style.display = 'flex';
         setTimeout(() => {
@@ -1520,14 +1518,21 @@ async function performLogin(user) {
         document.getElementById('cogs-block').style.display = isBiz ? 'block' : 'none';
         document.getElementById('cogs-flow').style.display = isBiz ? 'flex' : 'none';
 
+        // Показуємо cashflow-box для всіх
+        document.getElementById('cashflow-box').style.display = 'flex';
+        
+        // Приховуємо old-expenses-box для всіх (щоб не дублювати "План витрат")
+        const oldExpBox = document.getElementById('old-expenses-box');
+        if(oldExpBox) {
+            oldExpBox.style.display = 'none';
+            // Робимо так, щоб віджет "Чистими за рік" розтягнувся на весь рядок
+            oldExpBox.parentElement.style.gridTemplateColumns = '1fr';
+        }
+
         if (isBiz) {
             document.getElementById('daily-limit-box').style.display = 'none';
-            document.getElementById('cashflow-box').style.display = 'flex';
-            document.getElementById('old-expenses-box').style.display = 'none'; 
         } else {
             document.getElementById('daily-limit-box').style.display = 'flex';
-            document.getElementById('cashflow-box').style.display = 'none';
-            document.getElementById('old-expenses-box').style.display = 'block';
         }
     }
 
@@ -1640,7 +1645,6 @@ function logout() {
         appContainer.style.opacity = '0';
         appContainer.style.pointerEvents = 'none';
         
-        // --- ИСПРАВЛЕНИЕ: Прячем блок после затухания, чтобы убрать скролл ---
         setTimeout(() => {
             appContainer.style.display = 'none';
             showAuthScreen();
@@ -2001,7 +2005,7 @@ function logout() {
             const cost10Years = totalAmount * 120;
             
             const allItemsPaid = exp.items.length > 0 && exp.items.every(item => item.isPaid === true);
-            const paidClass = (allItemsPaid && isBiz) ? 'fully-paid' : '';
+            const paidClass = (allItemsPaid) ? 'fully-paid' : '';
             
             let rankClass = '', badgeHtml = '';
             if (totalAmount > 0) {
@@ -2073,7 +2077,6 @@ function logout() {
         const list = document.getElementById('modal-subitems-list');
         list.innerHTML = '';
         const tops = getTop3SubItems(category);
-        const isBiz = currentUser && currentUser.account_type === 'business';
 
         category.items.forEach(item => {
             let amt = parseFloat(item.amount) || 0, rankClass = '', badgeClass = '', badgeText = '';
@@ -2085,7 +2088,7 @@ function logout() {
             const badgeHtml = badgeText ? `<div class="badge-wrapper" style="display:flex; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge ${badgeClass}">${badgeText}</span></div>` : `<div class="badge-wrapper" style="display:none; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge"></span></div>`;
             const isChecked = item.isPaid ? 'checked' : '';
             const paidClass = item.isPaid ? 'paid-amount' : '';
-            const checkboxHtml = isBiz ? `<div class="check-container ${isChecked}" onclick="togglePaidStatus(${item.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>` : '';
+            const checkboxHtml = `<div class="check-container ${isChecked}" onclick="togglePaidStatus(${item.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
 
             const div = document.createElement('div');
             div.className = `sub-item ${rankClass}`;
@@ -2282,14 +2285,12 @@ function logout() {
         const remaining = displayIncomeUah - totalExp;
         const percent = displayIncomeUah > 0 ? ((remaining / displayIncomeUah) * 100).toFixed(1) : 0;
 
+        // Оновлюємо віджет "План витрат / Оплачено / Залишок" для всіх типів акаунтів
         document.getElementById('total-expenses').innerText = formatMoney(totalExp);
-        
-        if (isBiz) {
-            const leftToPay = totalExp - paidExp;
-            document.getElementById('cf-plan').innerText = formatMoney(totalExp) + ' ₴';
-            document.getElementById('cf-paid').innerText = formatMoney(paidExp) + ' ₴';
-            document.getElementById('cf-left').innerText = formatMoney(leftToPay) + ' ₴';
-        }
+        const leftToPay = totalExp - paidExp;
+        document.getElementById('cf-plan').innerText = formatMoney(totalExp) + ' ₴';
+        document.getElementById('cf-paid').innerText = formatMoney(paidExp) + ' ₴';
+        document.getElementById('cf-left').innerText = formatMoney(leftToPay) + ' ₴';
 
         document.getElementById('remaining-money').innerText = formatMoney(remaining);
         document.getElementById('remaining-percent').innerText = percent;
