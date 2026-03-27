@@ -80,6 +80,30 @@
         }
 
         * { box-sizing: border-box; }
+        /* КАСТОМНИЙ СКРОЛБАР ДЛЯ ВСЬОГО ПРОЄКТУ */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent; 
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Для Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
 
         body {
             background-color: #000000; 
@@ -534,6 +558,7 @@
             display: flex; 
             flex-direction: column; 
             gap: 20px;
+            flex-shrink: 0;
         }
         .jar-card::after {
             content: '';
