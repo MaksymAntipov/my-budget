@@ -973,10 +973,10 @@
             <h3 style="margin: 0; color: var(--sys-red);">Внести платіж</h3>
             <button class="btn-close-modal" onclick="closePayDebtModal()">✕</button>
         </div>
-        <p style="color: var(--text-secondary); margin-top: -12px; margin-bottom: 24px;">Будь-яке зобов'язання погашається у гривні. Сума автоматично конвертується.</p>
+        <p style="color: var(--text-secondary); margin-top: -12px; margin-bottom: 24px;">Введіть суму платежу у валюті боргу. У бюджет витрата піде в гривневому еквіваленті за курсом НБУ.</p>
         <input type="hidden" id="pay-debt-id">
         <div class="usd-input-wrapper" style="margin-bottom: 28px;">
-            <span style="color: var(--sys-red); font-size: 24px;">₴</span>
+            <span id="pay-debt-currency-symbol" style="color: var(--sys-red); font-size: 24px;">₴</span>
             <input type="number" id="pay-debt-amount" style="color: var(--sys-red); font-size: 28px;" placeholder="0">
         </div>
         <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" onclick="executeDebtPayment()">Погасити</button>
@@ -2721,6 +2721,11 @@ function logout() {
     }
 
     function payDebt(id) {
+        const debt = globalData.debts[currentUser.id].find(d => d.id == id);
+        if (!debt) return;
+
+        document.getElementById('pay-debt-currency-symbol').innerText = debt.currency === 'USD' ? '$' : '₴';
+        
         document.getElementById('pay-debt-id').value = id;
         document.getElementById('pay-debt-amount').value = '';
         document.getElementById('pay-debt-modal').classList.add('active');
@@ -2736,15 +2741,19 @@ function logout() {
     function executeDebtPayment() {
         const id = document.getElementById('pay-debt-id').value;
         const amountStr = document.getElementById('pay-debt-amount').value;
-        const amountInUah = parseFloat(amountStr.replace(',', '.')) || 0; 
+        const inputAmount = parseFloat(amountStr.replace(',', '.')) || 0; 
         
-        if (!id || amountInUah <= 0) return;
+        if (!id || inputAmount <= 0) return;
 
         const debt = globalData.debts[currentUser.id].find(d => d.id == id);
         if (!debt) return;
 
-        let amountToDeduct = amountInUah;
-        if (debt.currency === 'USD') amountToDeduct = amountInUah / currentExchangeRate;
+        let amountToDeduct = inputAmount; 
+        let amountInUah = inputAmount;    
+
+        if (debt.currency === 'USD') {
+            amountInUah = inputAmount * currentExchangeRate; 
+        }
 
         let debtCat = expenses.find(e => e.name === "Погашення боргів");
         if (!debtCat) {
@@ -2755,7 +2764,7 @@ function logout() {
         debtCat.items.push({
             id: Date.now(),
             name: `Платіж: ${debt.name}`,
-            amount: amountInUah,
+            amount: amountInUah,          
             isPaid: true,
             debtId: debt.id,
             debtDeduction: amountToDeduct 
