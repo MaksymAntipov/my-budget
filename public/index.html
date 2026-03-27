@@ -56,6 +56,55 @@
             color: var(--text-primary);
             font-weight: 600;
         }
+
+        /* СТИЛІ ДЛЯ CHANGELOG */
+        .auth-hero-changelog {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(46, 160, 67, 0.1); 
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(46, 160, 67, 0.2);
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        .auth-hero-changelog:hover {
+            background: rgba(46, 160, 67, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 160, 67, 0.2);
+        }
+        .changelog-item {
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 20px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+        .changelog-date {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .changelog-content {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 12px 0 0 0;
+            padding-left: 20px;
+        }
+        .changelog-content li { margin-bottom: 8px; }
+        .changelog-content li:last-child { margin-bottom: 0; }
+
         :root {
             --sys-blue: #0a84ff;
             --sys-blue-glow: rgba(10, 132, 255, 0.4);
@@ -617,12 +666,12 @@
         @media (max-width: 600px) {
             body { padding: 12px; }
             /* ЦЕНТРИРУЕМ СЧЕТЧИК НА МОБИЛЬНЫХ */
-        .auth-stats-badge {
-            position: relative !important;
-            top: auto !important;
-            right: auto !important;
-            margin-bottom: 24px;
-        }
+            .auth-stats-badge {
+                position: relative !important;
+                top: auto !important;
+                right: auto !important;
+                margin-bottom: 24px;
+            }
             
             .glass-card { padding: 24px 20px; border-radius: 32px; }
             h1 { font-size: 24px; margin-bottom: 20px; }
@@ -659,6 +708,54 @@
     </style>
 </head>
 <body onload="init()">
+
+<script>
+    // ==========================================
+    // НОВИНИ / CHANGELOG
+    // ==========================================
+    const changelogData = [
+        {
+            date: "27 Березня 2026",
+            version: "v1.2",
+            changes: [
+                "Виправлено відображення карток при великій кількості боргів та конвертів.",
+                "Платежі по боргах тепер зручно вносити в оригінальній валюті ($ або ₴). У бюджет сума конвертується автоматично за курсом НБУ.",
+                "Оновлено дизайн скролбарів: тепер вони тонкі та стильні по всьому застосунку."
+            ]
+        },
+        {
+            date: "25 Березня 2026",
+            version: "v1.1",
+            changes: [
+                "Додано віджет 'Залишок до оплати' для особистих профілів.",
+                "Запущено можливість відмічати витрати як 'Оплачені' (✓)."
+            ]
+        }
+    ];
+
+    // ==========================================
+    // 1. КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+    // ==========================================
+    const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
+    const API_URL = 'https://api.myskrynia.com.ua';
+    const appleColors = [ '#ff453a', '#ff9f0a', '#ffd60a', '#2ea043', '#66d4cf', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#32ade6' ];
+
+    let globalData = { jars: {}, debts: {} }; 
+    let currentUser = null;
+    let defaultCategories = []; 
+    let appData = {}; 
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth(); 
+    let expenses = []; 
+    let myChart = null;
+    let analyticsChart = null; 
+    let currentExchangeRate = 0;
+    let currentIncomeUah = 0; 
+    let activeCategoryId = null;
+    let pendingConfirmAction = null; 
+    let tempAuthData = null; 
+    let otpTimer = null;
+</script>
 
 <div id="app-container" style="opacity: 0; pointer-events: none; transition: opacity 0.5s ease; width: 100%; display: none; flex-direction: column; align-items: center; min-height: 100vh;">
     <div class="top-nav">
@@ -996,9 +1093,25 @@
     </div>
 </div>
 
+<div id="changelog-modal" class="auth-glass-overlay" style="z-index: 10000; background: rgba(0,0,0,0.7) !important; -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px);" onclick="closeChangelogModal(event)">
+    <div class="auth-card" style="max-width: 500px; max-height: 85vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+        <div class="auth-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; text-align: left;">
+            <div>
+                <h2 class="auth-title" style="font-size: 24px; margin-bottom: 4px;">Що нового? 🚀</h2>
+                <p class="auth-subtitle">Останні оновлення сервісу</p>
+            </div>
+            <button class="btn-close-modal" style="margin: 0; align-self: flex-start; border: 1px solid rgba(255,255,255,0.1);" onclick="closeChangelogModal()">✕</button>
+        </div>
+        
+        <div id="changelog-list" style="overflow-y: auto; padding-right: 8px; flex: 1; margin-bottom: 16px;"></div>
+        
+        <button class="btn-init-primary" onclick="closeChangelogModal()">Зрозуміло</button>
+    </div>
+</div>
+
 <div id="auth-overlay" class="auth-glass-overlay">
     <div class="auth-stats-badge" id="auth-stats-badge" style="display: none;">
-        <div class="pulse-dot"></div>
+        <div class="pulse-dot" style="display: inline-block;"></div>
         Створено профілів: <span id="auth-stats-count" style="margin-left: 6px; font-weight: 700; color: white;">0</span>
     </div>
 
@@ -1010,6 +1123,13 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ff453a;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
             <div>Проєкт на 100% безкоштовний. <span>Підтримати розвиток</span></div>
         </a>
+
+        <div style="margin-top: 16px;">
+            <button class="auth-hero-changelog" onclick="openChangelogModal()">
+                <span class="pulse-dot" style="margin-right: 8px; width: 6px; height: 6px; box-shadow: 0 0 6px var(--sys-green); display: inline-block;"></span>
+                🔥 Оновлення 27.03
+            </button>
+        </div>
     </div>
 
     <div class="auth-card">
@@ -1152,28 +1272,37 @@
             console.error("Помилка завантаження статистики", e);
         }
     }
-    // ==========================================
-    // 1. КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-    // ==========================================
-    const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
-    const API_URL = 'https://api.myskrynia.com.ua';
-    const appleColors = [ '#ff453a', '#ff9f0a', '#ffd60a', '#2ea043', '#66d4cf', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#32ade6' ];
 
-    let globalData = { jars: {}, debts: {} }; 
-    let currentUser = null;
-    let defaultCategories = []; 
-    let appData = {}; 
-    let currentYear = new Date().getFullYear();
-    let currentMonth = new Date().getMonth(); 
-    let expenses = []; 
-    let myChart = null;
-    let analyticsChart = null; 
-    let currentExchangeRate = 0;
-    let currentIncomeUah = 0; 
-    let activeCategoryId = null;
-    let pendingConfirmAction = null; 
-    let tempAuthData = null; 
-    let otpTimer = null;
+    function renderChangelog() {
+        const list = document.getElementById('changelog-list');
+        list.innerHTML = '';
+        
+        changelogData.forEach(item => {
+            let lis = item.changes.map(c => `<li>${c}</li>`).join('');
+            list.innerHTML += `
+                <div class="changelog-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="changelog-date">${item.date}</div>
+                        <div style="font-size: 11px; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 8px; color: white; font-weight: 700;">${item.version}</div>
+                    </div>
+                    <ul class="changelog-content">
+                        ${lis}
+                    </ul>
+                </div>
+            `;
+        });
+    }
+
+    function openChangelogModal() {
+        renderChangelog();
+        document.getElementById('changelog-modal').classList.add('active');
+    }
+
+    function closeChangelogModal(e) {
+        if (!e || e.target.id === 'changelog-modal' || e.target.className === 'btn-close-modal' || (e.target.tagName.toLowerCase() === 'button' && e.target.innerText === 'Зрозуміло')) {
+            document.getElementById('changelog-modal').classList.remove('active');
+        }
+    }
 
     // ==========================================
     // 2. УТИЛИТЫ И БАЗОВЫЕ ФУНКЦИИ
