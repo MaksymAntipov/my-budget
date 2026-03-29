@@ -8,6 +8,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
+        /* Заборона ланцюгового скролу (scroll bleed) для внутрішніх скролів */
+        .modal-content, .auth-card, .modal-items-container, #jars-list, #debts-list {
+            overscroll-behavior: contain;
+        }
+
         /* HERO БЛОК АВТОРИЗАЦИЇ */
         .auth-hero {
             text-align: center;
@@ -489,7 +494,7 @@
         .preview-item { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
         .preview-item:last-child { margin-bottom: 0; }
         .preview-item-name { opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .preview-item-amount { font-weight: 700; }
+        .preview-item-amount { font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
         .expense-10y { position: absolute; bottom: calc(100% + 8px); right: 0; font-size: 12px; color: var(--text-tertiary); text-align: right; white-space: nowrap; font-weight: 500;}
         .val-10y { font-weight: 700; color: var(--text-secondary); }
@@ -755,6 +760,7 @@
     let pendingConfirmAction = null; 
     let tempAuthData = null; 
     let otpTimer = null;
+    let saveTimeout = null;
 </script>
 
 <div id="app-container" style="opacity: 0; pointer-events: none; transition: opacity 0.5s ease; width: 100%; display: none; flex-direction: column; align-items: center; min-height: 100vh;">
@@ -1332,6 +1338,20 @@
         fetchExchangeRate();
         initChart();
         
+        // --- БЕЗПЕЧНЕ ГЛОБАЛЬНЕ БЛОКУВАННЯ СКРОЛУ ---
+        // Замість спостереження за всім DOM (що "вішало" сторінку), 
+        // стежимо тільки за самими модальними вікнами.
+        const modals = document.querySelectorAll('.modal-overlay, .auth-glass-overlay');
+        const observer = new MutationObserver(() => {
+            const hasActiveModal = document.querySelector('.modal-overlay.active, .auth-glass-overlay.active') !== null;
+            document.body.style.overflow = hasActiveModal ? 'hidden' : '';
+        });
+        
+        modals.forEach(modal => {
+            observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+        });
+        // ----------------------------------------------
+
         const savedUserId = localStorage.getItem('budget_saved_user_id');
         const savedUserInfo = localStorage.getItem('budget_saved_user_info');
         
@@ -1724,29 +1744,36 @@ async function performLogin(user) {
 
     async function saveDataToServer() {
         if (!currentUser) return;
-        const currentMonthData = appData[currentYear]?.[currentMonth] || {};
-        const payload = {
-            userId: currentUser.id,
-            year: currentYear, month: currentMonth,
-            incomes: currentMonthData.incomes || [],
-            expenses: currentMonthData.expenses || expenses || [],
-            cogs: currentMonthData.cogs || {type: 'percent', value: 0},
-            jars: globalData.jars[currentUser.id] || [],
-            debts: globalData.debts[currentUser.id] || []
-        };
-        try {
-            const token = localStorage.getItem('budget_auth_token');
-            await fetch(`${API_URL}/api/data`, { 
-                method: 'POST', 
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }, 
-                body: JSON.stringify(payload) 
-            });
-        } catch (e) {
-            console.error("Помилка збереження на сервер:", e);
+
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
         }
+
+        saveTimeout = setTimeout(async () => {
+            const currentMonthData = appData[currentYear]?.[currentMonth] || {};
+            const payload = {
+                userId: currentUser.id,
+                year: currentYear, month: currentMonth,
+                incomes: currentMonthData.incomes || [],
+                expenses: currentMonthData.expenses || expenses || [],
+                cogs: currentMonthData.cogs || {type: 'percent', value: 0},
+                jars: globalData.jars[currentUser.id] || [],
+                debts: globalData.debts[currentUser.id] || []
+            };
+            try {
+                const token = localStorage.getItem('budget_auth_token');
+                await fetch(`${API_URL}/api/data`, { 
+                    method: 'POST', 
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }, 
+                    body: JSON.stringify(payload) 
+                });
+            } catch (e) {
+                console.error("Помилка збереження на сервер:", e);
+            }
+        }, 1000);
     }
 
     async function saveData() {
@@ -2144,7 +2171,7 @@ function logout() {
             }
             
             let tooltipHtml = exp.items.length > 0 
-                ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${i.name || 'Без назви'}</span><span class="preview-item-amount">${formatMoney(parseFloat(i.amount)||0)} ₴${i.isPaid ? ' <span style="color: var(--sys-green);">✓</span>' : ''}</span></div>`).join('')
+                ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${i.name || 'Без назви'}</span><span class="preview-item-amount">${formatMoney(parseFloat(i.amount)||0)} ₴${i.isPaid ? '<span style="color: var(--sys-green);">✓</span>' : ''}</span></div>`).join('')
                 : '<div style="opacity:0.7;">Немає доданих статей</div>';
 
             const isSavingsClass = exp.isSavings ? 'color: var(--sys-green); font-weight: 700;' : '';
@@ -2522,7 +2549,7 @@ function logout() {
     function openEnvelopesModal() { renderEnvelopes(); document.getElementById('jars-modal').classList.add('active'); }
     function closeEnvelopesModal(e) { if (!e || e.target.id === 'jars-modal' || e.target.className === 'btn-close-modal') document.getElementById('jars-modal').classList.remove('active'); }
 
-    function renderEnvelopes() {
+function renderEnvelopes() {
         const list = document.getElementById('jars-list');
         list.innerHTML = '';
         const userJars = globalData.jars[currentUser.id] || [];
@@ -2531,13 +2558,44 @@ function logout() {
 
         userJars.forEach(jar => {
             const percent = jar.goal > 0 ? Math.min(100, (jar.balance / jar.goal) * 100) : 0;
-            const goalText = jar.goal > 0 ? `з ${formatMoney(jar.goal)} ₴` : '';
+            const goalText = jar.goal > 0 ? `/ ${formatMoney(jar.goal)} ₴` : '';
+            
+            // Компактний інпут для основного конверта
             const balanceDisplay = jar.isMain 
-                ? `<input type="number" value="${jar.balance}" onchange="updateMainJarBalance(${jar.id}, this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; font-size: 26px; font-weight: 800; width: 150px; padding: 8px 16px; outline: none; transition: 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" onfocus="this.style.background='rgba(255,255,255,0.1)'" onblur="this.style.background='rgba(255,255,255,0.05)'"> <span style="margin-left: 8px;">₴</span>`
-                : `${formatMoney(jar.balance)} ₴`;
-            const deleteBtn = jar.isMain ? '' : `<button onclick="deleteEnvelope(${jar.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; border-color: transparent; transform: rotate(90deg);" onmouseout="this.style.background='rgba(255,255,255,0.05)'; border-color: rgba(255,255,255,0.1); transform: rotate(0);">✕</button>`;
+                ? `<div style="display: flex; align-items: center; gap: 6px;"><input type="number" value="${jar.balance}" onchange="updateMainJarBalance(${jar.id}, this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--sys-green); font-size: 16px; font-weight: 700; width: 110px; padding: 6px 10px; outline: none; transition: 0.3s; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" onfocus="this.style.background='rgba(255,255,255,0.1)'" onblur="this.style.background='rgba(255,255,255,0.05)'"> <span>₴</span></div>`
+                : `<span style="color: var(--sys-green);">${formatMoney(jar.balance)} ₴</span>`;
+            
+            // Кнопка видалення у стилі карток боргів (хрестик у квадраті)
+            const deleteBtn = jar.isMain ? '' : `<button onclick="deleteEnvelope(${jar.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; border-color: transparent;" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-tertiary)'; border-color: rgba(255,255,255,0.1);">✕</button>`;
+            
+            // Бейджик для основного рахунку
+            const mainBadge = jar.isMain ? `<span style="font-size: 11px; background: rgba(10, 132, 255, 0.15); padding: 2px 6px; border-radius: 6px; color: var(--sys-blue); flex-shrink: 0;">Основний</span>` : '';
 
-            list.innerHTML += `<div class="jar-card"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><div><div class="jar-title">${jar.name}</div><div style="color: rgba(255,255,255,0.6); font-size: 15px; margin-top: 6px; font-weight: 500;">Зібрано</div><div class="jar-balance" style="display: flex; align-items: center; margin-top: 6px;">${balanceDisplay}</div>${goalText ? `<div style="font-size: 15px; opacity: 0.7; margin-top: 8px; font-weight: 500;">${goalText}</div>` : ''}</div>${deleteBtn}</div>${jar.goal > 0 ? `<div class="jar-progress-bg"><div class="jar-progress-fill" style="width: ${percent}%;"></div></div>` : ''}</div>`;
+            list.innerHTML += `
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                    <div style="font-weight: 700; font-size: 16px; color: var(--text-primary); display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
+                        <span style="overflow: hidden; text-overflow: ellipsis;">${jar.name}</span>
+                        ${mainBadge}
+                    </div>
+                    ${deleteBtn}
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="overflow: hidden; padding-right: 8px;">
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 4px;">Зібрано ${jar.goal > 0 ? '/ Ціль' : ''}</div>
+                        <div style="font-size: 16px; font-weight: 700; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;">
+                            ${balanceDisplay}
+                            ${goalText ? `<span style="font-size: 13px; color: var(--text-tertiary); font-weight: 500;">${goalText}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                ${jar.goal > 0 ? `
+                <div class="jar-progress-bg" style="background: rgba(255, 255, 255, 0.05); height: 6px; border-radius: 3px; margin-top: 4px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);">
+                    <div class="jar-progress-fill" style="width: ${percent}%; background: linear-gradient(90deg, var(--sys-green), #1e702e); box-shadow: 0 0 10px rgba(46, 160, 67, 0.5); border-radius: 3px; height: 100%;"></div>
+                </div>` : ''}
+            </div>`;
         });
     }
 
@@ -2741,27 +2799,37 @@ function logout() {
             const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
             const percent = debt.total_amount > 0 ? Math.min(100, ((debt.total_amount - historicalRemaining) / debt.total_amount) * 100) : 0;
             const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
-            const interestTag = debt.interest_rate > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.2); padding: 2px 6px; border-radius: 6px; color: #ff453a; margin-left: 6px;">${debt.interest_rate}% / міс.</span>` : '';
+            const interestTag = debt.interest_rate > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.2); padding: 2px 6px; border-radius: 6px; color: #ff453a; margin-left: 6px; flex-shrink: 0;">${debt.interest_rate}% / міс.</span>` : '';
 
             const isPaidOff = historicalRemaining <= 0;
             const payBtnHtml = isPaidOff 
-                ? `<div style="text-align: center; margin-top: 12px; color: var(--sys-green); font-weight: 700; font-size: 14px;">✓ Повністю погашено (Піде в архів)</div>`
-                : `<button onclick="payDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 10px 16px; border-radius: 14px; color: white; font-weight: 600; cursor: pointer; margin-top: 16px; width: 100%; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">Внести платіж</button>`;
+                ? `<div style="color: var(--sys-green); font-weight: 700; font-size: 13px; padding: 8px 0;">✓ Виплачено</div>`
+                : `<button onclick="payDebt(${debt.id})" style="background-color: rgba(255, 69, 58, 0.1); border: 1px solid rgba(255, 69, 58, 0.2); padding: 8px 16px; border-radius: 12px; color: #ff453a; font-weight: 700; font-size: 13px; cursor: pointer; transition: background-color 0.2s ease; flex-shrink: 0;" onmouseover="this.style.backgroundColor='rgba(255, 69, 58, 0.2)'" onmouseout="this.style.backgroundColor='rgba(255, 69, 58, 0.1)'">Оплатити</button>`;
 
             list.innerHTML += `
-            <div class="jar-card" style="background: linear-gradient(135deg, #2c1a1a 0%, #1a0f0f 100%); border-color: rgba(255, 69, 58, 0.2);">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div style="width: 100%;">
-                        <div class="jar-title" style="color: #ff453a;">${debt.name} <span style="font-size: 12px; background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 6px; color: white;">${debt.currency}</span>${interestTag}</div>
-                        <div style="color: rgba(255,255,255,0.6); font-size: 15px; margin-top: 6px; font-weight: 500;">Залишилось виплатити</div>
-                        <div class="jar-balance" style="display: flex; align-items: center; margin-top: 6px; ${isPaidOff ? 'color: var(--sys-green);' : ''}">${formatMoney(historicalRemaining)} ${currencySymbol}</div>
-                        <div style="font-size: 15px; opacity: 0.7; margin-top: 8px; font-weight: 500;">з ${formatMoney(debt.total_amount)} ${currencySymbol}</div>
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 69, 58, 0.2); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                    <div style="font-weight: 700; font-size: 16px; color: #ff453a; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
+                        <span style="overflow: hidden; text-overflow: ellipsis;">${debt.name}</span>
+                        <span style="font-size: 11px; background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 6px; color: white; flex-shrink: 0;">${debt.currency}</span>
+                        ${interestTag}
                     </div>
-                    <button onclick="deleteDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; border-color: transparent; transform: rotate(90deg);" onmouseout="this.style.background='rgba(255,255,255,0.05)'; border-color: rgba(255,255,255,0.1); transform: rotate(0);">✕</button>
+                    <button onclick="deleteDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; border-color: transparent;" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-tertiary)'; border-color: rgba(255,255,255,0.1);">✕</button>
                 </div>
-                ${payBtnHtml}
-                <div class="jar-progress-bg" style="background: rgba(255, 69, 58, 0.1); margin-top: 16px;">
-                    <div class="jar-progress-fill" style="width: ${percent}%; background: linear-gradient(90deg, #ff453a, #d70015); box-shadow: 0 0 10px rgba(255, 69, 58, 0.5);"></div>
+
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="overflow: hidden; padding-right: 8px;">
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 4px;">Залишок / Всього</div>
+                        <div style="font-size: 16px; font-weight: 700; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;">
+                            <span style="${isPaidOff ? 'color: var(--sys-green);' : ''}">${formatMoney(historicalRemaining)} ${currencySymbol}</span>
+                            <span style="font-size: 13px; color: var(--text-tertiary); font-weight: 500;">/ ${formatMoney(debt.total_amount)} ${currencySymbol}</span>
+                        </div>
+                    </div>
+                    ${payBtnHtml}
+                </div>
+
+                <div class="jar-progress-bg" style="background: rgba(255, 69, 58, 0.1); height: 6px; border-radius: 3px; margin-top: 4px;">
+                    <div class="jar-progress-fill" style="width: ${percent}%; background: linear-gradient(90deg, #ff453a, #d70015); box-shadow: 0 0 10px rgba(255, 69, 58, 0.5); border-radius: 3px;"></div>
                 </div>
             </div>`;
         });
@@ -2772,22 +2840,26 @@ function logout() {
             archivedDebts.forEach(debt => {
                 const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
                 const isAutoArchived = debt.is_archived > 0;
-                const statusText = isAutoArchived ? '✓ Виплачено' : 'Скасовано / Заморожено';
+                const statusText = isAutoArchived ? '✓ Виплачено' : 'Скасовано';
                 const statusColor = isAutoArchived ? 'var(--sys-green)' : 'var(--text-secondary)';
                 const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
                 
                 let deleteBtnHtml = '';
                 if (historicalRemaining === debt.total_amount) {
-                    deleteBtnHtml = `<button onclick="hardDeleteDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; color: white; border-color: transparent;" onmouseout="this.style.background='rgba(255,255,255,0.05)'; color: var(--text-secondary); border-color: rgba(255,255,255,0.1);">✕</button>`;
+                    deleteBtnHtml = `<button onclick="hardDeleteDebt(${debt.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; color: white; border-color: transparent;" onmouseout="this.style.background='rgba(255,255,255,0.05)'; color: var(--text-secondary); border-color: rgba(255,255,255,0.1);">✕</button>`;
                 }
 
                 list.innerHTML += `
-                <div class="jar-card" style="background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); opacity: 0.7; padding: 16px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="width: 100%;">
-                            <div class="jar-title" style="color: var(--text-secondary); font-size: 16px;">${debt.name} <span style="font-size: 11px; background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 6px; color: white;">${debt.currency}</span></div>
-                            <div style="color: ${statusColor}; font-size: 14px; margin-top: 6px; font-weight: 700;">${statusText}</div>
-                            <div style="font-size: 13px; margin-top: 4px; color: var(--text-tertiary); font-weight: 500;">Сума: ${formatMoney(debt.total_amount)} ${currencySymbol}</div>
+                <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; opacity: 0.7; padding: 12px 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="width: 100%; overflow: hidden;">
+                            <div style="color: var(--text-secondary); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <span style="overflow: hidden; text-overflow: ellipsis;">${debt.name}</span> <span style="font-size: 11px; background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 6px; color: white; flex-shrink: 0;">${debt.currency}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; gap: 10px;">
+                                <div style="color: ${statusColor}; font-size: 13px; font-weight: 700; white-space: nowrap;">${statusText}</div>
+                                <div style="font-size: 13px; color: var(--text-tertiary); font-weight: 500; white-space: nowrap;">Сума: ${formatMoney(debt.total_amount)} ${currencySymbol}</div>
+                            </div>
                         </div>
                         ${deleteBtnHtml}
                     </div>
