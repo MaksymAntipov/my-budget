@@ -739,6 +739,34 @@
         /* Нові індикатори для Drag and Drop */
         .schedule-row.drag-over-top td { border-top: 2px solid var(--sys-blue) !important; }
         .schedule-row.drag-over-bottom td { border-bottom: 2px solid var(--sys-blue) !important; }
+
+        /* Робимо іконку календаря світлою для темної теми */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) opacity(0.7);
+            cursor: pointer;
+        }
+
+        /* Стилі для поля пошуку всередині дропдауну постачальників */
+        .dropdown-search-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(0,0,0,0.6);
+            border: none;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            font-size: 15px;
+            outline: none;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .dropdown-search-input::placeholder {
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+        
     </style>
 </head>
 <body onload="init()">
@@ -1185,7 +1213,7 @@
                 <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">+ Додати накладну</h4>
                 
                 <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <div class="custom-dropdown" id="supplier-dropdown-container" style="flex: 1;" onclick="event.stopPropagation(); this.classList.toggle('open')">
+                    <div class="custom-dropdown" id="supplier-dropdown-container" style="flex: 1;" onclick="toggleSupplierDropdown(event)">
                         <div class="custom-dropdown-selected" id="new-invoice-supplier-display" style="height: 48px; padding: 0 32px 0 16px; border-radius: 14px; color: var(--text-secondary); font-weight: 500;">
                             Оберіть постачальника...
                         </div>
@@ -3955,11 +3983,45 @@ function renderSuppliersDropdown() {
             return;
         }
 
+        // Додаємо поле пошуку на початок списку
+        let html = `<input type="text" class="dropdown-search-input" placeholder="🔍 Пошук постачальника..." onclick="event.stopPropagation()" oninput="filterSuppliers(this.value)">`;
+
         suppliers.forEach(s => {
-            // Екрануємо одинарні та подвійні лапки, щоб вони не ламали HTML-атрибут onclick
             const safeName = s.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            
-            container.innerHTML += `<div class="custom-dropdown-option" onclick="selectSupplier(event, '${s.id}', '${safeName}')">${s.name}</div>`;
+            html += `<div class="custom-dropdown-option supplier-item" onclick="selectSupplier(event, '${s.id}', '${safeName}')">${s.name}</div>`;
+        });
+        
+        container.innerHTML = html;
+    }
+
+    // НОВА ФУНКЦІЯ: Відкриття дропдауну та фокус на пошуку
+    function toggleSupplierDropdown(e) {
+        e.stopPropagation();
+        const container = document.getElementById('supplier-dropdown-container');
+        container.classList.toggle('open');
+        
+        if (container.classList.contains('open')) {
+            const searchInput = container.querySelector('.dropdown-search-input');
+            if (searchInput) {
+                searchInput.value = ''; // Очищаємо попередній пошук
+                filterSuppliers('');    // Показуємо весь список
+                setTimeout(() => searchInput.focus(), 50); // Автофокус
+            }
+        }
+    }
+
+    // НОВА ФУНКЦІЯ: Фільтрація списку на льоту
+    function filterSuppliers(keyword) {
+        const lowerKeyword = keyword.toLowerCase();
+        const items = document.querySelectorAll('#new-invoice-supplier-options .supplier-item');
+        
+        items.forEach(item => {
+            const text = item.innerText.toLowerCase();
+            if (text.includes(lowerKeyword)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
         });
     }
 
