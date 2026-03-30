@@ -2707,7 +2707,7 @@ if (isBiz) {
             if (invTotalEl) invTotalEl.innerText = formatMoney(cogsAmount);
         }
 
-        const displayIncomeUah = currentIncomeUah - cogsAmount;
+        const displayIncomeUah = currentIncomeUah;
         const displayIncomeUsd = window.currentIncomeUsd || 0;
 
         document.getElementById('income-display').innerText = formatMoney(displayIncomeUah);
@@ -2730,7 +2730,7 @@ let workingDays = 21;
             document.getElementById('hourly-rate-usd').innerText = formatMoney(displayIncomeUsd > 0 ? (displayIncomeUsd / workingHours) : 0);
         }
 
-        const remaining = displayIncomeUah - totalExp;
+        const remaining = displayIncomeUah - cogsAmount - totalExp;
         const percent = displayIncomeUah > 0 ? ((remaining / displayIncomeUah) * 100).toFixed(1) : 0;
 
         // Оновлюємо віджет "План витрат / Оплачено / Залишок" для всіх типів акаунтів
