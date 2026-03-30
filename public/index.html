@@ -790,7 +790,7 @@
     const API_URL = 'https://api.myskrynia.com.ua';
     const appleColors = [ '#ff453a', '#ff9f0a', '#ffd60a', '#2ea043', '#66d4cf', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#32ade6' ];
 
-    let globalData = { jars: {}, debts: {} }; 
+    let globalData = { jars: {}, debts: {}, suppliers: {} };
     let currentUser = null;
     let defaultCategories = []; 
     let appData = {}; 
@@ -900,6 +900,22 @@
                             <span>Сума собівартості:</span>
                             <span class="tabular" style="font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="cogs-calculated-amount">0.00</span> ₴</span>
                         </div>
+                    </div>
+                </div>
+
+                <div id="invoices-block" class="glass-card" style="margin-bottom: 0; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 style="margin: 0;">Закупівлі (Собівартість)</h2>
+                    </div>
+                    <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">Всього за місяць:</span>
+                            <span class="tabular" style="font-size: 22px; font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="invoices-total-amount">0.00</span> ₴</span>
+                        </div>
+                        <button class="btn-init-secondary" style="margin: 0; display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-primary); border: 1px solid rgba(255, 69, 58, 0.3); background: rgba(255, 69, 58, 0.1);" onclick="openInvoicesModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                            Керувати накладними
+                        </button>
                     </div>
                 </div>
 
@@ -1049,7 +1065,7 @@
     </div>
 </div>
 
-<div id="confirm-modal" class="modal-overlay" onclick="closeConfirmModal(event)" style="z-index: 1050;">
+<div id="confirm-modal" class="modal-overlay" onclick="closeConfirmModal(event)" style="z-index: 9999;">
     <div class="modal-content" style="max-width: 400px; padding: 40px 32px 32px; text-align: center;" onclick="event.stopPropagation()">
         <div style="font-size: 56px; margin-bottom: 20px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));">⚠️</div>
         <h3 id="confirm-title" style="margin-bottom: 16px; font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Підтвердіть дію</h3>
@@ -1149,6 +1165,78 @@
             <input type="number" id="pay-debt-amount" style="color: var(--sys-red); font-size: 28px;" placeholder="0">
         </div>
         <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" onclick="executeDebtPayment()">Погасити</button>
+    </div>
+</div>
+
+<div id="invoices-modal" class="modal-overlay" onclick="closeInvoicesModal(event)" style="z-index: 1050;">
+    <div class="modal-content" style="max-width: 600px; width: 95%; max-height: 90vh;" onclick="event.stopPropagation()">
+        <div class="modal-header" style="margin-bottom: 16px;">
+            <h3 style="margin: 0;">Закупівлі та Постачальники</h3>
+            <button class="btn-close-modal" onclick="closeInvoicesModal()">✕</button>
+        </div>
+        
+        <div class="type-selector" style="margin-bottom: 16px;">
+            <button id="btn-tab-invoices" class="type-btn active" onclick="switchInvoiceTab('invoices')">Накладні</button>
+            <button id="btn-tab-suppliers" class="type-btn" onclick="switchInvoiceTab('suppliers')">Обороти</button>
+        </div>
+
+        <div id="tab-invoices-content">
+            <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">+ Додати накладну</h4>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <div class="custom-dropdown" id="supplier-dropdown-container" style="flex: 1;" onclick="event.stopPropagation(); this.classList.toggle('open')">
+                        <div class="custom-dropdown-selected" id="new-invoice-supplier-display" style="height: 48px; padding: 0 32px 0 16px; border-radius: 14px; color: var(--text-secondary); font-weight: 500;">
+                            Оберіть постачальника...
+                        </div>
+                        <div class="custom-dropdown-options" id="new-invoice-supplier-options" style="max-height: 220px;">
+                            </div>
+                    </div>
+                    <input type="hidden" id="new-invoice-supplier-value" value="">
+                    
+                    <button class="btn-init-secondary" style="width: 48px; height: 48px; padding: 0; margin: 0; border-radius: 14px; flex-shrink: 0;" onclick="openNewSupplierModal()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <input type="date" id="new-invoice-date" class="ios-input" style="flex: 1; height: 48px; padding: 0 12px; color: white;">
+                    <input type="number" id="new-invoice-amount" class="ios-input tabular" placeholder="Сума (₴)" style="flex: 1; height: 48px; padding: 0 12px;">
+                </div>
+                
+                <div class="type-selector" style="margin-bottom: 12px; background: rgba(0,0,0,0.2);">
+                    <button id="btn-inv-cash" class="type-btn active" onclick="selectInvoicePayment('cash')" style="padding: 8px;">Готівка</button>
+                    <button id="btn-inv-card" class="type-btn" onclick="selectInvoicePayment('card')" style="padding: 8px;">Безготівка</button>
+                </div>
+                
+                <input type="hidden" id="new-invoice-payment" value="cash">
+                <button class="btn-init-primary" style="margin: 0; height: 48px; font-size: 15px; background: linear-gradient(135deg, #ff453a, #d70015); color: white; border: none;" onclick="addInvoice()">Зберегти накладну</button>
+            </div>
+            
+            <div id="invoices-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 38vh; overflow-y: auto; padding-right: 4px;"></div>
+        </div>
+
+        <div id="new-supplier-modal" class="modal-overlay" onclick="closeNewSupplierModal(event)" style="z-index: 1100;">
+    <div class="modal-content" style="max-width: 400px; padding: 32px 24px; text-align: center;" onclick="event.stopPropagation()">
+        <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Новий постачальник</h3>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-top: -8px; margin-bottom: 24px;">Введіть назву компанії або ФОП</p>
+        
+        <input type="text" id="new-supplier-name-input" class="ios-input" placeholder="Напр. Епіцентр, ФОП Іванов" style="margin-bottom: 24px; height: 52px; text-align: center;">
+        
+        <div style="display: flex; gap: 12px;">
+            <button class="btn-init-secondary" style="margin: 0; flex: 1;" onclick="closeNewSupplierModal()">Скасувати</button>
+            <button class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; flex: 1; box-shadow: 0 8px 16px rgba(10,132,255,0.3);" onclick="confirmAddSupplier()">Додати</button>
+        </div>
+    </div>
+</div>
+
+        <div id="tab-suppliers-content" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 16px;">
+                <span style="font-weight: 600; color: var(--text-secondary);">Всього закуплено:</span>
+                <span id="suppliers-total-stat" style="font-weight: 800; font-size: 18px; color: white;">0.00 ₴</span>
+            </div>
+            <div id="suppliers-turnover-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 45vh; overflow-y: auto; padding-right: 4px;"></div>
+        </div>
     </div>
 </div>
 
@@ -1754,8 +1842,11 @@ async function performLogin(user) {
         document.getElementById('transfer-modal-title').innerText = isBiz ? 'Поповнити фонд' : 'Відкласти в конверт';
         document.getElementById('jars-modal-title').innerText = isBiz ? 'Фонди бізнесу' : 'Мої конверти';
 
-        document.getElementById('cogs-block').style.display = isBiz ? 'block' : 'none';
+        document.getElementById('cogs-block').style.display = 'none'; // Полностью скрываем старый блок
         document.getElementById('cogs-flow').style.display = isBiz ? 'flex' : 'none';
+        
+        const invBlock = document.getElementById('invoices-block');
+        if (invBlock) invBlock.style.display = isBiz ? 'block' : 'none';
         const reconBox = document.getElementById('recon-box');
         if(reconBox) reconBox.style.display = isBiz ? 'flex' : 'none';
 
@@ -1794,6 +1885,8 @@ async function performLogin(user) {
 
             if (!globalData.jars) globalData.jars = {};
             globalData.jars[userId] = data.jars || [];
+            if (!globalData.suppliers) globalData.suppliers = {};
+        globalData.suppliers[userId] = data.suppliers || [];
 
 if (!globalData.debts) globalData.debts = {};
             // ПАРСИНГ: Розшифровуємо schedule_json у нормальний об'єкт
@@ -1828,6 +1921,17 @@ if (!globalData.debts) globalData.debts = {};
                 });
             }
 
+            if (data.invoices) {
+                data.invoices.forEach(inv => {
+                    if (!appData[inv.year]) appData[inv.year] = {};
+                    if (!appData[inv.year][inv.month]) {
+                        appData[inv.year][inv.month] = { initialized: false, incomes: [], expenses: [], cogs: {type: 'percent', value: 0, businessHours: 8}, invoices: [] };
+                    }
+                    if (!appData[inv.year][inv.month].invoices) appData[inv.year][inv.month].invoices = [];
+                    appData[inv.year][inv.month].invoices.push(inv);
+                });
+            }
+
             if (!appData[currentYear]) appData[currentYear] = {};
             if (!appData[currentYear][currentMonth]) {
                  appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type: 'percent', value: 0} };
@@ -1857,7 +1961,9 @@ if (!globalData.debts) globalData.debts = {};
                 expenses: currentMonthData.expenses || expenses || [],
                 cogs: currentMonthData.cogs || {type: 'percent', value: 0},
                 jars: globalData.jars[currentUser.id] || [],
-                debts: globalData.debts[currentUser.id] || []
+                debts: globalData.debts[currentUser.id] || [],
+                suppliers: globalData.suppliers[currentUser.id] || [],
+                invoices: currentMonthData.invoices || []
             };
             try {
                 const token = localStorage.getItem('budget_auth_token');
@@ -2565,11 +2671,12 @@ function renderIncomes() {
             });
         });
         
-        if (isBiz) {
-            const cogs = appData[currentYear][currentMonth].cogs || { type: 'percent', value: 0 };
-            if (cogs.type === 'percent') cogsAmount = currentIncomeUah * (cogs.value / 100);
-            else cogsAmount = cogs.value;
-            document.getElementById('cogs-calculated-amount').innerText = formatMoney(cogsAmount);
+if (isBiz) {
+            const monthInvoices = appData[currentYear]?.[currentMonth]?.invoices || [];
+            cogsAmount = monthInvoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+            
+            const invTotalEl = document.getElementById('invoices-total-amount');
+            if (invTotalEl) invTotalEl.innerText = formatMoney(cogsAmount);
         }
 
         const displayIncomeUah = currentIncomeUah - cogsAmount;
@@ -3772,6 +3879,286 @@ function handleScheduleDragStart(e, id) {
         saveGlobalData();
         renderScheduleModal();
         draggedScheduleDebtId = null;
+    }
+
+    // ==========================================
+    // 13. НАКЛАДНЫЕ И ПОСТАВЩИКИ (INVOICES)
+    // ==========================================
+    function openInvoicesModal() {
+        document.getElementById('new-invoice-date').valueAsDate = new Date();
+        renderSuppliersDropdown();
+        renderInvoices();
+        switchInvoiceTab('invoices');
+        document.getElementById('invoices-modal').classList.add('active');
+    }
+    
+    function closeInvoicesModal(e) {
+        if (!e || e.target.id === 'invoices-modal' || e.target.className === 'btn-close-modal') {
+            document.getElementById('invoices-modal').classList.remove('active');
+        }
+    }
+    
+    function switchInvoiceTab(tab) {
+        document.getElementById('btn-tab-invoices').classList.toggle('active', tab === 'invoices');
+        document.getElementById('btn-tab-suppliers').classList.toggle('active', tab === 'suppliers');
+        
+        document.getElementById('tab-invoices-content').style.display = tab === 'invoices' ? 'block' : 'none';
+        document.getElementById('tab-suppliers-content').style.display = tab === 'suppliers' ? 'block' : 'none';
+        
+        if (tab === 'suppliers') renderSuppliersTurnover();
+    }
+    
+    function selectInvoicePayment(type) {
+        document.getElementById('btn-inv-cash').classList.toggle('active', type === 'cash');
+        document.getElementById('btn-inv-card').classList.toggle('active', type === 'card');
+        document.getElementById('new-invoice-payment').value = type;
+    }
+    
+
+    // --- КАСТОМНЫЙ ДРОПДАУН И МОДАЛКА ПОСТАВЩИКА ---
+    function openNewSupplierModal() {
+        document.getElementById('supplier-dropdown-container').classList.remove('open');
+        document.getElementById('new-supplier-name-input').value = '';
+        document.getElementById('new-supplier-modal').classList.add('active');
+        setTimeout(() => document.getElementById('new-supplier-name-input').focus(), 100);
+    }
+
+    function closeNewSupplierModal(e) {
+        if (!e || e.target.id === 'new-supplier-modal' || e.target.closest('.btn-init-secondary')) {
+            document.getElementById('new-supplier-modal').classList.remove('active');
+        }
+    }
+
+    function confirmAddSupplier() {
+        const name = document.getElementById('new-supplier-name-input').value;
+        if (name && name.trim()) {
+            if (!globalData.suppliers) globalData.suppliers = {};
+            if (!globalData.suppliers[currentUser.id]) globalData.suppliers[currentUser.id] = [];
+            
+            const newId = Date.now().toString();
+            const cleanName = name.trim();
+            globalData.suppliers[currentUser.id].push({ id: newId, name: cleanName });
+            saveGlobalData(); 
+            renderSuppliersDropdown();
+            selectSupplier(null, newId, cleanName);
+            closeNewSupplierModal();
+        }
+    }
+    
+    function renderSuppliersDropdown() {
+        const container = document.getElementById('new-invoice-supplier-options');
+        container.innerHTML = '';
+        const suppliers = globalData.suppliers[currentUser.id] || [];
+        
+        if (suppliers.length === 0) {
+            container.innerHTML = '<div class="custom-dropdown-option" style="color: var(--text-tertiary); justify-content: center;">Немає постачальників</div>';
+            return;
+        }
+
+        suppliers.forEach(s => {
+            container.innerHTML += `<div class="custom-dropdown-option" onclick="selectSupplier(event, '${s.id}', '${s.name}')">${s.name}</div>`;
+        });
+    }
+
+function selectSupplier(event, id, name) {
+        if(event) event.stopPropagation();
+        document.getElementById('new-invoice-supplier-value').value = id;
+        const display = document.getElementById('new-invoice-supplier-display');
+        display.innerText = name;
+        display.style.color = 'white';
+        display.style.fontWeight = '600';
+        display.style.borderColor = 'rgba(255,255,255,0.1)'; // Скидаємо червону рамку, якщо була помилка
+        document.getElementById('supplier-dropdown-container').classList.remove('open');
+    }
+    
+function addInvoice() {
+        const supplierIdVal = document.getElementById('new-invoice-supplier-value').value;
+        const dateEl = document.getElementById('new-invoice-date');
+        const amountEl = document.getElementById('new-invoice-amount');
+        const supplierDisplayEl = document.getElementById('new-invoice-supplier-display');
+        
+        const date = dateEl.value;
+        const amount = parseFloat(amountEl.value);
+        const paymentMethod = document.getElementById('new-invoice-payment').value;
+        
+        // Скидаємо підсвічування помилок
+        supplierDisplayEl.style.borderColor = "rgba(255,255,255,0.1)";
+        dateEl.style.borderColor = "rgba(255,255,255,0.1)";
+        amountEl.style.borderColor = "rgba(255,255,255,0.1)";
+        
+        let hasError = false;
+
+        // Перевіряємо поля і підсвічуємо порожні
+        if (!supplierIdVal) {
+            supplierDisplayEl.style.borderColor = "var(--sys-red)";
+            supplierDisplayEl.style.animation = 'shake 0.4s';
+            hasError = true;
+        }
+        if (!date) {
+            dateEl.style.borderColor = "var(--sys-red)";
+            dateEl.style.animation = 'shake 0.4s';
+            hasError = true;
+        }
+        if (isNaN(amount) || amount <= 0) {
+            amountEl.style.borderColor = "var(--sys-red)";
+            amountEl.style.animation = 'shake 0.4s';
+            hasError = true;
+        }
+        
+        // Якщо є помилка - прибираємо класи анімації через 400мс і зупиняємось
+        if (hasError) {
+            setTimeout(() => {
+                supplierDisplayEl.style.animation = '';
+                dateEl.style.animation = '';
+                amountEl.style.animation = '';
+            }, 400);
+            return;
+        }
+        
+        if (!appData[currentYear][currentMonth].invoices) appData[currentYear][currentMonth].invoices = [];
+        
+        appData[currentYear][currentMonth].invoices.push({
+            id: Date.now().toString(),
+            supplier_id: supplierIdVal,
+            amount: amount,
+            date: date,
+            payment_method: paymentMethod,
+            year: currentYear,
+            month: currentMonth
+        });
+        
+        document.getElementById('new-invoice-amount').value = '';
+        saveData(); 
+        renderInvoices();
+        updateAll();
+    }
+
+    // --- УМНАЯ ГРУППИРОВКА НАКЛАДНЫХ ---
+    function renderInvoices() {
+        const list = document.getElementById('invoices-list');
+        list.innerHTML = '';
+        const invoices = appData[currentYear]?.[currentMonth]?.invoices || [];
+        const suppliers = globalData.suppliers[currentUser.id] || [];
+        
+        if (invoices.length === 0) {
+            list.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px; font-weight: 500;">Немає накладних за цей місяць</div>';
+            return;
+        }
+        
+        // Сортировка от новых к старым
+        const sorted = [...invoices].sort((a,b) => new Date(b.date) - new Date(a.date));
+        
+        // Группировка по дате
+        const grouped = {};
+        sorted.forEach(inv => {
+            if (!grouped[inv.date]) grouped[inv.date] = [];
+            grouped[inv.date].push(inv);
+        });
+
+        // Отрисовка
+        for (const [dateStr, invs] of Object.entries(grouped)) {
+            // Красивая дата (напр. 30 Березня)
+            const dObj = new Date(dateStr);
+            const formattedDate = `${dObj.getDate()} ${monthNames[dObj.getMonth()]}`;
+
+            // Заголовок группы
+            list.innerHTML += `
+                <div style="font-size: 12px; font-weight: 800; color: var(--text-tertiary); margin: 12px 0 6px 4px; text-transform: uppercase; letter-spacing: 1px;">
+                    📅 ${formattedDate}
+                </div>
+            `;
+
+            // Накладные внутри даты
+            invs.forEach(inv => {
+                const sup = suppliers.find(s => s.id == inv.supplier_id);
+                const supName = sup ? sup.name : 'Видалений постачальник';
+                const isCash = inv.payment_method === 'cash';
+                const payColor = isCash ? '#ff9f0a' : 'var(--sys-blue)';
+                const payText = isCash ? 'Готівка' : 'Безготівка';
+                    
+                list.innerHTML += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.03); padding: 12px 16px; border-radius: 16px; margin-bottom: 6px; box-shadow: inset 0 2px 4px rgba(255,255,255,0.02);">
+                        <div style="flex: 1; overflow: hidden; padding-right: 12px;">
+                            <div style="font-weight: 600; font-size: 15px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">${supName}</div>
+                            <div style="font-size: 12px; font-weight: 700; color: ${payColor};">${payText}</div>
+                        </div>
+                        <div style="text-align: right; margin-right: 12px; flex-shrink: 0;">
+                            <div class="tabular" style="font-weight: 800; font-size: 16px; color: var(--text-primary);">${formatMoney(inv.amount)} ₴</div>
+                        </div>
+                        <button class="btn-delete" style="width: 32px; height: 32px; border-radius: 10px; background: rgba(255,69,58,0.1); color: var(--sys-red); border-color: rgba(255,69,58,0.2); padding: 0;" onclick="deleteInvoice('${inv.id}')">✕</button>
+                    </div>
+                `;
+            });
+        }
+    }
+
+    
+
+    
+function deleteInvoice(id) {
+        showConfirm("Видалити накладну?", "Ви впевнені, що хочете видалити цю накладну? Скасувати дію буде неможливо.", () => {
+            appData[currentYear][currentMonth].invoices = appData[currentYear][currentMonth].invoices.filter(i => i.id != id);
+            saveData();
+            renderInvoices();
+            updateAll();
+        });
+    }
+    
+
+    
+    function renderSuppliersTurnover() {
+        const list = document.getElementById('suppliers-turnover-list');
+        list.innerHTML = '';
+        
+        const invoices = appData[currentYear]?.[currentMonth]?.invoices || [];
+        const suppliers = globalData.suppliers[currentUser.id] || [];
+        
+        if (invoices.length === 0) {
+            list.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Немає даних для аналітики</div>';
+            document.getElementById('suppliers-total-stat').innerText = '0.00 ₴';
+            return;
+        }
+        
+        let total = 0;
+        const stats = {};
+        
+        invoices.forEach(inv => {
+            if (!stats[inv.supplier_id]) stats[inv.supplier_id] = { total: 0, cash: 0, card: 0 };
+            const amt = parseFloat(inv.amount) || 0;
+            stats[inv.supplier_id].total += amt;
+            if (inv.payment_method === 'cash') stats[inv.supplier_id].cash += amt;
+            else stats[inv.supplier_id].card += amt;
+            total += amt;
+        });
+        
+        document.getElementById('suppliers-total-stat').innerText = formatMoney(total) + ' ₴';
+        
+        const sortedStats = Object.entries(stats).sort((a,b) => b[1].total - a[1].total);
+        
+        sortedStats.forEach(([supId, data]) => {
+            const sup = suppliers.find(s => s.id == supId);
+            const supName = sup ? sup.name : 'Невідомий постачальник';
+            const percent = ((data.total / total) * 100).toFixed(1);
+            
+            list.innerHTML += `
+                <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 700; font-size: 16px; color: white;">${supName}</span>
+                        <span style="font-weight: 800; font-size: 16px; color: var(--sys-red);">${formatMoney(data.total)} ₴</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+                        <span>Частка: ${percent}%</span>
+                        <div style="display: flex; gap: 12px;">
+                            <span>Готівка: <span style="color: #ff9f0a;">${formatMoney(data.cash)}</span></span>
+                            <span>Безготівка: <span style="color: var(--sys-blue);">${formatMoney(data.card)}</span></span>
+                        </div>
+                    </div>
+                    <div class="jar-progress-bg" style="height: 6px; border-radius: 3px;">
+                        <div class="jar-progress-fill" style="width: ${percent}%; background: linear-gradient(90deg, #ff453a, #d70015); box-shadow: none;"></div>
+                    </div>
+                </div>
+            `;
+        });
     }
 
 </script>
