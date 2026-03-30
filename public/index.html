@@ -3945,7 +3945,7 @@ function handleScheduleDragStart(e, id) {
         }
     }
     
-    function renderSuppliersDropdown() {
+function renderSuppliersDropdown() {
         const container = document.getElementById('new-invoice-supplier-options');
         container.innerHTML = '';
         const suppliers = globalData.suppliers[currentUser.id] || [];
@@ -3956,7 +3956,10 @@ function handleScheduleDragStart(e, id) {
         }
 
         suppliers.forEach(s => {
-            container.innerHTML += `<div class="custom-dropdown-option" onclick="selectSupplier(event, '${s.id}', '${s.name}')">${s.name}</div>`;
+            // Екрануємо одинарні та подвійні лапки, щоб вони не ламали HTML-атрибут onclick
+            const safeName = s.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            
+            container.innerHTML += `<div class="custom-dropdown-option" onclick="selectSupplier(event, '${s.id}', '${safeName}')">${s.name}</div>`;
         });
     }
 
