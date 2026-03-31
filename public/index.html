@@ -1034,9 +1034,7 @@
                     <div id="recon-box" class="cashflow-box" style="display: none; background: rgba(0,0,0,0.4); border: 1px dashed rgba(255,255,255,0.15);">
                         <div style="font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Звірка</div>
                         <div class="cf-row"><span>Теоретичний залишок:</span> <span class="cf-val" id="recon-theoretical">0.00 ₴</span></div>
-                        <div class="cf-row"><span>Фактичний залишок:</span> <span class="cf-val" id="recon-actual">0.00 ₴</span></div>
-                        <div class="cf-divider"></div>
-                        <div class="cf-row"><span style="font-weight: 600;">Статус:</span> <span class="cf-val" id="recon-status">✅ Сходиться</span></div>
+                        <div class="cf-row"><span>Фактичний залишок:</span> <span class="cf-val" id="recon-actual" style="color: var(--sys-blue);">0.00 ₴</span></div>
                     </div>
                     
                     <div id="trend-box" class="trend-box trend-empty" style="display: none;"></div>
@@ -2789,34 +2787,14 @@ let workingDays = 21;
                 totalActualUah += (inc.currency === 'USD' ? actBal * currentExchangeRate : actBal);
             });
 
-            const theoretical = remaining;
+            // Реальний рух грошей (Cash Flow) за поточний місяць: Оборот - Закупівлі - ВЖЕ оплачені витрати
+            const theoretical = currentIncomeUah - cogsAmount - paidExp;
             const actual = totalActualUah;
-            const diff = actual - theoretical;
-            const diffPercent = theoretical !== 0 ? (Math.abs(diff) / Math.abs(theoretical)) * 100 : 0;
-
-            let reconStatus = '';
-            let reconColor = '';
-            
-            if (diff === 0) {
-                reconStatus = '✅ Ідеально сходиться';
-                reconColor = 'var(--sys-green)';
-            } else if (diffPercent <= 2) { 
-                reconStatus = '✅ Сходиться (в межах норми)';
-                reconColor = 'var(--sys-green)';
-            } else if (diff < 0) {
-                reconStatus = '⚠️ Нестача';
-                reconColor = 'var(--sys-red)';
-            } else {
-                reconStatus = '⚠️ Надлишок';
-                reconColor = 'var(--sys-blue)';
-            }
 
             const reconBox = document.getElementById('recon-box');
             if (reconBox) {
                 document.getElementById('recon-theoretical').innerText = formatMoney(theoretical) + ' ₴';
                 document.getElementById('recon-actual').innerText = formatMoney(actual) + ' ₴';
-                document.getElementById('recon-status').innerText = `${reconStatus} (похибка ${diffPercent.toFixed(1)}%)`;
-                document.getElementById('recon-status').style.color = reconColor;
             }
         }
 
