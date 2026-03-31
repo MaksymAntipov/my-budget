@@ -3362,11 +3362,12 @@ function renderEnvelopes() {
             return;
         }
 
-        let cogsAmount = 0;
-        if (isBiz && currentMonthData.cogs) {
-            cogsAmount = currentMonthData.cogs.type === 'percent' ? totalIncome * (currentMonthData.cogs.value / 100) : (currentMonthData.cogs.value || 0);
+let cogsAmount = 0;
+        if (isBiz) {
+            const monthInvoices = currentMonthData.invoices || [];
+            cogsAmount = monthInvoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
             if (cogsAmount > 0) {
-                rows.push(['Ваш Бюджет', 'Собівартість', roundNum(cogsAmount)]);
+                rows.push(['Ваш Бюджет', 'Закупівлі', roundNum(cogsAmount)]);
             }
         }
 
