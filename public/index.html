@@ -1018,8 +1018,14 @@
                     
                     <div id="cashflow-box" class="cashflow-box">
                         <div class="cf-row" id="cf-row-invoices" style="display: none;"><span>Оплачені накладні:</span> <span class="cf-val" id="cf-invoices" style="color: var(--sys-red);">0.00 ₴</span></div>
+                        
+                        <div class="cf-row" id="cf-row-gross" style="display: none; margin-top: 4px; padding: 8px 12px; background: rgba(46, 160, 67, 0.1); border-radius: 10px;">
+                            <span style="font-weight: 700; color: var(--sys-green);">Валовий прибуток:</span> 
+                            <span class="cf-val" id="cf-gross-profit" style="color: var(--sys-green); font-size: 16px;">0.00 ₴</span>
+                        </div>
+                        
                         <div class="cf-divider" id="cf-divider-invoices" style="display: none;"></div>
-                        <div class="cf-row"><span>План витрат:</span> <span class="cf-val" id="cf-plan">0.00 ₴</span></div>
+                        <div class="cf-row"><span>План витрат (опер.):</span> <span class="cf-val" id="cf-plan">0.00 ₴</span></div>
                         <div class="cf-row"><span>Вже оплачено:</span> <span class="cf-val" id="cf-paid" style="color: var(--sys-green);">0.00 ₴</span></div>
                         <div class="cf-divider"></div>
                         <div class="cf-row"><span style="font-weight: 700; color: var(--text-primary);">Залишок до оплати:</span> <span class="cf-val" id="cf-left" style="color: var(--sys-red); font-size: 16px;">0.00 ₴</span></div>
@@ -1886,9 +1892,11 @@ async function performLogin(user) {
         // Показуємо cashflow-box для всіх
         const cfRowInvoices = document.getElementById('cf-row-invoices');
         const cfDivInvoices = document.getElementById('cf-divider-invoices');
+        const cfRowGross = document.getElementById('cf-row-gross'); // НОВОЕ
+
         if (cfRowInvoices) cfRowInvoices.style.display = isBiz ? 'flex' : 'none';
         if (cfDivInvoices) cfDivInvoices.style.display = isBiz ? 'block' : 'none';
-        document.getElementById('cashflow-box').style.display = 'flex';
+        if (cfRowGross) cfRowGross.style.display = isBiz ? 'flex' : 'none'; // НОВОЕ
         
         // Приховуємо old-expenses-box для всіх (щоб не дублювати "План витрат")
         const oldExpBox = document.getElementById('old-expenses-box');
@@ -2705,16 +2713,24 @@ function renderIncomes() {
             });
         });
         
-if (isBiz) {
+        if (isBiz) {
             const monthInvoices = appData[currentYear]?.[currentMonth]?.invoices || [];
             cogsAmount = monthInvoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
             
             const invTotalEl = document.getElementById('invoices-total-amount');
             if (invTotalEl) invTotalEl.innerText = formatMoney(cogsAmount);
 
-            // НОВЕ: Оновлюємо суму накладних у Зведенні
             const cfInvoicesEl = document.getElementById('cf-invoices');
             if (cfInvoicesEl) cfInvoicesEl.innerText = '-' + formatMoney(cogsAmount) + ' ₴';
+
+            // НОВОЕ: Расчет Валовой прибыли (Оборот минус Закупки)
+            const grossProfit = currentIncomeUah - cogsAmount;
+            const cfGrossEl = document.getElementById('cf-gross-profit');
+            if (cfGrossEl) {
+                cfGrossEl.innerText = formatMoney(grossProfit) + ' ₴';
+                // Если валовая прибыль отрицательная (закупили больше чем наторговали), красим в красный
+                cfGrossEl.style.color = grossProfit < 0 ? 'var(--sys-red)' : 'var(--sys-green)';
+            }
         }
 
         const displayIncomeUah = currentIncomeUah;
