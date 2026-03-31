@@ -1017,6 +1017,8 @@
                     </div>
                     
                     <div id="cashflow-box" class="cashflow-box">
+                        <div class="cf-row" id="cf-row-invoices" style="display: none;"><span>Оплачені накладні:</span> <span class="cf-val" id="cf-invoices" style="color: var(--sys-red);">0.00 ₴</span></div>
+                        <div class="cf-divider" id="cf-divider-invoices" style="display: none;"></div>
                         <div class="cf-row"><span>План витрат:</span> <span class="cf-val" id="cf-plan">0.00 ₴</span></div>
                         <div class="cf-row"><span>Вже оплачено:</span> <span class="cf-val" id="cf-paid" style="color: var(--sys-green);">0.00 ₴</span></div>
                         <div class="cf-divider"></div>
@@ -1882,6 +1884,10 @@ async function performLogin(user) {
         if(bHoursRow) bHoursRow.style.display = isBiz ? 'flex' : 'none';
 
         // Показуємо cashflow-box для всіх
+        const cfRowInvoices = document.getElementById('cf-row-invoices');
+        const cfDivInvoices = document.getElementById('cf-divider-invoices');
+        if (cfRowInvoices) cfRowInvoices.style.display = isBiz ? 'flex' : 'none';
+        if (cfDivInvoices) cfDivInvoices.style.display = isBiz ? 'block' : 'none';
         document.getElementById('cashflow-box').style.display = 'flex';
         
         // Приховуємо old-expenses-box для всіх (щоб не дублювати "План витрат")
@@ -2705,6 +2711,10 @@ if (isBiz) {
             
             const invTotalEl = document.getElementById('invoices-total-amount');
             if (invTotalEl) invTotalEl.innerText = formatMoney(cogsAmount);
+
+            // НОВЕ: Оновлюємо суму накладних у Зведенні
+            const cfInvoicesEl = document.getElementById('cf-invoices');
+            if (cfInvoicesEl) cfInvoicesEl.innerText = '-' + formatMoney(cogsAmount) + ' ₴';
         }
 
         const displayIncomeUah = currentIncomeUah;
