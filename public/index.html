@@ -2720,16 +2720,27 @@ function renderIncomes() {
             const invTotalEl = document.getElementById('invoices-total-amount');
             if (invTotalEl) invTotalEl.innerText = formatMoney(cogsAmount);
 
-            const cfInvoicesEl = document.getElementById('cf-invoices');
-            if (cfInvoicesEl) cfInvoicesEl.innerText = '-' + formatMoney(cogsAmount) + ' ₴';
-
-            // НОВОЕ: Расчет Валовой прибыли (Оборот минус Закупки)
+            // Рахуємо відсотки (захист від ділення на нуль)
+            const cogsPercent = currentIncomeUah > 0 ? ((cogsAmount / currentIncomeUah) * 100).toFixed(1) : 0;
             const grossProfit = currentIncomeUah - cogsAmount;
+            const grossMarginPercent = currentIncomeUah > 0 ? ((grossProfit / currentIncomeUah) * 100).toFixed(1) : 0;
+
+            // Виводимо Оплачені накладні + Відсоток собівартості
+            const cfInvoicesEl = document.getElementById('cf-invoices');
+            if (cfInvoicesEl) {
+                cfInvoicesEl.innerHTML = `-${formatMoney(cogsAmount)} ₴ <span style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${cogsPercent}%</span>`;
+            }
+
+            // Виводимо Валовий прибуток + Відсоток маржі
             const cfGrossEl = document.getElementById('cf-gross-profit');
             if (cfGrossEl) {
-                cfGrossEl.innerText = formatMoney(grossProfit) + ' ₴';
-                // Если валовая прибыль отрицательная (закупили больше чем наторговали), красим в красный
-                cfGrossEl.style.color = grossProfit < 0 ? 'var(--sys-red)' : 'var(--sys-green)';
+                if (grossProfit >= 0) {
+                    cfGrossEl.style.color = 'var(--sys-green)';
+                    cfGrossEl.innerHTML = `${formatMoney(grossProfit)} ₴ <span style="font-size: 11px; font-weight: 700; color: var(--sys-green); background: rgba(46, 160, 67, 0.15); padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${grossMarginPercent}%</span>`;
+                } else {
+                    cfGrossEl.style.color = 'var(--sys-red)';
+                    cfGrossEl.innerHTML = `${formatMoney(grossProfit)} ₴ <span style="font-size: 11px; font-weight: 700; color: var(--sys-red); background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${grossMarginPercent}%</span>`;
+                }
             }
         }
 
