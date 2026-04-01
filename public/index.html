@@ -1052,7 +1052,7 @@
                 <div id="cogs-block" class="glass-card" style="margin-bottom: 0; display: none;">
                     <h2>Собівартість</h2>
                     <div class="info-block" style="padding: 20px 24px;">
-                        <div style="font-size: 15px; color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;">Відсоток або сума витрат на реалізацію (віднімається від обороту)</div>
+                        <div style="font-size: 15px; color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;">Відсоток або сума витрат на реалізацію (віднімається від обігу)</div>
                         <div class="cogs-input-group">
                             <input type="number" id="cogs-value" placeholder="Наприклад, 30" oninput="updateCOGS(this.value)">
                             <div class="custom-dropdown" style="width: 110px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
@@ -1366,7 +1366,7 @@
         
         <div class="type-selector" style="margin-bottom: 16px;">
             <button id="btn-tab-invoices" class="type-btn active" onclick="switchInvoiceTab('invoices')">Інвойси</button>
-            <button id="btn-tab-suppliers" class="type-btn" onclick="switchInvoiceTab('suppliers')">Обороти</button>
+            <button id="btn-tab-suppliers" class="type-btn" onclick="switchInvoiceTab('suppliers')">обіг</button>
         </div>
 
         <div id="tab-invoices-content">
@@ -2020,11 +2020,11 @@ async function performLogin(user) {
         badge.innerText = isBiz ? 'Бізнес' : 'Фіз. особа';
         badge.className = isBiz ? 'badge-type badge-business' : 'badge-type';
 
-        document.getElementById('title-sources').innerText = isBiz ? 'Оборот за рахунками за місяць' : 'Джерела доходу';
-        document.getElementById('title-incomes').innerText = isBiz ? 'Оборот' : 'Доходи';
+        document.getElementById('title-sources').innerText = isBiz ? 'обіг за рахунками за місяць' : 'Джерела доходу';
+        document.getElementById('title-incomes').innerText = isBiz ? 'обіг' : 'Доходи';
         
-        document.getElementById('label-daily').innerText = isBiz ? 'Середній оборот за день:' : 'У робочий день:';
-        document.getElementById('label-hourly').innerText = isBiz ? 'Середній оборот за годину:' : 'Вартість 1 години:';
+        document.getElementById('label-daily').innerText = isBiz ? 'Середній обіг за день:' : 'У робочий день:';
+        document.getElementById('label-hourly').innerText = isBiz ? 'Середній обіг за годину:' : 'Вартість 1 години:';
         document.getElementById('daily-rate-usd-container').style.display = isBiz ? 'none' : 'inline';
         document.getElementById('hourly-rate-usd-container').style.display = isBiz ? 'none' : 'inline';
         document.getElementById('yearly-income-usd-container').style.display = isBiz ? 'none' : 'inline';
@@ -2483,7 +2483,7 @@ function renderIncomes() {
                     <div style="display: flex; gap: 12px; width: 100%;">
                         <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s;" onfocusin="this.style.borderColor='var(--text-secondary)'; this.style.backgroundColor='rgba(0,0,0,0.5)';" onfocusout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.backgroundColor='rgba(0,0,0,0.3)';">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Оборот</div>
+                                <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">обіг</div>
                                 <div id="inc-percent-${inc.id}" style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 6px;">0.0%</div>
                             </div>
                             <input type="number" class="tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${inc.id}, 'amount', this.value)" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
@@ -3345,7 +3345,7 @@ if (isBiz) {
 
         if (!isBiz) document.getElementById('yearly-income-usd').innerText = formatMoney(displayIncomeUsd * 12);
 
-        // НОВИЙ КОД: Рендер графіка доходів (Обороту)
+        // НОВИЙ КОД: Рендер графіка доходів (обігу)
         const incSparkData = generateIncomeSparklineHTML(displayIncomeUah);
         const incTrendBadgeEl = document.getElementById('income-trend-badge');
         const incSparkContainerEl = document.getElementById('income-sparkline-container');
@@ -3395,7 +3395,7 @@ let workingDays = 21;
                 totalActualUah += (inc.currency === 'USD' ? actBal * currentExchangeRate : actBal);
             });
 
-            // Реальний рух грошей (Cash Flow) за поточний місяць: Оборот - Закупівлі - ВЖЕ оплачені витрати
+            // Реальний рух грошей (Cash Flow) за поточний місяць: обігу - Закупівлі - ВЖЕ оплачені витрати
             const theoretical = currentIncomeUah - cogsAmount - paidExp;
             const actual = totalActualUah;
 
@@ -4077,7 +4077,7 @@ let cogsAmount = 0;
                     }, 
                     { 
                         type: 'line', 
-                        label: isBiz ? 'Оборот (маржа)' : 'Дохід', 
+                        label: isBiz ? 'обіг (маржа)' : 'Дохід', 
                         data: incomeData, 
                         borderColor: '#0a84ff', 
                         backgroundColor: gradientBlue, 
