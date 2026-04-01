@@ -1264,10 +1264,16 @@
     </div>
 </div>
 
-        <div id="tab-suppliers-content" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 16px;">
-                <span style="font-weight: 600; color: var(--text-secondary);">Всього закуплено:</span>
-                <span id="suppliers-total-stat" style="font-weight: 800; font-size: 18px; color: white;">0.00 ₴</span>
+<div id="tab-suppliers-content" style="display: none;">
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600; color: var(--text-secondary);">Всього закуплено:</span>
+                    <span id="suppliers-total-stat" style="font-weight: 800; font-size: 18px; color: white;">0.00 ₴</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
+                    <span style="color: var(--text-secondary);">Готівка: <span id="suppliers-total-cash" style="color: #ff9f0a; font-weight: 700;">0.00 ₴</span></span>
+                    <span style="color: var(--text-secondary);">Безготівка: <span id="suppliers-total-card" style="color: var(--sys-blue); font-weight: 700;">0.00 ₴</span></span>
+                </div>
             </div>
             <div id="suppliers-turnover-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 45vh; overflow-y: auto; padding-right: 4px;"></div>
         </div>
@@ -4197,22 +4203,34 @@ function deleteInvoice(id) {
         if (invoices.length === 0) {
             list.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Немає даних для аналітики</div>';
             document.getElementById('suppliers-total-stat').innerText = '0.00 ₴';
+            if (document.getElementById('suppliers-total-cash')) document.getElementById('suppliers-total-cash').innerText = '0.00 ₴';
+            if (document.getElementById('suppliers-total-card')) document.getElementById('suppliers-total-card').innerText = '0.00 ₴';
             return;
         }
         
         let total = 0;
+        let totalCash = 0;
+        let totalCard = 0;
         const stats = {};
         
         invoices.forEach(inv => {
             if (!stats[inv.supplier_id]) stats[inv.supplier_id] = { total: 0, cash: 0, card: 0 };
             const amt = parseFloat(inv.amount) || 0;
             stats[inv.supplier_id].total += amt;
-            if (inv.payment_method === 'cash') stats[inv.supplier_id].cash += amt;
-            else stats[inv.supplier_id].card += amt;
+            
+            if (inv.payment_method === 'cash') {
+                stats[inv.supplier_id].cash += amt;
+                totalCash += amt;
+            } else {
+                stats[inv.supplier_id].card += amt;
+                totalCard += amt;
+            }
             total += amt;
         });
         
         document.getElementById('suppliers-total-stat').innerText = formatMoney(total) + ' ₴';
+        if (document.getElementById('suppliers-total-cash')) document.getElementById('suppliers-total-cash').innerText = formatMoney(totalCash) + ' ₴';
+        if (document.getElementById('suppliers-total-card')) document.getElementById('suppliers-total-card').innerText = formatMoney(totalCard) + ' ₴';
         
         const sortedStats = Object.entries(stats).sort((a,b) => b[1].total - a[1].total);
         
