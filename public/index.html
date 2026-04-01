@@ -838,6 +838,12 @@
             display: inline-block;
             margin-bottom: 4px;
         }
+
+        /* Перемикання тексту відсотки/сума при наведенні */
+        .trend-badge .trend-hover-text { display: none; }
+        .trend-badge:hover .trend-main-text { display: none; }
+        .trend-badge:hover .trend-hover-text { display: inline; }
+
         .trend-up { color: #ff453a; background: rgba(255, 69, 58, 0.15); }
         .trend-down { color: #32d74b; background: rgba(50, 215, 75, 0.15); }
         .trend-new { color: #ffd60a; background: rgba(255, 214, 10, 0.15); }
@@ -897,9 +903,14 @@
         .btn-pro-del { background: rgba(255, 69, 58, 0.1); color: #ff453a; }
         .btn-pro-del:hover { background: #ff453a; color: white; transform: scale(1.1); }
         
-        /* Тултип з'являється при наведенні на правий блок із сумою */
-        .expense-pro-trend:hover .preview-tooltip {
+        /* Тултип з'являється при наведенні на весь блок картки */
+        .expense-pro-main:hover .preview-tooltip {
             opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1);
+        }
+        /* АЛЕ ХОВАЄТЬСЯ, якщо курсор над інпутом або плашкою відсотків */
+        .expense-pro-main:has(.expense-pro-input:hover) .preview-tooltip,
+        .expense-pro-main:has(.trend-badge:hover) .preview-tooltip {
+            opacity: 0 !important; visibility: hidden !important; transform: translateX(-50%) translateY(10px) scale(0.95) !important;
         }
 
         .card-top-1 { border-color: rgba(255, 69, 58, 0.4); box-shadow: 0 4px 16px rgba(255, 69, 58, 0.1); }
@@ -2948,29 +2959,42 @@ function getHistoricalIncome(year, month) {
         const currentCatForColor = expenses.find(e => e.id === categoryId);
         const isSavings = currentCatForColor ? currentCatForColor.isSavings : false;
         
+        // Рахуємо різницю в грошах для підміни тексту
+        const rawDiff = currentTotal - prevTotal;
+        const diffSign = rawDiff > 0 ? '+' : '';
+        const diffMoneyText = `${diffSign}${formatMoney(rawDiff)} ₴`;
+        
         if (prevTotal === 0 && currentTotal > 0) {
             trendHtml = `<div class="trend-badge trend-new">Нова</div>`;
             colorMain = '#ffd60a';
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
             if (isSavings) {
-                // Для заощаджень ріст - це Добре (Зелений)
-                trendHtml = `<div class="trend-badge" style="color: #32d74b; background: rgba(50, 215, 75, 0.15);">↑ +${diff}%</div>`;
+                trendHtml = `<div class="trend-badge" style="color: #32d74b; background: rgba(50, 215, 75, 0.15);">
+                                <span class="trend-main-text">↑ +${diff}%</span>
+                                <span class="trend-hover-text">${diffMoneyText}</span>
+                             </div>`;
                 colorMain = '#32d74b';
             } else {
-                // Для витрат ріст - це Погано (Червоний)
-                trendHtml = `<div class="trend-badge trend-up">↑ +${diff}%</div>`;
+                trendHtml = `<div class="trend-badge trend-up">
+                                <span class="trend-main-text">↑ +${diff}%</span>
+                                <span class="trend-hover-text">${diffMoneyText}</span>
+                             </div>`;
                 colorMain = '#ff453a';
             }
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
             if (isSavings) {
-                // Для заощаджень падіння - це Погано (Червоний)
-                trendHtml = `<div class="trend-badge" style="color: #ff453a; background: rgba(255, 69, 58, 0.15);">↓ -${diff}%</div>`;
+                trendHtml = `<div class="trend-badge" style="color: #ff453a; background: rgba(255, 69, 58, 0.15);">
+                                <span class="trend-main-text">↓ -${diff}%</span>
+                                <span class="trend-hover-text">${diffMoneyText}</span>
+                             </div>`;
                 colorMain = '#ff453a';
             } else {
-                // Для витрат падіння - це Добре (Зелений)
-                trendHtml = `<div class="trend-badge trend-down">↓ -${diff}%</div>`;
+                trendHtml = `<div class="trend-badge trend-down">
+                                <span class="trend-main-text">↓ -${diff}%</span>
+                                <span class="trend-hover-text">${diffMoneyText}</span>
+                             </div>`;
                 colorMain = '#32d74b';
             }
         } else {
