@@ -3076,11 +3076,11 @@ function getHistoricalIncome(year, month) {
             const div = document.createElement('div');
             div.className = `expense-card-pro ${rankClass} ${paidCardClass}`;
             div.innerHTML = `
-                <div class="expense-pro-main">
+                <div class="expense-pro-main" onclick="openModal(${exp.id})" style="cursor: pointer; position: relative;">
                     <div class="expense-pro-header">
                         <div class="expense-pro-title-group">
                             ${badgeHtml}
-                            <input class="expense-pro-input" type="text" value="${exp.name}" placeholder="Назва категорії" oninput="updateCategoryName(${exp.id}, this.value)" style="${isSavingsClass}">
+                            <input class="expense-pro-input" type="text" value="${exp.name}" placeholder="Назва категорії" oninput="updateCategoryName(${exp.id}, this.value)" onclick="event.stopPropagation()" style="${isSavingsClass}">
                         </div>
                         <div class="expense-pro-trend">
                             ${sparkData.trendHtml}
@@ -3089,14 +3089,15 @@ function getHistoricalIncome(year, month) {
                                 ${formatMoney(totalAmount)} ₴
                                 ${paidHtml}
                             </div>
-                            <div class="preview-tooltip">${tooltipHtml}</div>
                         </div>
                     </div>
                     
-                    <div class="expense-pro-sparkline" onclick="openModal(${exp.id})" style="cursor: pointer;">
+                    <div class="expense-pro-sparkline">
                         ${sparkData.sparklineSvg}
                         <div class="sparkline-labels">${sparkData.labelsHtml}</div>
                     </div>
+                    
+                    <div class="preview-tooltip">${tooltipHtml}</div>
                 </div>
                 
                 <div class="expense-pro-actions">
