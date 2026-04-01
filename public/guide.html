@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Довідник | MySkrynia</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        /* ОРИГІНАЛЬНІ ЗМІННІ */
+        :root {
+            --sys-blue: #0a84ff; --sys-green: #32d74b; --sys-red: #ff453a;
+            --text-primary: #ffffff; --text-secondary: #a1a1a6; --text-tertiary: #636366;
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --item-bg: rgba(0, 0, 0, 0.2);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: #000000; 
+            background-image: radial-gradient(circle at top left, #2c2c2e 0%, #000000 100%);
+            background-attachment: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            color: var(--text-primary); margin: 0; padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .page-wrapper { display: flex; max-width: 1200px; margin: 0 auto; gap: 40px; align-items: flex-start; }
+
+        /* БОКОВЕ МЕНЮ */
+        .sidebar {
+            position: sticky; top: 40px; width: 280px; flex-shrink: 0;
+            background: rgba(30, 30, 32, 0.5); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 24px; padding: 24px; backdrop-filter: blur(20px);
+            max-height: calc(100vh - 80px); overflow-y: auto;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+
+        .nav-group { margin-bottom: 24px; }
+        .nav-group:last-child { margin-bottom: 0; }
+        .nav-title { font-size: 13px; font-weight: 800; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-left: 12px; }
+        
+        .nav-link {
+            display: block; padding: 10px 12px; color: var(--text-secondary);
+            text-decoration: none; border-radius: 12px; font-weight: 500; font-size: 15px; transition: 0.2s; margin-bottom: 4px;
+        }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-link.active { background: rgba(10, 132, 255, 0.15); color: var(--sys-blue); font-weight: 600; }
+
+        /* ОСНОВНИЙ КОНТЕНТ */
+        .content { 
+            flex: 1; min-width: 0; 
+            padding-bottom: 70vh; /* Фікс для меню: дозволяє доскролити останні пункти до верху */
+        }
+        h1 { font-size: 36px; font-weight: 700; margin-top: 0; margin-bottom: 12px; }
+        .page-desc { color: var(--text-secondary); font-size: 18px; margin-bottom: 40px; }
+        .section-header { font-size: 26px; font-weight: 700; margin: 40px 0 24px 0; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); color: white; }
+        .section-header:first-child { margin-top: 0; }
+
+        .guide-section { 
+            display: grid; grid-template-columns: 1fr; gap: 24px; 
+            margin-bottom: 40px; align-items: start; 
+            background: rgba(30, 30, 32, 0.5); border: 1px solid rgba(255,255,255,0.05); 
+            padding: 32px; border-radius: 32px; backdrop-filter: blur(20px); scroll-margin-top: 40px;
+        }
+
+        @media (max-width: 900px) { 
+            .page-wrapper { flex-direction: column; }
+            .sidebar { position: relative; top: 0; width: 100%; max-height: none; box-sizing: border-box; }
+        }
+
+        .explanation h3 { margin-top: 0; font-size: 20px; color: white; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+        .explanation ul { padding-left: 20px; color: var(--text-secondary); margin-bottom: 0; }
+        .explanation li { margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
+        .explanation li strong { color: white; }
+        .tabular { font-variant-numeric: tabular-nums; }
+
+        /* СПІЛЬНІ КЛАСИ ВЕРСТКИ */
+        .info-block { background: rgba(0, 0, 0, 0.2); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 15px; }
+        .info-row:last-child { border-bottom: none; }
+        .btn-primary { background: white; color: black; padding: 14px; border-radius: 14px; font-weight: 700; text-align: center; cursor: pointer; }
+        .btn-secondary { background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); padding: 14px; border-radius: 14px; font-weight: 600; text-align: center; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="page-wrapper">
+    <aside class="sidebar">
+        <div class="nav-group">
+            <div class="nav-title">🚀 Початок роботи</div>
+            <a href="#start-month" class="nav-link active">Новий місяць</a>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-title">🏢 Бізнес-аналітика</div>
+            <a href="#biz-turnover" class="nav-link">Оборот та Факт. залишок</a>
+            <a href="#biz-invoices" class="nav-link">Закупівлі (Собівартість)</a>
+            <a href="#biz-opex" class="nav-link">Операційні витрати</a>
+            <a href="#biz-summary" class="nav-link">Зведення та Звірка</a>
+            <a href="#biz-sankey" class="nav-link">Діаграма потоків</a>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-title">👤 Особистий кабінет</div>
+            <a href="#pers-income" class="nav-link">Доходи та Вартість часу</a>
+            <a href="#pers-limit" class="nav-link">Вільний залишок та Ліміт</a>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-title">🛠 Фінансові інструменти</div>
+            <a href="#shared-debts" class="nav-link">Борги та Графік</a>
+            <a href="#shared-jars" class="nav-link">Фонди та Накопичення</a>
+        </div>
+    </aside>
+
+    <main class="content">
+        <h1>Анатомія Інтерфейсу</h1>
+        <p class="page-desc">Повний довідник по всіх віджетах, цифрах та інструментах MySkrynia.</p>
+
+        <h2 class="section-header">🚀 Початок роботи</h2>
+        
+        <div id="start-month" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center;">
+                <div style="background: rgba(30, 30, 32, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 32px; padding: 40px 32px; text-align: center;">
+                    <div style="font-size: 56px; margin-bottom: 24px; opacity: 0.9;">📅</div>
+                    <h2 style="font-size: 26px; font-weight: 700; margin-bottom: 12px; color: white;">Новий місяць</h2>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; line-height: 1.5;">У цьому місяці ще немає записів. Хочете перенести структуру та цифри з минулого місяця?</p>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div class="btn-primary">Перенести з: Квітень 2026</div>
+                        <div class="btn-secondary">Почати з чистого аркуша</div>
+                    </div>
+                </div>
+                <div class="explanation">
+                    <h3>📅 Ініціалізація та Історія</h3>
+                    <p>Коли настає новий календарний місяць, система пропонує вам два шляхи:</p>
+                    <ul>
+                        <li><strong>Перенести дані:</strong> Система скопіює всі категорії, доходи та перенесе активні борги. Заплановані суми (план витрат) теж копіюються, але галочки оплат (✓) скидаються.</li>
+                        <li><strong>Історія та Аналітика:</strong> Ви можете фіксувати фінансовий стан кожного місяця та переглядати аналітику, легко перемикаючись між ними у верхньому меню (Січень, Лютий, Березень тощо).</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-header" style="color: var(--sys-blue);">🏢 Бізнес-аналітика</h2>
+        
+        <div id="biz-turnover" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    
+                    <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 22px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); height: 48px; border-radius: 14px; font-size: 16px; font-weight: 600; color: white; display: flex; align-items: center; padding: 0 16px; flex: 1;">ТОВ "Альфа"</div>
+                            <div style="background: var(--input-bg); padding: 0 28px 0 12px; border-radius: 14px; font-size: 14px; display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.1); height: 48px; color: white;">UAH</div>
+                        </div>
+                        <div style="display: flex; gap: 12px; width: 100%;">
+                            <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size: 11px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">ОБОРОТ</div>
+                                <div class="tabular" style="font-size: 20px; font-weight: 800; color: white; white-space: nowrap;">1 450 000 ₴</div>
+                            </div>
+                            <div style="flex: 1; background: rgba(10, 132, 255, 0.1); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(10, 132, 255, 0.2);">
+                                <div style="font-size: 11px; color: var(--sys-blue); font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">ФАКТ. ЗАЛИШОК</div>
+                                <div class="tabular" style="font-size: 20px; font-weight: 800; color: var(--sys-blue); white-space: nowrap;">1 380 000 ₴</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-block" style="padding: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <span style="font-size: 15px; font-weight: 600; color: var(--text-secondary);">За місяць:</span>
+                            <span class="tabular" style="font-size: 22px; font-weight: 700; color: var(--sys-green); white-space: nowrap;">587 210,40</span>
+                        </div>
+                        <svg width="100%" height="32" viewBox="0 0 100 32" preserveAspectRatio="none" style="margin-bottom: 16px;">
+                            <defs><linearGradient id="g-inc" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--sys-green)" stop-opacity="0.4" /><stop offset="100%" stop-color="var(--sys-green)" stop-opacity="0.0" /></linearGradient></defs>
+                            <polyline points="0,32 0,20 50,22 100,5 100,32" fill="url(#g-inc)" />
+                            <polyline points="0,20 50,22 100,5" fill="none" stroke="var(--sys-green)" stroke-width="2.5" />
+                        </svg>
+                        
+                        <div style="display: flex; justify-content: space-between; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05);">
+                            <span style="font-weight: 600; font-size: 15px; color: var(--text-secondary);">За рік:</span>
+                            <span class="tabular" style="font-weight: 700; font-size: 16px; color: white;">7 046 524,80 ₴</span>
+                        </div>
+                        
+                        <div style="margin-top: 24px; background: rgba(0,0,0,0.3); border-radius: 16px; padding: 8px 16px;">
+                            <div class="info-row" style="padding: 14px 0;">
+                                <span style="color: var(--text-secondary); font-weight: 600;">Середній оборот за день:</span>
+                                <span class="tabular" style="font-weight: 700; color: white;">18 942,27 ₴</span>
+                            </div>
+                            <div class="info-row" style="padding: 14px 0;">
+                                <span style="color: var(--text-secondary); font-weight: 600;">Середній оборот за годину:</span>
+                                <span class="tabular" style="font-weight: 700; color: white;">1 578,52 ₴</span>
+                            </div>
+                            <div class="info-row" style="border: none; padding: 14px 0;">
+                                <span style="color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 8px;">🕒 Годин роботи на день:</span>
+                                <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 6px 16px; border-radius: 10px; font-weight: 700;">12</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="explanation">
+                    <h3>💳 Оборот та Фактичний залишок</h3>
+                    <ul>
+                        <li><strong>Картка рахунку:</strong> Валюта та суми акуратно тримаються разом, не переходячи на новий рядок.</li>
+                        <li><strong>Оборот:</strong> Загальна сума (Gross Turnover), яка надійшла на рахунок. Усі рахунки агрегуються у віджеті "Оборот".</li>
+                        <li><strong>Факт. залишок:</strong> Кількість грошей, яка <em>прямо зараз</em> лежить на рахунку. Потрібна виключно для Звірки каси.</li>
+                        <li><strong>Ефективність часу:</strong> Віджет показує оборот за день та годину (залежить від параметра "Годин роботи"). Це допомагає розрахувати точку беззбитковості.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="biz-invoices" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="info-block" style="padding: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">Всього за місяць:</span>
+                            <div class="tabular" style="font-size: 24px; font-weight: 800; color: var(--sys-red); white-space: nowrap;">-230 350,53 ₴</div>
+                        </div>
+                        <svg width="100%" height="32" viewBox="0 0 100 32" preserveAspectRatio="none" style="margin-bottom: 24px;">
+                            <defs><linearGradient id="g-cogs" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--sys-red)" stop-opacity="0.4" /><stop offset="100%" stop-color="var(--sys-red)" stop-opacity="0.0" /></linearGradient></defs>
+                            <polyline points="0,32 0,22 50,20 100,5 100,32" fill="url(#g-cogs)" />
+                            <polyline points="0,22 50,20 100,5" fill="none" stroke="var(--sys-red)" stroke-width="2.5" />
+                        </svg>
+                        <div class="btn-secondary" style="border-color: rgba(255, 69, 58, 0.3); background: rgba(255, 69, 58, 0.1); color: white; display: flex; justify-content: center; gap: 8px;">📦 Керувати накладними</div>
+                    </div>
+                </div>
+
+                <div class="explanation">
+                    <h3>📦 Закупівлі (Собівартість)</h3>
+                    <ul>
+                        <li><strong>Головний віджет:</strong> Показує загальну суму закупівель та динаміку витрат на графіку. Ця сума віднімається від Обороту для розрахунку Валового прибутку.</li>
+                        <li><strong>Модалка:</strong> Кнопка відкриває детальну аналітику по кожному постачальнику (готівка/безготівка та частка у відсотках).</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="biz-opex" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center;">
+                <div style="background: linear-gradient(135deg, rgba(46, 160, 67, 0.15), rgba(46, 160, 67, 0.05)); border: 1px solid rgba(46, 160, 67, 0.3); border-radius: 18px; padding: 16px; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div>
+                            <div style="background: #e69a3a; color: white; padding: 2px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; margin-bottom: 6px; display: inline-block;">🥈 2 МІСЦЕ</div>
+                            <div style="font-size: 18px; font-weight: 700; color: white;">Аренда</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 11px; background: rgba(255, 214, 10, 0.15); color: #ffd60a; padding: 2px 6px; border-radius: 6px; font-weight: 700; display: inline-block; margin-bottom: 4px;">Нова</div>
+                            <div style="font-size: 11px; color: var(--text-tertiary);"><span style="font-weight: 700; color: var(--text-secondary);">10,44 млн</span> за 10 років</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <svg width="60%" height="24" viewBox="0 0 100 24" preserveAspectRatio="none">
+                            <polyline points="0,20 50,22 100,5" fill="none" stroke="#ffd60a" stroke-width="2.5" />
+                        </svg>
+                        <div style="font-size: 22px; font-weight: 800; color: white; display: flex; align-items: center; gap: 8px;">
+                            87 000,00 ₴
+                            <div style="width: 24px; height: 24px; background: var(--sys-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(46, 160, 67, 0.4);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="explanation">
+                    <h3>📈 Операційні витрати (OPEX)</h3>
+                    <ul>
+                        <li><strong>Рейтинг:</strong> Система автоматично маркує Топ-3 найдорожчих категорій витрат.</li>
+                        <li><strong>За 10 років:</strong> Множить суму на 120 місяців. Показує приховану вартість регулярних витрат.</li>
+                        <li><strong>Зелена галочка (✓):</strong> Означає, що всі підкатегорії оплачені. Фон картки стає зеленкуватим.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="biz-summary" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;">
+                <div style="background: rgba(30,30,32,0.8); border-radius: 24px; padding: 24px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="background: linear-gradient(135deg, #3a0e0e, #1a0505); border: 1px solid rgba(255, 69, 58, 0.3); border-radius: 16px; padding: 20px; margin-bottom: 16px;">
+                        <div style="font-size: 15px; font-weight: 600; color: white; margin-bottom: 8px;">Чистий прибуток:</div>
+                        <div style="font-size: 26px; font-weight: 800; color: white; display: flex; align-items: center; gap: 8px;">
+                            -40 346,63 ₴ <span style="font-size: 13px; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 8px;">-6.9%</span>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; margin-bottom: 16px;">
+                        <div class="info-row" style="padding-top: 0;">
+                            <span style="color: var(--text-secondary);">Оплачені інвойси:</span>
+                            <span style="color: var(--sys-red); font-weight: 700;">-230 350,53 ₴ <span style="font-size: 11px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px;">39.2%</span></span>
+                        </div>
+                        <div class="info-row" style="background: rgba(46, 160, 67, 0.1); padding: 8px 12px; border-radius: 10px; border: none;">
+                            <span style="color: var(--sys-green); font-weight: 700;">Валовий прибуток:</span>
+                            <span style="color: var(--sys-green); font-weight: 700;">356 859,87 ₴ <span style="font-size: 11px; background: rgba(46, 160, 67, 0.15); padding: 2px 6px; border-radius: 6px;">60.8%</span></span>
+                        </div>
+                        <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 12px 0;"></div>
+                        <div class="info-row" style="padding-bottom: 4px; border: none;">
+                            <span style="color: var(--text-secondary);">План витрат (опер.):</span>
+                            <span style="font-weight: 700; color: white;">397 206,50 ₴</span>
+                        </div>
+                        <div class="info-row" style="padding-bottom: 12px;">
+                            <span style="color: var(--text-secondary);">Вже оплачено:</span>
+                            <span style="color: var(--sys-green); font-weight: 700;">188 094,00 ₴</span>
+                        </div>
+                        <div class="info-row" style="border: none; padding-bottom: 0;">
+                            <span style="font-weight: 700; color: white;">Залишок до оплати:</span>
+                            <span style="color: var(--sys-red); font-weight: 700; font-size: 16px;">209 112,50 ₴</span>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.4); border: 1px dashed rgba(255,255,255,0.2); border-radius: 16px; padding: 16px;">
+                        <div style="font-size: 14px; font-weight: 700; color: white; margin-bottom: 12px; letter-spacing: 1px;">ЗВІРКА</div>
+                        <div class="info-row" style="padding-top: 0; padding-bottom: 8px;">
+                            <span style="color: var(--text-secondary);">Теоретичний залишок:</span>
+                            <span style="font-weight: 700; color: white;">168 765,87 ₴</span>
+                        </div>
+                        <div class="info-row" style="border: none; padding-bottom: 0;">
+                            <span style="color: var(--text-secondary);">Фактичний залишок:</span>
+                            <span style="font-weight: 700; color: var(--sys-blue);">89 171,24 ₴</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="explanation">
+                    <h3>⚖️ Зведення (P&L)</h3>
+                    <ul>
+                        <li><strong>Чистий прибуток:</strong> Якщо блок червоний — ви у збитках. Відсоток показує чисту маржинальність.</li>
+                        <li><strong>Валовий прибуток:</strong> Оборот мінус Закупівлі.</li>
+                        <li><strong>Залишок до оплати:</strong> Різниця між планом витрат та вже оплаченими (де стоїть ✓).</li>
+                        <li><strong>ЗВІРКА:</strong> Порівнює "Теоретичний" кешфлоу з "Фактичним". Розбіжність означає, що ви забули внести витрату або загубили чек.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="biz-sankey" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr; gap: 24px;">
+                <div style="width: 100%; height: 300px; background: rgba(0,0,0,0.4); border-radius: 24px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.05);">
+                    <div id="sankey_mock" style="width: 100%; height: 100%; padding: 10px;"></div>
+                </div>
+                <div class="explanation">
+                    <h3>🌊 Діаграма грошових потоків (Sankey)</h3>
+                    <ul>
+                        <li>Інтерактивний графік, який наочно візуалізує рух капіталу[cite: 5].</li>
+                        <li><strong>Зліва</strong> входять "ріки" доходів, по центру вони зливаються у "Ваш Бюджет", а <strong>справа</strong> розтікаються на Закупівлі та Категорії витрат[cite: 5].</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-header" style="color: var(--sys-green);">👤 Особистий кабінет</h2>
+
+        <div id="pers-income" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;">
+                <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(30, 30, 32, 0.8); padding: 24px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <div style="background: white; color: black; font-weight: 500; font-size: 15px; padding: 6px 12px; flex: 1; margin-right: 16px;">Зарплата</div>
+                        <div style="font-size: 18px; font-weight: 700; color: white; display: flex; align-items: baseline; gap: 6px;">3 200 <span style="font-size: 14px; font-weight: 500; color: var(--text-secondary);">USD</span></div>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-secondary); font-weight: 600;">Вартість 1 години:</span>
+                        <span style="font-weight: 700; color: white;" class="tabular"><span style="color: var(--text-tertiary); font-weight: 500;">$19.04 / </span> 761 ₴</span>
+                    </div>
+                </div>
+                <div class="explanation">
+                    <h3>💰 Доходи та Вартість часу</h3>
+                    <ul>
+                        <li><strong>Доходи у валюті:</strong> Додавайте зарплату чи фріланс. Доларові надходження перераховуються у гривню за курсом НБУ.</li>
+                        <li><strong>Вартість часу:</strong> Система рахує ціну вашої робочої години (з розрахунку 21 робочий день по 8 годин). Це допомагає оцінювати покупки.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="pers-limit" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center;">
+                <div style="background: rgba(30,30,32,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 24px;">
+                    <div style="background: linear-gradient(135deg, #1d1d1f, #000000); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 20px; margin-bottom: 24px; position: relative; overflow: hidden;">
+                        <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--sys-green);"></div>
+                        <div style="font-size: 15px; font-weight: 600; color: white; margin-bottom: 8px;">Залишається в міс:</div>
+                        <div class="tabular" style="font-size: 28px; font-weight: 800; color: white; display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                            968,40 ₴ <span style="font-size: 13px; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 8px;">0.7%</span>
+                        </div>
+                        <svg width="100%" height="24" viewBox="0 0 100 24" preserveAspectRatio="none">
+                            <defs><linearGradient id="g-rem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--sys-green)" stop-opacity="0.4" /><stop offset="100%" stop-color="var(--sys-green)" stop-opacity="0.0" /></linearGradient></defs>
+                            <polyline points="0,24 0,20 50,22 100,5 100,24" fill="url(#g-rem)" />
+                            <polyline points="0,20 50,22 100,5" fill="none" stroke="var(--sys-green)" stroke-width="2.5" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="explanation">
+                    <h3>🎯 Вільний залишок та Ліміт</h3>
+                    <ul>
+                        <li><strong>Залишається в міс:</strong> Це ваші повністю вільні гроші після відрахування всіх обов'язкових витрат. Графік показує тренд залишку.</li>
+                        <li><strong>Денний ліміт:</strong> Рахується як <em>(Вільні гроші / Кількість днів до кінця місяця)</em>. Допомагає не вийти за рамки бюджету.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-header" style="color: var(--text-tertiary);">🛠 Фінансові інструменти</h2>
+
+        <div id="shared-debts" class="guide-section section-anchor">
+            <div style="display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start;">
+                <div style="background: rgba(30,30,32,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px;">
+                    <div style="font-weight: 700; font-size: 18px; margin-bottom: 20px; color: white;">Графік платежів</div>
+                    <div style="display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 16px;">
+                        <div style="flex: 2; color: var(--text-secondary); font-size: 14px; font-weight: 600;">Борг</div>
+                        <div style="flex: 1; text-align: right; color: var(--text-secondary); font-size: 14px; font-weight: 600;">Бер 2026</div>
+                        <div style="flex: 1; text-align: right; color: var(--text-secondary); font-size: 14px; font-weight: 600;">Кві 2026</div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 12px; margin-bottom: 8px;">
+                        <div style="flex: 2; display: flex; align-items: center; gap: 8px;">
+                            <span style="color: var(--text-tertiary); cursor: grab;">≡</span>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="color: var(--sys-red); font-weight: 700; font-size: 14px;">Перетекающая задолженность</span>
+                                <span style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">Залишок плану: <span style="color: white; font-weight: 700;">79 595,00 ₴</span></span>
+                            </div>
+                        </div>
+                        <div style="flex: 1; display: flex; justify-content: flex-end; gap: 6px;">
+                            <input type="checkbox" style="accent-color: var(--sys-green); width: 16px; height: 16px;">
+                            <span style="color: var(--text-tertiary); font-weight: 600;">0</span>
+                        </div>
+                        <div style="flex: 1; display: flex; justify-content: flex-end; gap: 6px;">
+                            <input type="checkbox" style="accent-color: var(--sys-green); width: 16px; height: 16px;">
+                            <span style="color: var(--text-tertiary); font-weight: 600;">0</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 12px;">
+                        <div style="flex: 2; display: flex; align-items: center; gap: 8px;">
+                            <span style="color: var(--text-tertiary); cursor: grab;">≡</span>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="color: var(--sys-red); font-weight: 700; font-size: 14px;">Кредит на авто</span>
+                                <span style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">Залишок плану: <span style="color: white; font-weight: 700;">12 500,00 $</span></span>
+                            </div>
+                        </div>
+                        <div style="flex: 1; display: flex; justify-content: flex-end; gap: 6px;">
+                            <input type="checkbox" checked style="accent-color: var(--sys-green); width: 16px; height: 16px;">
+                            <span style="color: var(--sys-green); font-weight: 700;">500</span>
+                        </div>
+                        <div style="flex: 1; display: flex; justify-content: flex-end; gap: 6px;">
+                            <input type="checkbox" style="accent-color: var(--sys-green); width: 16px; height: 16px;">
+                            <span style="color: var(--text-primary); font-weight: 600;">500</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="explanation">
+                    <h3>🗓 Графік платежів</h3>
+                    <ul>
+                        <li><strong>Матриця:</strong> Модальне вікно для планування. Впишіть суми у стовпчики майбутніх місяців, і вони будуть враховані у плані.</li>
+                        <li><strong>Кілька кредитів:</strong> Ви бачите всі свої зобов'язання в одному місці (наприклад, Перетікаюча заборгованість та Кредит на авто).</li>
+                        <li><strong>Drag & Drop (≡):</strong> Змінюйте пріоритет погашення боргів, перетягуючи їх за іконку зліва.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+    // Ініціалізація реального графіка Sankey
+    google.charts.load('current', {'packages':['sankey']});
+    google.charts.setOnLoadCallback(drawSankeyMock);
+
+    function drawSankeyMock() {
+        const data = new google.visualization.DataTable();
+        data.addColumn('string', 'Звідки');
+        data.addColumn('string', 'Куди');
+        data.addColumn('number', 'Сума (₴)');
+        data.addRows([
+            ['Оборот (Дохід)', 'Ваш Бюджет', 1450000],
+            ['Ваш Бюджет', 'Закупівлі', 620000],
+            ['Ваш Бюджет', 'Оренда', 150000],
+            ['Ваш Бюджет', 'Зарплати', 330000],
+            ['Ваш Бюджет', 'Вільний залишок', 350000]
+        ]);
+        const colors = ['#0a84ff', '#32d74b', '#ff9f0a', '#ff453a', '#5e5ce6'];
+        const options = {
+            backgroundColor: 'transparent',
+            sankey: {
+                node: { colors: colors, label: { color: '#ffffff', fontSize: 13, bold: true, fontName: '-apple-system' }, nodePadding: 20 },
+                link: { colorMode: 'gradient', colors: colors }
+            }
+        };
+        const chart = new google.visualization.Sankey(document.getElementById('sankey_mock'));
+        chart.draw(data, options);
+    }
+
+    // Scroll Spy для бокового меню
+    document.addEventListener('DOMContentLoaded', () => {
+        const sections = document.querySelectorAll('.section-anchor');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                navLinks.forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '-20% 0px -60% 0px',
+            threshold: 0
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const currentId = entry.target.getAttribute('id');
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${currentId}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(section => observer.observe(section));
+    });
+</script>
+
+</body>
+</html>
