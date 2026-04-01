@@ -1366,7 +1366,7 @@
         
         <div class="type-selector" style="margin-bottom: 16px;">
             <button id="btn-tab-invoices" class="type-btn active" onclick="switchInvoiceTab('invoices')">Інвойси</button>
-            <button id="btn-tab-suppliers" class="type-btn" onclick="switchInvoiceTab('suppliers')">обіг</button>
+            <button id="btn-tab-suppliers" class="type-btn" onclick="switchInvoiceTab('suppliers')">Обіг</button>
         </div>
 
         <div id="tab-invoices-content">
@@ -2020,8 +2020,8 @@ async function performLogin(user) {
         badge.innerText = isBiz ? 'Бізнес' : 'Фіз. особа';
         badge.className = isBiz ? 'badge-type badge-business' : 'badge-type';
 
-        document.getElementById('title-sources').innerText = isBiz ? 'обіг за рахунками за місяць' : 'Джерела доходу';
-        document.getElementById('title-incomes').innerText = isBiz ? 'обіг' : 'Доходи';
+        document.getElementById('title-sources').innerText = isBiz ? 'Обіг за рахунками за місяць' : 'Джерела доходу';
+        document.getElementById('title-incomes').innerText = isBiz ? 'Обіг' : 'Доходи';
         
         document.getElementById('label-daily').innerText = isBiz ? 'Середній обіг за день:' : 'У робочий день:';
         document.getElementById('label-hourly').innerText = isBiz ? 'Середній обіг за годину:' : 'Вартість 1 години:';
@@ -2483,7 +2483,7 @@ function renderIncomes() {
                     <div style="display: flex; gap: 12px; width: 100%;">
                         <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s;" onfocusin="this.style.borderColor='var(--text-secondary)'; this.style.backgroundColor='rgba(0,0,0,0.5)';" onfocusout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.backgroundColor='rgba(0,0,0,0.3)';">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">обіг</div>
+                                <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Обіг</div>
                                 <div id="inc-percent-${inc.id}" style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 6px;">0.0%</div>
                             </div>
                             <input type="number" class="tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${inc.id}, 'amount', this.value)" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
