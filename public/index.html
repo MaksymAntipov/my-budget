@@ -584,21 +584,6 @@
         .daily-limit-title { font-size: 15px; color: var(--text-secondary); font-weight: 600; }
         .daily-limit-val { font-size: 20px; font-weight: 800; color: var(--sys-green); font-variant-numeric: tabular-nums; background: linear-gradient(135deg, var(--sys-green), #1e702e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        .trend-box { 
-            margin-bottom: 24px; padding: 16px 20px; border-radius: 22px; 
-            display: flex; flex-direction: row; align-items: center; gap: 16px; 
-            background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2); transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
-        }
-        .trend-icon-wrapper { width: 48px; height: 48px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: inset 0 2px 4px rgba(255,255,255,0.1);}
-        .icon-good { background: linear-gradient(135deg, rgba(46, 160, 67, 0.15), rgba(46, 160, 67, 0.25)); color: var(--sys-green); }
-        .icon-bad { background: linear-gradient(135deg, rgba(255, 69, 58, 0.15), rgba(255, 69, 58, 0.25)); color: var(--sys-red); }
-        .icon-stable { background: linear-gradient(135deg, rgba(255, 159, 10, 0.15), rgba(255, 159, 10, 0.25)); color: #ff9f0a; }
-        .icon-empty { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); }
-        .trend-text { display: flex; flex-direction: column; gap: 4px; }
-        .trend-title { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px;}
-        .trend-sub { font-size: 14px; font-weight: 500; color: var(--text-secondary); line-height: 1.4;}
-
         .jar-card { 
             background: var(--mono-card-bg); 
             border: 1px solid rgba(255,255,255,0.15); 
@@ -1209,8 +1194,6 @@
                         <div class="cf-row"><span>Фактичний залишок:</span> <span class="cf-val" id="recon-actual" style="color: var(--sys-blue);">0.00 ₴</span></div>
                     </div>
                     
-                    <div id="trend-box" class="trend-box trend-empty" style="display: none;"></div>
-
                     <div class="chart-container" style="height: 340px;" id="budgetChartContainer">
                         <div id="sankey_basic" style="width: 100%; height: 100%;"></div>
                     </div>
@@ -2926,7 +2909,22 @@ function getHistoricalIncome(year, month) {
             } else {
                 let historicalTotal = 0;
                 if (appData[tempY] && appData[tempY][tempM] && appData[tempY][tempM].initialized) {
-                    const pastCat = appData[tempY][tempM].expenses.find(e => e.id === categoryId);
+                    let pastCat = appData[tempY][tempM].expenses.find(e => e.id === categoryId);
+                    
+                    // РОЗУМНИЙ ПОШУК (ФІКС ДЛЯ БОРГІВ ТА ЗАОЩАДЖЕНЬ):
+                    const currentCat = expenses.find(e => e.id === categoryId);
+                    
+                    if (!pastCat && currentCat) {
+                        const isDebtCategory = currentCat.items && currentCat.items.some(item => item.debtId);
+                        const isSavingsCategory = currentCat.isSavings;
+
+                        if (isDebtCategory) {
+                            pastCat = appData[tempY][tempM].expenses.find(e => e.items && e.items.some(item => item.debtId));
+                        } else if (isSavingsCategory) {
+                            pastCat = appData[tempY][tempM].expenses.find(e => e.isSavings);
+                        }
+                    }
+
                     if (pastCat) {
                         historicalTotal = getCategoryTotal(pastCat);
                     }
@@ -2941,20 +2939,39 @@ function getHistoricalIncome(year, month) {
         const prevTotal = dataPoints[monthsBack - 2];
         let trendHtml = '';
         let colorMain = '#a1a1a6';
+
+        // Перевіряємо, чи це заощадження, щоб інвертувати кольори
+        const currentCatForColor = expenses.find(e => e.id === categoryId);
+        const isSavings = currentCatForColor ? currentCatForColor.isSavings : false;
         
         if (prevTotal === 0 && currentTotal > 0) {
             trendHtml = `<div class="trend-badge trend-new">Нова</div>`;
             colorMain = '#ffd60a';
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-up">↑ +${diff}%</div>`;
-            colorMain = '#ff453a';
+            if (isSavings) {
+                // Для заощаджень ріст - це Добре (Зелений)
+                trendHtml = `<div class="trend-badge" style="color: #32d74b; background: rgba(50, 215, 75, 0.15);">↑ +${diff}%</div>`;
+                colorMain = '#32d74b';
+            } else {
+                // Для витрат ріст - це Погано (Червоний)
+                trendHtml = `<div class="trend-badge trend-up">↑ +${diff}%</div>`;
+                colorMain = '#ff453a';
+            }
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-down">↓ -${diff}%</div>`;
-            colorMain = '#32d74b';
+            if (isSavings) {
+                // Для заощаджень падіння - це Погано (Червоний)
+                trendHtml = `<div class="trend-badge" style="color: #ff453a; background: rgba(255, 69, 58, 0.15);">↓ -${diff}%</div>`;
+                colorMain = '#ff453a';
+            } else {
+                // Для витрат падіння - це Добре (Зелений)
+                trendHtml = `<div class="trend-badge trend-down">↓ -${diff}%</div>`;
+                colorMain = '#32d74b';
+            }
         } else {
             trendHtml = `<div class="trend-badge" style="background: rgba(255,255,255,0.1); color: #a1a1a6;">= Без змін</div>`;
+            colorMain = '#a1a1a6';
         }
 
         const maxVal = Math.max(...dataPoints, 100); 
@@ -3408,40 +3425,6 @@ let workingDays = 21;
             }
         }
 
-        const trendBox = document.getElementById('trend-box');
-        let prevYear = currentYear, prevMonth = currentMonth - 1;
-        if (prevMonth < 0) { prevMonth = 11; prevYear--; }
-
-        if (appData[prevYear] && appData[prevYear][prevMonth] && appData[prevYear][prevMonth].initialized) {
-            let prevData = appData[prevYear][prevMonth], prevIncome = 0;
-            if (prevData.incomes) prevData.incomes.forEach(inc => prevIncome += (inc.currency === 'USD' ? inc.amount * currentExchangeRate : inc.amount));
-            else prevIncome = (prevData.usd || 0) * currentExchangeRate;
-
-            let prevCogsAmount = 0;
-            if (isBiz && prevData.cogs) prevCogsAmount = prevData.cogs.type === 'percent' ? prevIncome * (prevData.cogs.value / 100) : prevData.cogs.value;
-            let prevExp = prevData.expenses ? prevData.expenses.reduce((sum, exp) => sum + exp.items.reduce((s, item) => s + (parseFloat(item.amount) || 0), 0), 0) : 0;
-            let prevRemaining = prevIncome - prevCogsAmount - prevExp;
-
-            const iconGood = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>`;
-            const iconBad = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>`;
-            const iconStable = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"></line><line x1="5" y1="15" x2="19" y2="15"></line></svg>`;
-
-            const trendHtml = (icon, cls, title, sub) => `<div class="trend-icon-wrapper ${cls}">${icon}</div><div class="trend-text"><div class="trend-title">${title}</div><div class="trend-sub">${sub}</div></div>`;
-            
-            if (prevRemaining <= 0 && remaining <= 0) { trendBox.className = 'trend-box trend-bad'; trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', 'Бюджет у мінусі', 'Ситуація не покращилася з минулого місяця.'); }
-            else if (prevRemaining <= 0 && remaining > 0) { trendBox.className = 'trend-box trend-good'; trendBox.innerHTML = trendHtml(iconGood, 'icon-good', 'Чудовий прогрес!', 'Ви вийшли в плюс. У минулому місяці був мінус.'); }
-            else {
-                let diffPercent = ((remaining - prevRemaining) / prevRemaining) * 100;
-                if (Math.abs(diffPercent) <= 5) { trendBox.className = 'trend-box trend-stable'; trendBox.innerHTML = trendHtml(iconStable, 'icon-stable', 'Фінанси стабільні', 'Вільних грошей залишається приблизно стільки ж.'); }
-                else if (diffPercent > 5) { trendBox.className = 'trend-box trend-good'; trendBox.innerHTML = trendHtml(iconGood, 'icon-good', `Вільних грошей більше (+${diffPercent.toFixed(1)}%)`, 'У вас залишається більше коштів, ніж у минулому місяці.'); }
-                else { trendBox.className = 'trend-box trend-bad'; trendBox.innerHTML = trendHtml(iconBad, 'icon-bad', `Вільних грошей менше (${Math.abs(diffPercent).toFixed(1)}%)`, 'Залишок на місяць нижчий за минулий. Слідкуйте за витратами.'); }
-            }
-            trendBox.style.display = 'flex';
-        } else {
-            trendBox.className = 'trend-box trend-empty';
-            trendBox.innerHTML = `<div class="trend-icon-wrapper icon-empty"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div><div class="trend-text"><div class="trend-title">Недостатньо даних</div><div class="trend-sub">Аналітика з'явиться наступного місяця.</div></div>`;
-            trendBox.style.display = 'flex';
-        }
 
         const percentElements = document.querySelectorAll('.expense-info.tabular');
         expenses.forEach((exp, index) => {
