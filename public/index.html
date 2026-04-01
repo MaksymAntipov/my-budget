@@ -1113,13 +1113,19 @@
 
                 <div class="glass-card" style="margin-bottom: 0;">
                     <h1 id="title-incomes">Доходи</h1>
-                    <div class="info-block">
-                        <div class="info-row">
-                            <span class="text-label">За місяць:</span>
-                            <span class="text-value value-main tabular"><span id="income-display">0.00</span><span class="currency-symbol">₴</span></span>
+                    <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px;">
+                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">За місяць:</span>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                                <div id="income-trend-badge"></div>
+                                <span class="text-value value-main tabular" style="font-size: 24px;"><span id="income-display">0.00</span><span class="currency-symbol">₴</span></span>
+                            </div>
                         </div>
-                        <div class="info-row">
-                            <span class="text-label">За рік:</span>
+                        
+                        <div class="expense-pro-sparkline" id="income-sparkline-container" style="margin-top: 0; margin-bottom: 12px;"></div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 16px;">
+                            <span style="font-weight: 600; color: var(--text-secondary);">За рік:</span>
                             <span class="text-value tabular"><span id="yearly-income-display">0.00</span><span class="currency-symbol">₴</span> <span style="color: var(--text-tertiary); font-weight: 500; font-size: 14px; margin-left: 6px;" id="yearly-income-usd-container">($<span id="yearly-income-usd">0.00</span>)</span></span>
                         </div>
                     </div>
@@ -1160,14 +1166,20 @@
                 <div class="glass-card" style="position: sticky; top: 20px;">
                     <h2 style="margin-bottom: 20px;">Зведення</h2>
                     
-                    <div id="summary-card" class="summary-box summary-main" style="margin-bottom: 16px; flex-direction: row; align-items: center; justify-content: space-between;">
+                    <div id="summary-card" class="summary-box summary-main" style="margin-bottom: 16px; padding: 20px 24px; position: relative;">
                         <div id="summary-progress" class="summary-progress" style="width: 0%;"></div>
-                        <div class="summary-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; z-index: 1; position: relative;">
-                            <div id="title-remaining" style="font-size: 17px; font-weight: 700; color: inherit; letter-spacing: -0.3px;">Залишається в міс:</div>
-                            <div class="tabular" style="font-size: 26px; font-weight: 800; color: inherit;">
-                                <span id="remaining-money">0.00</span> <span class="currency-symbol">₴</span>
-                                <span style="opacity: 0.9; font-weight: 700; font-size: 15px; margin-left: 8px; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 10px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);"><span id="remaining-percent">0</span>%</span>
+                        <div class="summary-content" style="display: flex; flex-direction: column; width: 100%; z-index: 1; position: relative;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div id="title-remaining" style="font-size: 16px; font-weight: 600; color: inherit; opacity: 0.9; letter-spacing: -0.3px;">Залишається в міс:</div>
+                                    <div class="tabular" style="font-size: 26px; font-weight: 800; color: inherit; display: flex; align-items: center;">
+                                        <span id="remaining-money">0.00</span> <span class="currency-symbol" style="margin-right: 8px;">₴</span>
+                                        <span style="opacity: 0.9; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 8px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);"><span id="remaining-percent">0</span>%</span>
+                                    </div>
+                                </div>
+                                <div id="profit-trend-badge"></div>
                             </div>
+                            <div class="expense-pro-sparkline" id="profit-sparkline-container" style="margin-top: 0; margin-bottom: 0;"></div>
                         </div>
                     </div>
 
@@ -2632,6 +2644,119 @@ function convertCurrency() {
         return cogsAmount;
     }
 
+    function getHistoricalProfit(year, month) {
+        if (!appData[year] || !appData[year][month] || !appData[year][month].initialized) return 0;
+        const data = appData[year][month];
+        
+        let income = 0;
+        if (data.incomes && data.incomes.length > 0) {
+            data.incomes.forEach(inc => {
+                income += (inc.currency === 'USD' ? (parseFloat(inc.amount) || 0) * currentExchangeRate : (parseFloat(inc.amount) || 0));
+            });
+        } else {
+            income = (parseFloat(data.usd) || 0) * currentExchangeRate;
+        }
+
+        let cogsAmount = 0;
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        if (isBiz) {
+            if (data.invoices && data.invoices.length > 0) {
+                cogsAmount = data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+            } else if (data.cogs) {
+                cogsAmount = data.cogs.type === 'percent' ? income * (data.cogs.value / 100) : (parseFloat(data.cogs.value) || 0);
+            }
+        }
+
+        let expTotal = 0;
+        if (data.expenses) {
+            data.expenses.forEach(exp => {
+                expTotal += exp.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            });
+        }
+
+        return income - cogsAmount - expTotal;
+    }
+
+    function generateProfitSparklineHTML(currentTotal) {
+        const monthsBack = 3;
+        const dataPoints = [];
+        const labels = [];
+        
+        let tempY = currentYear;
+        let tempM = currentMonth;
+        
+        for (let i = 0; i < monthsBack; i++) {
+            labels.unshift(monthNames[tempM].substring(0, 3));
+            if (i === 0) {
+                dataPoints.unshift(currentTotal);
+            } else {
+                dataPoints.unshift(getHistoricalProfit(tempY, tempM));
+            }
+            tempM--;
+            if (tempM < 0) { tempM = 11; tempY--; }
+        }
+        
+        const prevTotal = dataPoints[monthsBack - 2];
+        let trendHtml = '';
+        // Колір залежить від того, в плюсі ми чи в мінусі зараз
+        let colorMain = currentTotal >= 0 ? '#32d74b' : '#ffffff'; 
+        
+        if (prevTotal === 0 && currentTotal !== 0) {
+            trendHtml = ``;
+        } else if (currentTotal > prevTotal) {
+            let diffText = '';
+            if (prevTotal !== 0) {
+                const diff = Math.abs(((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1);
+                diffText = `+${diff}%`;
+            }
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">↑ ${diffText}</div>`;
+            colorMain = '#32d74b';
+        } else if (currentTotal < prevTotal) {
+            let diffText = '';
+            if (prevTotal !== 0) {
+                const diff = Math.abs(((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1);
+                diffText = `-${diff}%`;
+            }
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">↓ ${diffText}</div>`;
+            colorMain = currentTotal >= 0 ? '#ff453a' : '#ffffff';
+        } else {
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; background: rgba(255,255,255,0.1); color: inherit; opacity: 0.8; padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">= Без змін</div>`;
+        }
+
+        const maxVal = Math.max(...dataPoints); 
+        const minVal = Math.min(...dataPoints); 
+        let range = maxVal - minVal;
+        if (range === 0) range = 1; // Захист від ділення на 0
+        
+        const width = 100; 
+        const height = 30; 
+        
+        let points = '';
+        dataPoints.forEach((val, i) => {
+            const x = (i / (monthsBack - 1)) * width;
+            const normalized = (val - minVal) / range;
+            const y = height - (normalized * height) + 1;
+            points += `${x},${y} `;
+        });
+        
+        const gradientId = `grad-prof-spark`;
+        const sparklineSvg = `
+            <svg width="100%" height="32" viewBox="0 0 100 32" preserveAspectRatio="none" style="overflow: visible;">
+                <defs>
+                    <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="${colorMain}" stop-opacity="0.4" />
+                        <stop offset="100%" stop-color="${colorMain}" stop-opacity="0.0" />
+                    </linearGradient>
+                </defs>
+                <polyline points="0,32 ${points} 100,32" fill="url(#${gradientId})" />
+                <polyline points="${points}" fill="none" stroke="${colorMain}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        `;
+        
+        const labelsHtml = labels.map(l => `<span>${l}</span>`).join('');
+        return { trendHtml, sparklineSvg, labelsHtml };
+    }
+
     function generateInvoicesSparklineHTML(currentTotal) {
         const monthsBack = 3;
         const dataPoints = [];
@@ -2699,6 +2824,91 @@ function convertCurrency() {
         const labelsHtml = labels.map(l => `<span>${l}</span>`).join('');
         return { trendHtml, sparklineSvg, labelsHtml };
     }
+
+function getHistoricalIncome(year, month) {
+        if (!appData[year] || !appData[year][month] || !appData[year][month].initialized) return 0;
+        const data = appData[year][month];
+        let income = 0;
+        if (data.incomes && data.incomes.length > 0) {
+            data.incomes.forEach(inc => {
+                income += (inc.currency === 'USD' ? (parseFloat(inc.amount) || 0) * currentExchangeRate : (parseFloat(inc.amount) || 0));
+            });
+        } else {
+            income = (parseFloat(data.usd) || 0) * currentExchangeRate;
+        }
+        return income;
+    }
+
+    function generateIncomeSparklineHTML(currentTotal) {
+        const monthsBack = 3;
+        const dataPoints = [];
+        const labels = [];
+        
+        let tempY = currentYear;
+        let tempM = currentMonth;
+        
+        for (let i = 0; i < monthsBack; i++) {
+            labels.unshift(monthNames[tempM].substring(0, 3));
+            if (i === 0) {
+                dataPoints.unshift(currentTotal);
+            } else {
+                dataPoints.unshift(getHistoricalIncome(tempY, tempM));
+            }
+            tempM--;
+            if (tempM < 0) { tempM = 11; tempY--; }
+        }
+        
+        const prevTotal = dataPoints[monthsBack - 2];
+        let trendHtml = '';
+        let colorMain = '#32d74b'; // Для доходів за замовчуванням зелений
+        
+        if (prevTotal === 0 && currentTotal > 0) {
+            trendHtml = ``; // Без лейбла, просто малюємо зелену лінію
+            colorMain = '#32d74b'; 
+        } else if (currentTotal > prevTotal) {
+            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
+            // Зелений, бо доходи ростуть (це добре)
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">↑ +${diff}%</div>`;
+            colorMain = '#32d74b';
+        } else if (currentTotal < prevTotal) {
+            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
+            // Червоний, бо доходи падають
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">↓ -${diff}%</div>`;
+            colorMain = '#ff453a';
+        } else {
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; background: rgba(255,255,255,0.1); color: #a1a1a6; padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">= Без змін</div>`;
+            colorMain = '#a1a1a6';
+        }
+
+        const maxVal = Math.max(...dataPoints, 100); 
+        const width = 100; 
+        const height = 30; 
+        
+        let points = '';
+        dataPoints.forEach((val, i) => {
+            const x = (i / (monthsBack - 1)) * width;
+            const y = height - ((val / maxVal) * height) + 1;
+            points += `${x},${y} `;
+        });
+        
+        const gradientId = `grad-inc-spark`;
+        const sparklineSvg = `
+            <svg width="100%" height="32" viewBox="0 0 100 32" preserveAspectRatio="none" style="overflow: visible;">
+                <defs>
+                    <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="${colorMain}" stop-opacity="0.4" />
+                        <stop offset="100%" stop-color="${colorMain}" stop-opacity="0.0" />
+                    </linearGradient>
+                </defs>
+                <polyline points="0,32 ${points} 100,32" fill="url(#${gradientId})" />
+                <polyline points="${points}" fill="none" stroke="${colorMain}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        `;
+        
+        const labelsHtml = labels.map(l => `<span>${l}</span>`).join('');
+        return { trendHtml, sparklineSvg, labelsHtml };
+    }
+
 
     function generateSparklineHTML(categoryId, currentTotal) {
         const monthsBack = 3; // Фікс: скоротили до 3 місяців
@@ -3118,6 +3328,13 @@ if (isBiz) {
 
         if (!isBiz) document.getElementById('yearly-income-usd').innerText = formatMoney(displayIncomeUsd * 12);
 
+        // НОВИЙ КОД: Рендер графіка доходів (Обороту)
+        const incSparkData = generateIncomeSparklineHTML(displayIncomeUah);
+        const incTrendBadgeEl = document.getElementById('income-trend-badge');
+        const incSparkContainerEl = document.getElementById('income-sparkline-container');
+        if (incTrendBadgeEl) incTrendBadgeEl.innerHTML = incSparkData.trendHtml;
+        if (incSparkContainerEl) incSparkContainerEl.innerHTML = incSparkData.sparklineSvg + `<div class="sparkline-labels">${incSparkData.labelsHtml}</div>`;
+
 let workingDays = 21;
         let hoursPerDay = 8;
         if (isBiz) {
@@ -3145,6 +3362,12 @@ let workingDays = 21;
 
         document.getElementById('remaining-money').innerText = formatMoney(remaining);
         document.getElementById('remaining-percent').innerText = percent;
+        // НОВИЙ КОД: Рендер графіка Чистого прибутку
+        const profSparkData = generateProfitSparklineHTML(remaining);
+        const profTrendBadgeEl = document.getElementById('profit-trend-badge');
+        const profSparkContainerEl = document.getElementById('profit-sparkline-container');
+        if (profTrendBadgeEl) profTrendBadgeEl.innerHTML = profSparkData.trendHtml;
+        if (profSparkContainerEl) profSparkContainerEl.innerHTML = profSparkData.sparklineSvg + `<div class="sparkline-labels" style="color: inherit; opacity: 0.7;">${profSparkData.labelsHtml}</div>`;
         document.getElementById('yearly-remaining').innerText = formatMoney(remaining * 12);
         if (isBiz) {
             let totalActualUah = 0;
