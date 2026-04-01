@@ -2914,14 +2914,18 @@ function getHistoricalIncome(year, month) {
                     // РОЗУМНИЙ ПОШУК (ФІКС ДЛЯ БОРГІВ ТА ЗАОЩАДЖЕНЬ):
                     const currentCat = expenses.find(e => e.id === categoryId);
                     
-                    if (!pastCat && currentCat) {
+                     if (!pastCat && currentCat) {
                         const isDebtCategory = currentCat.items && currentCat.items.some(item => item.debtId);
                         const isSavingsCategory = currentCat.isSavings;
+                        const currentName = (currentCat.name || '').trim().toLowerCase(); // <-- ОСЬ ЦЕЙ РЯДОК ЗАГУБИВСЯ
 
                         if (isDebtCategory) {
                             pastCat = appData[tempY][tempM].expenses.find(e => e.items && e.items.some(item => item.debtId));
                         } else if (isSavingsCategory) {
                             pastCat = appData[tempY][tempM].expenses.find(e => e.isSavings);
+                        } else if (currentName) {
+                            // Якщо це звичайна категорія, але ID не збігся - шукаємо за назвою (ігноруючи регістр)
+                            pastCat = appData[tempY][tempM].expenses.find(e => (e.name || '').trim().toLowerCase() === currentName);
                         }
                     }
 
@@ -3299,14 +3303,21 @@ function getHistoricalIncome(year, month) {
         });
         
 if (isBiz) {
-            // ПОВЕРНУЛИ ПІДРАХУНОК СУМИ ІНВОЙСІВ:
+            // ВІДНОВЛЕНО ПРАВИЛЬНИЙ РОЗРАХУНОК СОБІВАРТОСТІ
             const monthInvoices = appData[currentYear]?.[currentMonth]?.invoices || [];
-            cogsAmount = monthInvoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+            
+            if (monthInvoices.length > 0) {
+                cogsAmount = monthInvoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+            } else {
+                // Якщо інвойсів немає, використовуємо стару логіку (відсоток або фікс)
+                const cogs = appData[currentYear]?.[currentMonth]?.cogs || { type: 'percent', value: 0 };
+                cogsAmount = cogs.type === 'percent' ? currentIncomeUah * (cogs.value / 100) : (parseFloat(cogs.value) || 0);
+            }
             
             const invTotalEl = document.getElementById('invoices-total-amount');
             if (invTotalEl) invTotalEl.innerText = formatMoney(cogsAmount);
 
-            // НОВИЙ КОД: Рендер графіка закупівлі
+            // Рендер графіка закупівлі
             const invSparkData = generateInvoicesSparklineHTML(cogsAmount);
             const trendBadgeEl = document.getElementById('invoices-trend-badge');
             const sparkContainerEl = document.getElementById('invoices-sparkline-container');
