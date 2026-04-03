@@ -1117,53 +1117,6 @@
                     <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
                 </div>
 
-                <div id="cogs-block" class="glass-card" style="margin-bottom: 0; display: none;">
-                    <h2>Собівартість</h2>
-                    <div class="info-block" style="padding: 20px 24px;">
-                        <div style="font-size: 15px; color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;">Відсоток або сума витрат на реалізацію (віднімається від обігу)</div>
-                        <div class="cogs-input-group">
-                            <input type="number" id="cogs-value" placeholder="Наприклад, 30" oninput="updateCOGS(this.value)">
-                            <div class="custom-dropdown" style="width: 110px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
-                                <div class="custom-dropdown-selected" id="cogs-type-display" style="height: 52px; padding: 0 36px 0 16px; border-radius: 16px;">%</div>
-                                <div class="custom-dropdown-options" style="min-width: 110px;">
-                                    <div class="custom-dropdown-option" onclick="selectCOGSType(event, 'percent')">%</div>
-                                    <div class="custom-dropdown-option" onclick="selectCOGSType(event, 'fixed')">Фікс (₴)</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="margin-top: 20px; font-size: 16px; font-weight: 600; display: flex; justify-content: space-between;">
-                            <span>Сума собівартості:</span>
-                            <span class="tabular" style="font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="cogs-calculated-amount">0.00</span> ₴</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="invoices-block" class="glass-card" style="margin-bottom: 0; display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h2 style="margin: 0;">Закупівлі (Собівартість)</h2>
-                    </div>
-                    <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">Всього за місяць:</span>
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                <div id="invoices-trend-badge"></div>
-                                <span class="tabular" style="font-size: 22px; font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="invoices-total-amount">0.00</span> ₴</span>
-                            </div>
-                        </div>
-                        
-                        <div class="expense-pro-sparkline" id="invoices-sparkline-container" style="margin-top: 0; margin-bottom: 8px;"></div>
-                        
-                        <button class="btn-init-secondary" style="margin: 0; display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-primary); border: 1px solid rgba(255, 69, 58, 0.3); background: rgba(255, 69, 58, 0.1);" onclick="openInvoicesModal()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                            Керувати інвойсами
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flow-container" id="cogs-flow" style="display: none;">
-                    <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
-                </div>
-
                 <div class="glass-card" style="margin-bottom: 0;">
                     <h1 id="title-incomes">Доходи</h1>
                     <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 0;">
@@ -1198,13 +1151,61 @@
                             </span>
                             <input type="number" id="business-hours-input" value="8" oninput="updateBusinessHours(this.value)" style="width: 64px; height: 36px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); border-radius: 12px; padding: 0 10px; text-align: center; font-size: 16px; font-weight: 700; outline: none; transition: 0.3s;" onfocus="this.style.borderColor='var(--sys-blue)'; this.style.background='rgba(0,0,0,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.05)';">
                         </div>
-
-
-
                     </div>
                 </div>
 
-                <div class="flow-container">
+                <div class="flow-container" id="after-incomes-flow">
+                    <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
+                </div>
+
+                <div id="invoices-block" class="glass-card" style="margin-bottom: 0; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 style="margin: 0;">Закупівлі (Собівартість)</h2>
+                    </div>
+                    <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">Всього за місяць:</span>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                                <div id="invoices-trend-badge"></div>
+                                <span class="tabular" style="font-size: 22px; font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="invoices-total-amount">0.00</span> ₴</span>
+                            </div>
+                        </div>
+                        
+                        <div class="expense-pro-sparkline" id="invoices-sparkline-container" style="margin-top: 0; margin-bottom: 8px;"></div>
+                        
+                        <button class="btn-init-secondary" style="margin: 0; display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-primary); border: 1px solid rgba(255, 69, 58, 0.3); background: rgba(255, 69, 58, 0.1);" onclick="openInvoicesModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                            Керувати інвойсами
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flow-container" id="cogs-flow" style="display: none;">
+                    <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
+                </div>
+
+                    <div id="payroll-block" class="glass-card" style="margin-bottom: 0; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 style="margin: 0;">Розрахунок зарплат</h2>
+                    </div>
+                    <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">ЗП Фонд (нараховано):</span>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                                <div id="payroll-trend-badge"></div>
+<span class="tabular" style="font-size: 22px; font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="payroll-total-amount">0.00</span> ₴</span>                            </div>
+                        </div>
+                        
+                        <div class="expense-pro-sparkline" id="payroll-sparkline-container" style="margin-top: 0; margin-bottom: 8px;"></div>
+                        
+                        <button class="btn-init-secondary" style="margin: 0; display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-primary); border: 1px solid rgba(255, 69, 58, 0.3); background: rgba(255, 69, 58, 0.1);" onclick="openPayrollModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            Керувати зарплатами
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flow-container" id="payroll-flow" style="display: none;">
                     <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
                 </div>
 
@@ -1473,20 +1474,6 @@
             <div id="invoices-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 38vh; overflow-y: auto; padding-right: 4px;"></div>
         </div>
 
-        <div id="new-supplier-modal" class="modal-overlay" onclick="closeNewSupplierModal(event)" style="z-index: 1100;">
-    <div class="modal-content" style="max-width: 400px; padding: 32px 24px; text-align: center;" onclick="event.stopPropagation()">
-        <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Новий постачальник</h3>
-        <p style="color: var(--text-secondary); font-size: 14px; margin-top: -8px; margin-bottom: 24px;">Введіть назву компанії або ФОП</p>
-        
-        <input type="text" id="new-supplier-name-input" class="ios-input" placeholder="Напр. Епіцентр, ФОП Іванов" style="margin-bottom: 24px; height: 52px; text-align: center;">
-        
-        <div style="display: flex; gap: 12px;">
-            <button class="btn-init-secondary" style="margin: 0; flex: 1;" onclick="closeNewSupplierModal()">Скасувати</button>
-            <button class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; flex: 1; box-shadow: 0 8px 16px rgba(10,132,255,0.3);" onclick="confirmAddSupplier()">Додати</button>
-        </div>
-    </div>
-</div>
-
 <div id="tab-suppliers-content" style="display: none;">
             <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1500,6 +1487,108 @@
             </div>
             <div id="suppliers-turnover-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 45vh; overflow-y: auto; padding-right: 4px;"></div>
         </div>
+    </div>
+</div> <div id="new-supplier-modal" class="modal-overlay" onclick="closeNewSupplierModal(event)" style="z-index: 1100;">
+    <div class="modal-content" style="max-width: 400px; padding: 32px 24px; text-align: center;" onclick="event.stopPropagation()">
+        <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Новий постачальник</h3>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-top: -8px; margin-bottom: 24px;">Введіть назву компанії або ФОП</p>
+        
+        <input type="text" id="new-supplier-name-input" class="ios-input" placeholder="Напр. Епіцентр, ФОП Іванов" style="margin-bottom: 24px; height: 52px; text-align: center;">
+        
+        <div style="display: flex; gap: 12px;">
+            <button class="btn-init-secondary" style="margin: 0; flex: 1;" onclick="closeNewSupplierModal()">Скасувати</button>
+            <button class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; flex: 1; box-shadow: 0 8px 16px rgba(10,132,255,0.3);" onclick="confirmAddSupplier()">Додати</button>
+        </div>
+    </div>
+</div>
+
+<div id="payroll-modal" class="modal-overlay" onclick="closePayrollModal(event)" style="z-index: 1050;">
+    <div class="modal-content" style="max-width: 600px; width: 95%; max-height: 90vh;" onclick="event.stopPropagation()">
+        <div class="modal-header" style="margin-bottom: 16px;">
+            <h3 style="margin: 0;">Зарплатна відомість</h3>
+            <button class="btn-close-modal" onclick="closePayrollModal()">✕</button>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 16px;">
+            <div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Нараховано загалом:</div>
+                <div id="modal-payroll-accrued" style="font-weight: 700; font-size: 18px; color: white;">0.00 ₴</div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Залишилось виплатити:</div>
+                <div id="modal-payroll-remaining" style="font-weight: 800; font-size: 18px; color: var(--sys-red);">0.00 ₴</div>
+            </div>
+        </div>
+
+        <div id="payroll-list" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; flex: 1;"></div>
+        
+        <button class="btn-add" style="margin-top: 16px; flex-shrink: 0;" onclick="openEmployeeModal(null)">+ Додати співробітника</button>
+    </div>
+</div>
+
+<div id="employee-modal" class="modal-overlay" onclick="closeEmployeeModal(event)" style="z-index: 1100;">
+    <div class="modal-content" style="max-width: 500px; padding: 32px 24px;" onclick="event.stopPropagation()">
+        <div class="modal-header" style="margin-bottom: 24px; display: flex; justify-content: flex-start; gap: 16px;">
+            <button class="btn-close-modal" style="margin: 0;" onclick="closeEmployeeModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <h3 id="employee-modal-title" style="margin: 0; font-size: 22px;">Співробітник</h3>
+        </div>
+        
+        <input type="hidden" id="emp-edit-id">
+        
+        <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; max-height: 50vh; overflow-y: auto; padding-right: 8px;">
+            <div style="display: flex; gap: 12px;">
+                <div style="flex: 2;">
+                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">ПІБ / Посада</label>
+                    <input type="text" id="emp-edit-name" class="ios-input" placeholder="Напр. Іванов І.">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">ІПН</label>
+                    <input type="text" id="emp-edit-tax" class="ios-input" placeholder="0000000000">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Ставка / год (₴)</label>
+                    <input type="number" id="emp-edit-rate" class="ios-input tabular" placeholder="0">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Відпрацьовано годин</label>
+                    <input type="number" id="emp-edit-hours" class="ios-input tabular" placeholder="0">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; color: var(--sys-green); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Премія (₴)</label>
+                    <input type="number" id="emp-edit-bonus" class="ios-input tabular" placeholder="0" style="color: var(--sys-green); border-color: rgba(46,160,67,0.3);">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; color: var(--sys-red); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Штраф (₴)</label>
+                    <input type="number" id="emp-edit-penalty" class="ios-input tabular" placeholder="0" style="color: var(--sys-red); border-color: rgba(255,69,58,0.3);">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Виплачено аванс (₴)</label>
+                    <input type="number" id="emp-edit-advance" class="ios-input tabular" placeholder="0">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Оплачено частину (₴)</label>
+                    <input type="number" id="emp-edit-paidpart" class="ios-input tabular" placeholder="0">
+                </div>
+            </div>
+
+            <div>
+                <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Рахунок / Картка для виплати</label>
+                <input type="text" id="emp-edit-account" class="ios-input" placeholder="IBAN або номер картки">
+            </div>
+        </div>
+
+        <button class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; box-shadow: 0 8px 16px rgba(10,132,255,0.3); height: 56px; font-size: 16px;" onclick="saveEmployee()">Зберегти дані</button>
     </div>
 </div>
 
@@ -2114,11 +2203,19 @@ async function performLogin(user) {
         document.getElementById('transfer-modal-title').innerText = isBiz ? 'Поповнити фонд' : 'Відкласти в конверт';
         document.getElementById('jars-modal-title').innerText = isBiz ? 'Фонди бізнесу' : 'Мої конверти';
 
-        document.getElementById('cogs-block').style.display = 'none'; // Полностью скрываем старый блок
-        document.getElementById('cogs-flow').style.display = isBiz ? 'flex' : 'none';
+        const cogsBlock = document.getElementById('cogs-block');
+        if (cogsBlock) cogsBlock.style.display = 'none';
+        
+        const cogsFlow = document.getElementById('cogs-flow');
+        if (cogsFlow) cogsFlow.style.display = isBiz ? 'flex' : 'none';
         
         const invBlock = document.getElementById('invoices-block');
         if (invBlock) invBlock.style.display = isBiz ? 'block' : 'none';
+        const payrollBlock = document.getElementById('payroll-block');
+        if (payrollBlock) payrollBlock.style.display = isBiz ? 'block' : 'none';
+
+        const payrollFlow = document.getElementById('payroll-flow');
+        if (payrollFlow) payrollFlow.style.display = isBiz ? 'flex' : 'none';
         const reconBox = document.getElementById('recon-box');
         if(reconBox) reconBox.style.display = isBiz ? 'flex' : 'none';
 
@@ -2190,11 +2287,12 @@ if (!globalData.debts) globalData.debts = {};
                     
                     const isCleared = parsedIncomes.length === 0 && parsedExpenses.length === 0;
 
-                    appData[row.year][row.month] = {
+                 appData[row.year][row.month] = {
                         initialized: (row.is_initialized === 1) && !isCleared,
                         incomes: parsedIncomes,
                         expenses: parsedExpenses,
-                        cogs: JSON.parse(row.cogs_json || '{"type":"percent","value":0}')
+                        cogs: JSON.parse(row.cogs_json || '{"type":"percent","value":0}'),
+                        payroll: row.payroll_json ? JSON.parse(row.payroll_json) : []
                     };
                 });
             }
@@ -2212,7 +2310,7 @@ if (!globalData.debts) globalData.debts = {};
 
             if (!appData[currentYear]) appData[currentYear] = {};
             if (!appData[currentYear][currentMonth]) {
-                 appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type: 'percent', value: 0} };
+            appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type:'percent', value:0}, payroll: [] };
             }
 
             renderCalendar();
@@ -2223,7 +2321,7 @@ if (!globalData.debts) globalData.debts = {};
         }
     }
 
-    async function saveDataToServer() {
+async function saveDataToServer() {
         if (!currentUser) return;
 
         if (saveTimeout) {
@@ -2238,14 +2336,19 @@ if (!globalData.debts) globalData.debts = {};
                 incomes: currentMonthData.incomes || [],
                 expenses: currentMonthData.expenses || expenses || [],
                 cogs: currentMonthData.cogs || {type: 'percent', value: 0},
+                payroll: currentMonthData.payroll || [], 
                 jars: globalData.jars[currentUser.id] || [],
                 debts: globalData.debts[currentUser.id] || [],
                 suppliers: globalData.suppliers[currentUser.id] || [],
                 invoices: currentMonthData.invoices || []
             };
+            
+            // Логуємо, щоб точно бачити, що летить на сервер
+            console.log("Відправка на сервер. Payroll:", payload.payroll);
+
             try {
                 const token = localStorage.getItem('budget_auth_token');
-                await fetch(`${API_URL}/api/data`, { 
+                const response = await fetch(`${API_URL}/api/data`, { 
                     method: 'POST', 
                     headers: { 
                         'Content-Type': 'application/json',
@@ -2253,6 +2356,13 @@ if (!globalData.debts) globalData.debts = {};
                     }, 
                     body: JSON.stringify(payload) 
                 });
+                
+                // Якщо сервер видав 500 помилку (наприклад, немає колонки в БД)
+                if (!response.ok) {
+                    const errData = await response.json();
+                    console.error("СЕРВЕР ВІДХИЛИВ ДАНІ:", errData);
+                    alert(`Помилка бази даних: ${errData.error}`);
+                }
             } catch (e) {
                 console.error("Помилка збереження на сервер:", e);
             }
@@ -2350,6 +2460,20 @@ function logout() {
                     cat.items.forEach(item => item.isPaid = false);
                 });
 
+                let copiedPayroll = [];
+                if (prev.data.payroll) {
+                    copiedPayroll = JSON.parse(JSON.stringify(prev.data.payroll));
+                    // Обнуляємо годинник і гроші для нового місяця, залишаємо лише суть
+                    copiedPayroll.forEach(emp => {
+                        emp.hours = 0;
+                        emp.bonus = 0;
+                        emp.penalty = 0;
+                        emp.advance = 0;
+                        emp.paid_part = 0;
+                        emp.is_paid = false;
+                    });
+                }
+
                 if (globalData.debts && globalData.debts[currentUser.id]) {
                     let debtsChanged = false;
                     const newMonthDate = currentYear * 100 + currentMonth;
@@ -2373,7 +2497,8 @@ function logout() {
                     initialized: true,
                     incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: Date.now(), name: "Основний", amount: prev.data.usd || 0, currency: "USD" }])),
                     expenses: copiedExpenses,
-                    cogs: JSON.parse(JSON.stringify(prev.data.cogs || {type:'percent', value:0}))
+                    cogs: JSON.parse(JSON.stringify(prev.data.cogs || {type:'percent', value:0})),
+                    payroll: copiedPayroll // <-- ДОДАНО СЮДИ
                 };
             }
         } else {
@@ -2381,7 +2506,8 @@ function logout() {
                 initialized: true,
                 incomes: [{id: Date.now(), name: "Основний", amount: 0, currency: "UAH"}],
                 expenses: JSON.parse(JSON.stringify(defaultCategories)),
-                cogs: {type: 'percent', value: 0}
+                cogs: {type: 'percent', value: 0},
+                payroll: [] // Додали масив для чистого місяця
             };
         }
         
@@ -2465,11 +2591,16 @@ function logout() {
 if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             if (data.cogs.businessHours === undefined) data.cogs.businessHours = 8;
             
-            document.getElementById('cogs-value').value = data.cogs.value || '';
-            const bHoursInput = document.getElementById('business-hours-input');
-            if(bHoursInput) bHoursInput.value = data.cogs.businessHours;
-            document.getElementById('cogs-type-display').innerText = data.cogs.type === 'percent' ? '%' : 'Фікс (₴)';
-            
+            // Безпечна перевірка, бо старі інпути ми замінили на модуль Інвойсів
+            const cogsValEl = document.getElementById('cogs-value');
+            if (cogsValEl) {
+                cogsValEl.value = data.cogs.value || '';
+                const bHoursInput = document.getElementById('business-hours-input');
+                if(bHoursInput) bHoursInput.value = data.cogs.businessHours;
+                document.getElementById('cogs-type-display').innerText = data.cogs.type === 'percent' ? '%' : 'Фікс (₴)';
+            }
+            if (!appData[currentYear][currentMonth].payroll) appData[currentYear][currentMonth].payroll = [];
+            renderPayroll();
             renderIncomes();
             renderExpenses(); 
             convertCurrency(); 
@@ -2536,7 +2667,7 @@ function renderIncomes() {
             const div = document.createElement('div');
             div.className = 'expense-item'; 
             
-            if (isBiz) {
+if (isBiz) {
                 // НОВЫЙ ДИЗАЙН ДЛЯ БИЗНЕСА (Красивая карточка)
                 div.style = "padding: 16px; margin-bottom: 16px; flex-direction: column; align-items: stretch; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);";
                 div.innerHTML = `
@@ -2758,9 +2889,13 @@ function convertCurrency() {
         
         const prevTotal = dataPoints[monthsBack - 2];
         let trendHtml = '';
-        // Колір залежить від того, в плюсі ми чи в мінусі зараз
         let colorMain = currentTotal >= 0 ? '#32d74b' : '#ffffff'; 
         
+        // Вираховуємо різницю в грошах
+        const rawDiff = currentTotal - prevTotal;
+        const diffSign = rawDiff > 0 ? '+' : '';
+        const diffMoneyText = `${diffSign}${formatMoney(rawDiff)} ₴`;
+
         if (prevTotal === 0 && currentTotal !== 0) {
             trendHtml = ``;
         } else if (currentTotal > prevTotal) {
@@ -2769,7 +2904,10 @@ function convertCurrency() {
                 const diff = Math.abs(((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1);
                 diffText = `+${diff}%`;
             }
-            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">↑ ${diffText}</div>`;
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+                            <span class="trend-main-text">↑ ${diffText}</span>
+                            <span class="trend-hover-text">${diffMoneyText}</span>
+                         </div>`;
             colorMain = '#32d74b';
         } else if (currentTotal < prevTotal) {
             let diffText = '';
@@ -2777,7 +2915,10 @@ function convertCurrency() {
                 const diff = Math.abs(((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1);
                 diffText = `-${diff}%`;
             }
-            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">↓ ${diffText}</div>`;
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+                            <span class="trend-main-text">↓ ${diffText}</span>
+                            <span class="trend-hover-text">${diffMoneyText}</span>
+                         </div>`;
             colorMain = currentTotal >= 0 ? '#ff453a' : '#ffffff';
         } else {
             trendHtml = `<div class="trend-badge" style="margin-bottom:0; background: rgba(255,255,255,0.1); color: inherit; opacity: 0.8; padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">= Без змін</div>`;
@@ -2786,7 +2927,7 @@ function convertCurrency() {
         const maxVal = Math.max(...dataPoints); 
         const minVal = Math.min(...dataPoints); 
         let range = maxVal - minVal;
-        if (range === 0) range = 1; // Захист від ділення на 0
+        if (range === 0) range = 1; 
         
         const width = 100; 
         const height = 30; 
@@ -2838,18 +2979,29 @@ function convertCurrency() {
         
         const prevTotal = dataPoints[monthsBack - 2];
         let trendHtml = '';
-        let colorMain = '#ff453a'; // За замовчуванням червоний (бо це витрати)
+        let colorMain = '#ff453a'; 
+
+        // Вираховуємо різницю в грошах
+        const rawDiff = currentTotal - prevTotal;
+        const diffSign = rawDiff > 0 ? '+' : '';
+        const diffMoneyText = `${diffSign}${formatMoney(rawDiff)} ₴`;
         
         if (prevTotal === 0 && currentTotal > 0) {
-            trendHtml = ``; // Лейбл не выводим
-            colorMain = '#ff453a'; // Линию делаем красной
+            trendHtml = ``; 
+            colorMain = '#ff453a'; 
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-up" style="margin-bottom:0;">↑ +${diff}%</div>`;
+            trendHtml = `<div class="trend-badge trend-up" style="margin-bottom:0; cursor:pointer;">
+                            <span class="trend-main-text">↑ +${diff}%</span>
+                            <span class="trend-hover-text">${diffMoneyText}</span>
+                         </div>`;
             colorMain = '#ff453a';
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-down" style="margin-bottom:0;">↓ -${diff}%</div>`;
+            trendHtml = `<div class="trend-badge trend-down" style="margin-bottom:0; cursor:pointer;">
+                            <span class="trend-main-text">↓ -${diff}%</span>
+                            <span class="trend-hover-text">${diffMoneyText}</span>
+                         </div>`;
             colorMain = '#32d74b';
         } else {
             trendHtml = `<div class="trend-badge" style="background: rgba(255,255,255,0.1); color: #a1a1a6; margin-bottom:0;">= Без змін</div>`;
@@ -2920,20 +3072,29 @@ function getHistoricalIncome(year, month) {
         
         const prevTotal = dataPoints[monthsBack - 2];
         let trendHtml = '';
-        let colorMain = '#32d74b'; // Для доходів за замовчуванням зелений
+        let colorMain = '#32d74b';
         
+        // Вираховуємо різницю в грошах
+        const rawDiff = currentTotal - prevTotal;
+        const diffSign = rawDiff > 0 ? '+' : '';
+        const diffMoneyText = `${diffSign}${formatMoney(rawDiff)} ₴`;
+
         if (prevTotal === 0 && currentTotal > 0) {
-            trendHtml = ``; // Без лейбла, просто малюємо зелену лінію
+            trendHtml = ``; 
             colorMain = '#32d74b'; 
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            // Зелений, бо доходи ростуть (це добре)
-            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">↑ +${diff}%</div>`;
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+                            <span class="trend-main-text">↑ +${diff}%</span>
+                            <span class="trend-hover-text">${diffMoneyText}</span>
+                         </div>`;
             colorMain = '#32d74b';
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            // Червоний, бо доходи падають
-            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">↓ -${diff}%</div>`;
+            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+                            <span class="trend-main-text">↓ -${diff}%</span>
+                            <span class="trend-hover-text">${diffMoneyText}</span>
+                         </div>`;
             colorMain = '#ff453a';
         } else {
             trendHtml = `<div class="trend-badge" style="margin-bottom:0; background: rgba(255,255,255,0.1); color: #a1a1a6; padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px;">= Без змін</div>`;
@@ -3393,14 +3554,14 @@ function getHistoricalIncome(year, month) {
             });
         });
         
-if (isBiz) {
-            // ВІДНОВЛЕНО ПРАВИЛЬНИЙ РОЗРАХУНОК СОБІВАРТОСТІ
+let payrollAccruedTotal = 0;
+        let payrollPaidTotal = 0;
+
+        if (isBiz) {
             const monthInvoices = appData[currentYear]?.[currentMonth]?.invoices || [];
-            
             if (monthInvoices.length > 0) {
                 cogsAmount = monthInvoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
             } else {
-                // Якщо інвойсів немає, використовуємо стару логіку (відсоток або фікс)
                 const cogs = appData[currentYear]?.[currentMonth]?.cogs || { type: 'percent', value: 0 };
                 cogsAmount = cogs.type === 'percent' ? currentIncomeUah * (cogs.value / 100) : (parseFloat(cogs.value) || 0);
             }
@@ -3408,25 +3569,19 @@ if (isBiz) {
             const invTotalEl = document.getElementById('invoices-total-amount');
             if (invTotalEl) invTotalEl.innerText = formatMoney(cogsAmount);
 
-            // Рендер графіка закупівлі
             const invSparkData = generateInvoicesSparklineHTML(cogsAmount);
             const trendBadgeEl = document.getElementById('invoices-trend-badge');
             const sparkContainerEl = document.getElementById('invoices-sparkline-container');
             if (trendBadgeEl) trendBadgeEl.innerHTML = invSparkData.trendHtml;
             if (sparkContainerEl) sparkContainerEl.innerHTML = invSparkData.sparklineSvg + `<div class="sparkline-labels">${invSparkData.labelsHtml}</div>`;
 
-            // Рахуємо відсотки (захист від ділення на нуль)
             const cogsPercent = currentIncomeUah > 0 ? ((cogsAmount / currentIncomeUah) * 100).toFixed(1) : 0;
             const grossProfit = currentIncomeUah - cogsAmount;
             const grossMarginPercent = currentIncomeUah > 0 ? ((grossProfit / currentIncomeUah) * 100).toFixed(1) : 0;
 
-            // Виводимо Оплачені накладні + Відсоток собівартості
             const cfInvoicesEl = document.getElementById('cf-invoices');
-            if (cfInvoicesEl) {
-                cfInvoicesEl.innerHTML = `-${formatMoney(cogsAmount)} ₴ <span style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${cogsPercent}%</span>`;
-            }
+            if (cfInvoicesEl) cfInvoicesEl.innerHTML = `-${formatMoney(cogsAmount)} ₴ <span style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${cogsPercent}%</span>`;
 
-            // Виводимо Валовий прибуток + Відсоток маржі
             const cfGrossEl = document.getElementById('cf-gross-profit');
             if (cfGrossEl) {
                 if (grossProfit >= 0) {
@@ -3437,7 +3592,28 @@ if (isBiz) {
                     cfGrossEl.innerHTML = `${formatMoney(grossProfit)} ₴ <span style="font-size: 11px; font-weight: 700; color: var(--sys-red); background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${grossMarginPercent}%</span>`;
                 }
             }
+
+            // РАХУЄМО ЗАРПЛАТИ В ЗАГАЛЬНІ ВИТРАТИ
+            const payroll = appData[currentYear]?.[currentMonth]?.payroll || [];
+            payroll.forEach(emp => {
+                const rate = parseFloat(emp.rate) || 0;
+                const hours = parseFloat(emp.hours) || 0;
+                const bonus = parseFloat(emp.bonus) || 0;
+                const penalty = parseFloat(emp.penalty) || 0;
+                const advance = parseFloat(emp.advance) || 0;
+                const paidPart = parseFloat(emp.paid_part) || 0;
+                
+                const accrued = (rate * hours) + bonus - penalty; // Загальна сума витрати на співробітника
+                const paidCash = emp.is_paid ? accrued : (advance + paidPart); // Скільки реально видали з каси
+                
+                payrollAccruedTotal += accrued;
+                payrollPaidTotal += paidCash;
+            });
         }
+        
+        // ДОДАЄМО ЗАРПЛАТИ ДО ЗАГАЛЬНОЇ СТАТИСТИКИ
+        totalExp += payrollAccruedTotal;
+        paidExp += payrollPaidTotal;
 
         const displayIncomeUah = currentIncomeUah;
         const displayIncomeUsd = window.currentIncomeUsd || 0;
@@ -3446,7 +3622,13 @@ if (isBiz) {
         document.getElementById('yearly-income-display').innerText = formatMoney(displayIncomeUah * 12);
 
         if (!isBiz) document.getElementById('yearly-income-usd').innerText = formatMoney(displayIncomeUsd * 12);
-
+        const mainAmountEl = document.getElementById('payroll-total-amount');
+            if (mainAmountEl) mainAmountEl.innerText = formatMoney(payrollAccruedTotal);
+            const sparkData = generatePayrollSparklineHTML(payrollAccruedTotal);
+            const trendBadgeEl = document.getElementById('payroll-trend-badge');
+            const sparkContainerEl = document.getElementById('payroll-sparkline-container');
+            if (trendBadgeEl) trendBadgeEl.innerHTML = sparkData.trendHtml;
+            if (sparkContainerEl) sparkContainerEl.innerHTML = sparkData.sparklineSvg + `<div class="sparkline-labels">${sparkData.labelsHtml}</div>`;    
         // НОВИЙ КОД: Рендер графіка доходів (обігу)
         const incSparkData = generateIncomeSparklineHTML(displayIncomeUah);
         const incTrendBadgeEl = document.getElementById('income-trend-badge');
@@ -4070,6 +4252,14 @@ let cogsAmount = 0;
                 totalExp += catTotal;
             }
         });
+
+        if (isBiz && appData[currentYear][currentMonth].payroll) {
+            let payTotal = 0;
+            appData[currentYear][currentMonth].payroll.forEach(emp => {
+                payTotal += (parseFloat(emp.rate)||0)*(parseFloat(emp.hours)||0) + (parseFloat(emp.bonus)||0) - (parseFloat(emp.penalty)||0);
+            });
+            if (payTotal > 0) rows.push(['Ваш Бюджет', 'Зарплати', roundNum(payTotal)]);
+        }
 
         const remaining = totalIncome - cogsAmount - totalExp;
         if (remaining > 0) {
@@ -4930,6 +5120,291 @@ function deleteInvoice(id) {
         });
     }
 
-</script>
+ // ==========================================
+    // 14. РОЗРАХУНОК ЗАРПЛАТ (PAYROLL)
+    // ==========================================
+    
+    function openPayrollModal() {
+        document.getElementById('payroll-modal').classList.add('active');
+        renderPayroll();
+    }
+
+    function closePayrollModal(e) {
+        if (!e || e.target.id === 'payroll-modal' || e.target.className === 'btn-close-modal') {
+            document.getElementById('payroll-modal').classList.remove('active');
+            updateAll(); // Оновлюємо головний дашборд при закритті
+        }
+    }
+
+    function getHistoricalPayroll(year, month) {
+        if (!appData[year] || !appData[year][month] || !appData[year][month].initialized) return 0;
+        const payroll = appData[year][month].payroll || [];
+        let totalAccrued = 0;
+        payroll.forEach(emp => {
+            const rate = parseFloat(emp.rate) || 0;
+            const hours = parseFloat(emp.hours) || 0;
+            const bonus = parseFloat(emp.bonus) || 0;
+            const penalty = parseFloat(emp.penalty) || 0;
+            totalAccrued += (rate * hours) + bonus - penalty;
+        });
+        return totalAccrued;
+    }
+
+function generatePayrollSparklineHTML(currentTotal) {
+        const monthsBack = 3; const dataPoints = []; const labels = [];
+        let tempY = currentYear; let tempM = currentMonth;
+        for (let i = 0; i < monthsBack; i++) {
+            labels.unshift(monthNames[tempM].substring(0, 3));
+            if (i === 0) dataPoints.unshift(currentTotal);
+            else dataPoints.unshift(getHistoricalPayroll(tempY, tempM));
+            tempM--; if (tempM < 0) { tempM = 11; tempY--; }
+        }
+        const prevTotal = dataPoints[monthsBack - 2];
+        let trendHtml = ''; let colorMain = '#ff453a';
+        
+        // Вираховуємо різницю в грошах
+        const rawDiff = currentTotal - prevTotal; 
+        const diffSign = rawDiff > 0 ? '+' : '';
+        const diffMoneyText = `${diffSign}${formatMoney(rawDiff)} ₴`; 
+
+        if (prevTotal === 0 && currentTotal > 0) { 
+            trendHtml = ``; 
+            colorMain = '#ff453a'; 
+        } else if (currentTotal > prevTotal) {
+            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
+            trendHtml = `<div class="trend-badge trend-up" style="cursor: pointer; margin-bottom: 0;" onclick="event.stopPropagation()">
+                            <span class="trend-main-text">↑ +${diff}%</span>
+                            <span class="trend-hover-text">${diffMoneyText}</span>
+                         </div>`;
+            colorMain = '#ff453a';
+        } else if (currentTotal < prevTotal) {
+            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
+            trendHtml = `<div class="trend-badge trend-down" style="cursor: pointer; margin-bottom: 0;" onclick="event.stopPropagation()">
+                            <span class="trend-main-text">↓ -${diff}%</span>
+                            <span class="trend-hover-text">${diffMoneyText}</span>
+                         </div>`;
+            colorMain = '#32d74b';
+        } else { 
+            trendHtml = `<div class="trend-badge" style="background: rgba(255,255,255,0.1); color: #a1a1a6; margin-bottom: 0;" onclick="event.stopPropagation()">= Без змін</div>`; 
+            colorMain = '#a1a1a6'; 
+        }
+
+        const maxVal = Math.max(...dataPoints, 100); const width = 100; const height = 30; let points = '';
+        dataPoints.forEach((val, i) => { const x = (i / (monthsBack - 1)) * width; const y = height - ((val / maxVal) * height) + 1; points += `${x},${y} `; });
+        const gradientId = `grad-pay-spark`;
+        const sparklineSvg = `<svg width="100%" height="32" viewBox="0 0 100 32" preserveAspectRatio="none" style="overflow: visible;"><defs><linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${colorMain}" stop-opacity="0.4" /><stop offset="100%" stop-color="${colorMain}" stop-opacity="0.0" /></linearGradient></defs><polyline points="0,32 ${points} 100,32" fill="url(#${gradientId})" /><polyline points="${points}" fill="none" stroke="${colorMain}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>`;
+        const labelsHtml = labels.map(l => `<span>${l}</span>`).join('');
+        return { trendHtml, sparklineSvg, labelsHtml };
+    }
+
+    function renderPayroll() {
+        const container = document.getElementById('payroll-list');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!appData[currentYear] || !appData[currentYear][currentMonth]) return;
+        const payroll = appData[currentYear][currentMonth].payroll || [];
+        let totalRemainingToPay = 0; let totalAccruedGlobal = 0;
+
+        if (payroll.length === 0) {
+            container.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Немає співробітників</div>';
+        }
+
+        payroll.forEach(emp => {
+            const rate = parseFloat(emp.rate) || 0; const hours = parseFloat(emp.hours) || 0; const bonus = parseFloat(emp.bonus) || 0;
+            const penalty = parseFloat(emp.penalty) || 0; const advance = parseFloat(emp.advance) || 0; const paidPart = parseFloat(emp.paid_part) || 0;
+            
+            const accrued = (rate * hours) + bonus - penalty;
+            let remaining = Math.max(0, accrued - advance - paidPart);
+            
+            totalAccruedGlobal += accrued;
+            if (!emp.is_paid && remaining > 0) totalRemainingToPay += remaining;
+            else remaining = 0;
+
+            const paidClass = emp.is_paid ? 'background: rgba(46, 160, 67, 0.1); border-color: rgba(46, 160, 67, 0.3);' : 'background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.05);';
+            const bonusTag = bonus > 0 ? `<span style="font-size: 11px; background: rgba(50, 215, 75, 0.15); color: #32d74b; padding: 2px 6px; border-radius: 6px; margin-right: 4px;">Премія +${formatMoney(bonus)}</span>` : '';
+            const penaltyTag = penalty > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.15); color: #ff453a; padding: 2px 6px; border-radius: 6px;">Штраф -${formatMoney(penalty)}</span>` : '';
+
+            const accountHtml = emp.account ? `
+                <div style="font-size: 12px; font-weight: 600; color: var(--sys-blue); background: rgba(10, 132, 255, 0.1); padding: 6px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; max-width: 100%; box-sizing: border-box;" onclick="copyAccountToClipboard(event, '${emp.account}')" title="Натисніть, щоб скопіювати">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <span class="acc-text" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${emp.account}</span>
+                </div>
+            ` : '';
+
+            container.innerHTML += `
+                <div style="display: flex; justify-content: space-between; align-items: stretch; padding: 16px; border-radius: 16px; border: 1px solid transparent; ${paidClass} transition: 0.2s; min-height: 100px;">
+                    <div style="flex: 1; min-width: 0; padding-right: 16px; display: flex; flex-direction: column; justify-content: center;">
+                        <div style="font-weight: 700; color: white; font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${emp.name || 'Без імені'}</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">${hours} год × ${rate} ₴</div>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">${bonusTag}${penaltyTag}</div>
+                        ${accountHtml}
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 16px; flex-shrink: 0;">
+                        <div style="text-align: right; display: flex; flex-direction: column; justify-content: center;">
+                            <div class="tabular" style="font-weight: 800; font-size: 18px; color: white; margin-bottom: 4px;">${formatMoney(accrued)} ₴</div>
+                            <div class="tabular" style="font-size: 12px; color: ${emp.is_paid ? 'var(--sys-green)' : 'var(--sys-red)'}; font-weight: 600;">Залишок: ${formatMoney(remaining)} ₴</div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px; flex-direction: column; justify-content: center;">
+                            <button class="btn-init-secondary" style="margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-primary);" onclick="openEmployeeModal('${emp.id}')" title="Редагувати">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                            
+                            <div class="schedule-input-group" style="margin: 0; width: 44px; height: 44px; background: ${emp.is_paid ? 'rgba(46, 160, 67, 0.15)' : 'rgba(255,255,255,0.05)'}; border-radius: 12px; border: 1px solid ${emp.is_paid ? 'rgba(46,160,67,0.3)' : 'rgba(255,255,255,0.1)'}; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; box-sizing: border-box;" onclick="event.stopPropagation(); toggleEmployeePaid('${emp.id}')" title="${emp.is_paid ? 'Скасувати оплату' : 'Відмітити як оплачено'}">
+                                ${emp.is_paid 
+                                    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' 
+                                    : '<div style="width: 16px; height: 16px; border: 2px solid var(--text-secondary); border-radius: 4px; opacity: 0.5;"></div>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        const modalAccrued = document.getElementById('modal-payroll-accrued');
+        const modalRemaining = document.getElementById('modal-payroll-remaining');
+        if(modalAccrued) modalAccrued.innerText = formatMoney(totalAccruedGlobal) + ' ₴';
+        if(modalRemaining) modalRemaining.innerText = formatMoney(totalRemainingToPay) + ' ₴';
+
+        const mainAmountEl = document.getElementById('payroll-total-amount');
+        if (mainAmountEl) mainAmountEl.innerText = formatMoney(totalAccruedGlobal);
+        
+        const sparkData = generatePayrollSparklineHTML(totalAccruedGlobal);
+        const trendBadgeEl = document.getElementById('payroll-trend-badge');
+        const sparkContainerEl = document.getElementById('payroll-sparkline-container');
+        if (trendBadgeEl) trendBadgeEl.innerHTML = sparkData.trendHtml;
+        if (sparkContainerEl) sparkContainerEl.innerHTML = sparkData.sparklineSvg + `<div class="sparkline-labels">${sparkData.labelsHtml}</div>`;
+    }
+
+    function openEmployeeModal(empId) {
+        document.getElementById('payroll-modal').classList.remove('active');
+        document.getElementById('employee-modal').classList.add('active');
+        
+        let emp = null;
+        if (empId) {
+            emp = appData[currentYear][currentMonth].payroll.find(e => e.id === empId);
+            document.getElementById('employee-modal-title').innerText = "Редагувати";
+        } else {
+            document.getElementById('employee-modal-title').innerText = "Новий співробітник";
+        }
+
+        document.getElementById('emp-edit-id').value = emp ? emp.id : '';
+        document.getElementById('emp-edit-name').value = emp ? emp.name : '';
+        document.getElementById('emp-edit-tax').value = emp ? emp.tax_id : '';
+        document.getElementById('emp-edit-rate').value = emp ? emp.rate : '';
+        document.getElementById('emp-edit-hours').value = emp ? emp.hours : '';
+        document.getElementById('emp-edit-bonus').value = emp && emp.bonus != 0 ? emp.bonus : '';
+        document.getElementById('emp-edit-penalty').value = emp && emp.penalty != 0 ? emp.penalty : '';
+        document.getElementById('emp-edit-advance').value = emp && emp.advance != 0 ? emp.advance : '';
+        document.getElementById('emp-edit-paidpart').value = emp && emp.paid_part != 0 ? emp.paid_part : '';
+        document.getElementById('emp-edit-account').value = emp ? emp.account : '';
+    }
+
+    function closeEmployeeModal(e) {
+        if (!e || e.target.id === 'employee-modal' || e.target.closest('.btn-close-modal')) {
+            document.getElementById('employee-modal').classList.remove('active');
+            openPayrollModal();
+        }
+    }
+
+    function saveEmployee() {
+        const id = document.getElementById('emp-edit-id').value;
+        const name = document.getElementById('emp-edit-name').value;
+        if (!name.trim()) return alert("Введіть ПІБ співробітника");
+
+        const data = {
+            name: name,
+            tax_id: document.getElementById('emp-edit-tax').value,
+            rate: document.getElementById('emp-edit-rate').value,
+            hours: document.getElementById('emp-edit-hours').value,
+            bonus: document.getElementById('emp-edit-bonus').value,
+            penalty: document.getElementById('emp-edit-penalty').value,
+            advance: document.getElementById('emp-edit-advance').value,
+            paid_part: document.getElementById('emp-edit-paidpart').value,
+            account: document.getElementById('emp-edit-account').value
+        };
+
+        if (id) {
+            const emp = appData[currentYear][currentMonth].payroll.find(e => e.id === id);
+            if (emp) Object.assign(emp, data);
+        } else {
+            data.id = Date.now().toString();
+            data.is_paid = false;
+            if (!appData[currentYear][currentMonth].payroll) appData[currentYear][currentMonth].payroll = [];
+            appData[currentYear][currentMonth].payroll.push(data);
+        }
+
+        saveDataToServer();
+        closeEmployeeModal();
+    }
+
+    function deleteEmployee(id) {
+        event.stopPropagation();
+        showConfirm("Видалити співробітника?", "Ви впевнені, що хочете видалити цей запис з розрахунків?", () => {
+            appData[currentYear][currentMonth].payroll = appData[currentYear][currentMonth].payroll.filter(e => e.id !== id);
+            saveDataToServer();
+            renderPayroll();
+        });
+    }
+
+    function copyAccountToClipboard(event, text) {
+        event.stopPropagation();
+        const container = event.currentTarget;
+        const textSpan = container.querySelector('.acc-text');
+        const iconSvg = container.querySelector('svg');
+        
+        const originalText = textSpan.innerText;
+        const originalBg = container.style.background;
+        const originalColor = container.style.color;
+        const originalIcon = iconSvg.innerHTML;
+        
+        const showSuccess = () => {
+            textSpan.innerText = 'Скопійовано!';
+            container.style.background = 'rgba(46, 160, 67, 0.15)'; 
+            container.style.color = 'var(--sys-green)';
+            iconSvg.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+            setTimeout(() => { 
+                textSpan.innerText = originalText; 
+                container.style.background = originalBg;
+                container.style.color = originalColor;
+                iconSvg.innerHTML = originalIcon;
+            }, 1500);
+        };
+
+        const fallbackCopy = () => {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showSuccess();
+            } catch (err) {
+                console.error('Fallback failed', err);
+            }
+            document.body.removeChild(textArea);
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(showSuccess).catch(fallbackCopy);
+        } else {
+            fallbackCopy();
+        }
+    }
+
+    function toggleEmployeePaid(id) {
+        const emp = appData[currentYear][currentMonth].payroll.find(e => e.id === id);
+        if (emp) {
+            emp.is_paid = !emp.is_paid;
+            saveDataToServer();
+            renderPayroll();
+        }
+    }
+</script>    
 </body>
 </html>
