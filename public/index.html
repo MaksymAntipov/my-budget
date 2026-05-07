@@ -1292,6 +1292,12 @@
                                 Очистити
                             </button>
                         </div>
+
+                        <button class="btn-init-secondary" style="margin-top: 12px; padding: 16px; font-size: 16px; color: #bf5af2; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(191, 90, 242, 0.1), rgba(191, 90, 242, 0.15)); border-color: rgba(191, 90, 242, 0.2); width: 100%; border-radius: 18px;" onclick="openAiExportModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L10.088 8.813A2 2 0 0 1 8.813 10.088L3 12L8.813 13.912A2 2 0 0 1 10.088 15.187L12 21L13.912 15.187A2 2 0 0 1 15.187 13.912L21 12L15.187 10.088A2 2 0 0 1 13.912 8.813L12 3Z"/></svg>
+                            Експорт для ШІ-аналітики
+                        </button>
+
                     </div>
                 </div>
             </div>
@@ -1602,6 +1608,33 @@
         <div class="chart-container" style="height: 50vh; min-height: 400px; width: 100%; margin: 0; transition: none;">
             <canvas id="analyticsChartCanvas"></canvas>
         </div>
+    </div>
+</div>
+
+<div id="ai-export-modal" class="modal-overlay" onclick="closeAiExportModal(event)" style="z-index: 1200;">
+    <div class="modal-content" style="max-width: 450px;" onclick="event.stopPropagation()">
+        <div class="modal-header" style="margin-bottom: 16px;">
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #bf5af2;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L10.088 8.813A2 2 0 0 1 8.813 10.088L3 12L8.813 13.912A2 2 0 0 1 10.088 15.187L12 21L13.912 15.187A2 2 0 0 1 15.187 13.912L21 12L15.187 10.088A2 2 0 0 1 13.912 8.813L12 3Z"/></svg>
+                Аналіз від ШІ
+            </h3>
+            <button class="btn-close-modal" onclick="closeAiExportModal()">✕</button>
+        </div>
+        
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 0; margin-bottom: 24px; line-height: 1.4;">
+            Отримайте персональні фінансові поради. Оберіть період, ми згенеруємо промпт з вашими цифрами — просто скопіюйте його та вставте в ChatGPT, Claude або Gemini.
+        </p>
+
+        <div class="type-selector" style="margin-bottom: 24px;">
+            <button id="btn-ai-month" class="type-btn active" onclick="selectAiExportType('month')">За цей місяць</button>
+            <button id="btn-ai-all" class="type-btn" onclick="selectAiExportType('all')">За весь час</button>
+        </div>
+        <input type="hidden" id="ai-export-type" value="month">
+
+        <button class="btn-init-primary" id="btn-ai-copy" style="margin: 0; height: 56px; font-size: 16px; background: linear-gradient(135deg, #bf5af2, #5e5ce6); color: white; border: none; box-shadow: 0 8px 16px rgba(191, 90, 242, 0.3); display: flex; justify-content: center; align-items: center; gap: 8px;" onclick="generateAndCopyAiPrompt()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span id="ai-copy-text">Скопіювати промпт для ШІ</span>
+        </button>
     </div>
 </div>
 
@@ -5405,6 +5438,172 @@ function generatePayrollSparklineHTML(currentTotal) {
             renderPayroll();
         }
     }
+
+    // ==========================================
+    // 15. ЕКСПОРТ ДЛЯ ШІ (AI ANALYTICS)
+    // ==========================================
+    
+    function openAiExportModal() {
+        document.getElementById('ai-export-modal').classList.add('active');
+        selectAiExportType('month');
+        document.getElementById('ai-copy-text').innerText = "Скопіювати промпт для ШІ";
+    }
+
+    function closeAiExportModal(e) {
+        if (!e || e.target.id === 'ai-export-modal' || e.target.closest('.btn-close-modal')) {
+            document.getElementById('ai-export-modal').classList.remove('active');
+        }
+    }
+
+    function selectAiExportType(type) {
+        document.getElementById('ai-export-type').value = type;
+        document.getElementById('btn-ai-month').classList.toggle('active', type === 'month');
+        document.getElementById('btn-ai-all').classList.toggle('active', type === 'all');
+    }
+
+    function generateAndCopyAiPrompt() {
+        const type = document.getElementById('ai-export-type').value;
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        const profileTypeStr = isBiz ? 'Бізнес' : 'Особистий (фіз. особа)';
+        
+        let prompt = `Виступи в ролі професійного фінансового аналітика. Проаналізуй мої фінансові дані (Тип профілю: ${profileTypeStr}) та надай детальний звіт.\n`;
+        prompt += `Зверни увагу на співвідношення доходів і витрат, оціни рівень заощаджень або швидкість погашення боргів. Надай 3-5 конкретних і практичних рекомендацій щодо оптимізації бюджету та збільшення вільного капіталу.\n\n`;
+        
+        prompt += `### ПОТОЧНИЙ СТАН КАПІТАЛУ\n`;
+        
+        const jars = globalData.jars[currentUser.id] || [];
+        const totalJars = jars.reduce((sum, j) => sum + j.balance, 0);
+        prompt += `- Всього накопичень: ${totalJars.toFixed(2)} ₴\n`;
+        jars.forEach(j => {
+            prompt += `  * ${j.name}: ${j.balance} ₴ ${j.goal > 0 ? `(Ціль: ${j.goal} ₴)` : ''}\n`;
+        });
+
+        const debts = globalData.debts[currentUser.id] || [];
+        const activeDebts = debts.filter(d => !d.is_archived || d.is_archived === 0);
+        if (activeDebts.length > 0) {
+            prompt += `\n### АКТИВНІ БОРГОВІ ЗОБОВ'ЯЗАННЯ\n`;
+            activeDebts.forEach(d => {
+                const remaining = getHistoricalDebtBalance(d.id, currentYear, currentMonth);
+                prompt += `- ${d.name}: Залишок ${remaining.toFixed(2)} ${d.currency} із загальної суми ${d.total_amount} ${d.currency} (Ставка: ${d.interest_rate}%)\n`;
+            });
+        }
+
+        prompt += `\n### РУХ КОШТІВ (CASH FLOW)\n`;
+
+        if (type === 'month') {
+            prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz);
+        } else {
+            const years = Object.keys(appData).map(Number).sort((a,b) => a-b);
+            years.forEach(y => {
+                const months = Object.keys(appData[y]).map(Number).sort((a,b) => a-b);
+                months.forEach(m => {
+                    if (appData[y][m].initialized) {
+                        prompt += generateAiDataForMonth(y, m, isBiz);
+                    }
+                });
+            });
+        }
+
+        prompt += `\nНа основі цих даних, напиши свій висновок, вкажи на слабкі місця та дай поради.`;
+
+        const btn = document.getElementById('btn-ai-copy');
+        const btnText = document.getElementById('ai-copy-text');
+        const originalBg = btn.style.background;
+
+        const fallbackCopy = (text) => {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                btnText.innerText = "Успішно скопійовано!";
+                btn.style.background = 'linear-gradient(135deg, var(--sys-green), #1e702e)';
+            } catch (err) {
+                btnText.innerText = "Помилка копіювання";
+            }
+            document.body.removeChild(textArea);
+            setTimeout(() => { closeAiExportModal(); btnText.innerText = "Скопіювати промпт для ШІ"; btn.style.background = originalBg; }, 2000);
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(prompt).then(() => {
+                btnText.innerText = "Успішно скопійовано!";
+                btn.style.background = 'linear-gradient(135deg, var(--sys-green), #1e702e)';
+                setTimeout(() => { closeAiExportModal(); btnText.innerText = "Скопіювати промпт для ШІ"; btn.style.background = originalBg; }, 2000);
+            }).catch(() => fallbackCopy(prompt));
+        } else {
+            fallbackCopy(prompt);
+        }
+    }
+
+    function generateAiDataForMonth(year, month, isBiz) {
+        const data = appData[year][month];
+        const monthName = monthNames[month];
+        let str = `\n==== ПЕРІОД: ${monthName} ${year} ====\n`;
+
+        let totalIncomeUah = 0;
+        str += `Доходи:\n`;
+        if (data.incomes && data.incomes.length > 0) {
+            data.incomes.forEach(inc => {
+                const amtUah = inc.currency === 'USD' ? (parseFloat(inc.amount) || 0) * currentExchangeRate : (parseFloat(inc.amount) || 0);
+                totalIncomeUah += amtUah;
+                str += `  - ${inc.name}: ${inc.amount} ${inc.currency}\n`;
+            });
+        }
+        str += `  Загалом дохід: ${totalIncomeUah.toFixed(2)} ₴\n`;
+
+        let totalCogs = 0;
+        let totalPayroll = 0;
+        
+        if (isBiz) {
+            str += `Собівартість / Закупівлі:\n`;
+            if (data.invoices && data.invoices.length > 0) {
+                totalCogs = data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount)||0), 0);
+            } else if (data.cogs) {
+                totalCogs = data.cogs.type === 'percent' ? totalIncomeUah * (data.cogs.value / 100) : (parseFloat(data.cogs.value)||0);
+            }
+            str += `  - Витрати на закупівлі: ${totalCogs.toFixed(2)} ₴\n`;
+            str += `  - Валовий прибуток: ${(totalIncomeUah - totalCogs).toFixed(2)} ₴\n`;
+
+            if (data.payroll && data.payroll.length > 0) {
+                str += `Зарплатний фонд:\n`;
+                data.payroll.forEach(emp => {
+                    const accrued = ((parseFloat(emp.rate)||0) * (parseFloat(emp.hours)||0)) + (parseFloat(emp.bonus)||0) - (parseFloat(emp.penalty)||0);
+                    totalPayroll += accrued;
+                });
+                str += `  - Всього нараховано ЗП: ${totalPayroll.toFixed(2)} ₴\n`;
+            }
+        }
+
+        let totalExpenses = 0;
+        str += `Витрати (Операційні / Особисті):\n`;
+        if (data.expenses && data.expenses.length > 0) {
+            data.expenses.forEach(cat => {
+                const catTotal = cat.items.reduce((sum, item) => sum + (parseFloat(item.amount)||0), 0);
+                if (catTotal > 0) {
+                    totalExpenses += catTotal;
+                    str += `  - Категорія "${cat.name}": ${catTotal.toFixed(2)} ₴\n`;
+                    cat.items.forEach(item => {
+                        str += `      * ${item.name}: ${item.amount} ₴\n`;
+                    });
+                }
+            });
+        } else {
+            str += `  - Немає витрат\n`;
+        }
+
+        const netProfit = totalIncomeUah - totalCogs - totalPayroll - totalExpenses;
+        str += `Підсумок місяця:\n`;
+        str += `  - Всього витрачено (витрати + закупівлі + ЗП): ${(totalCogs + totalPayroll + totalExpenses).toFixed(2)} ₴\n`;
+        str += `  - Чистий ${isBiz ? 'прибуток' : 'залишок'}: ${netProfit.toFixed(2)} ₴\n`;
+        str += `===================================\n`;
+        
+        return str;
+    }
+
 </script>    
 </body>
 </html>
