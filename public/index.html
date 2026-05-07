@@ -973,6 +973,57 @@
         .card-top-1 { border-color: rgba(255, 69, 58, 0.4); box-shadow: 0 4px 16px rgba(255, 69, 58, 0.1); }
         .card-top-2 { border-color: rgba(255, 159, 10, 0.4); box-shadow: 0 4px 16px rgba(255, 159, 10, 0.1); }
         .card-top-3 { border-color: rgba(10, 132, 255, 0.4); box-shadow: 0 4px 16px rgba(10, 132, 255, 0.1); }
+                /* --- СТИЛІ ДЛЯ ПРЕМІАЛЬНОЇ АНКЕТИ --- */
+        .choice-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+        .choice-item { 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            padding: 16px 20px; 
+            border-radius: 16px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 14px; 
+            transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1); 
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 500;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .choice-item:hover { background: rgba(255,255,255,0.08); transform: translateY(-1px); }
+        .choice-item:active { transform: scale(0.98); }
+        
+        .choice-item.selected { 
+            background: rgba(50, 215, 75, 0.15); 
+            border-color: rgba(50, 215, 75, 0.4); 
+            box-shadow: 0 4px 12px rgba(50, 215, 75, 0.1);
+        }
+        
+        /* Індикатор множинного вибору (Чекбокс) */
+        .check-indicator {
+            width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;
+            background: rgba(0,0,0,0.2);
+        }
+        .choice-item.selected .check-indicator {
+            border-color: var(--sys-green); background: var(--sys-green);
+        }
+        .check-indicator svg { display: none; width: 14px; height: 14px; stroke: white; stroke-width: 3; }
+        .choice-item.selected .check-indicator svg { display: block; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        /* Індикатор одиночного вибору (Радіо) */
+        .radio-indicator {
+            width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;
+            background: rgba(0,0,0,0.2);
+        }
+        .choice-item.selected .radio-indicator {
+            border-color: var(--sys-green); background: var(--sys-green);
+        }
+        .choice-item.selected .radio-indicator::after {
+            content: ''; width: 8px; height: 8px; background: white; border-radius: 50%; animation: scaleIn 0.3s ease;
+        }
 
     </style>
 </head>
@@ -1296,6 +1347,11 @@
                         <button class="btn-init-secondary" style="margin-top: 12px; padding: 16px; font-size: 16px; color: #bf5af2; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(191, 90, 242, 0.1), rgba(191, 90, 242, 0.15)); border-color: rgba(191, 90, 242, 0.2); width: 100%; border-radius: 18px;" onclick="openAiExportModal()">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L10.088 8.813A2 2 0 0 1 8.813 10.088L3 12L8.813 13.912A2 2 0 0 1 10.088 15.187L12 21L13.912 15.187A2 2 0 0 1 15.187 13.912L21 12L15.187 10.088A2 2 0 0 1 13.912 8.813L12 3Z"/></svg>
                             Експорт для ШІ-аналітики
+                        </button>
+
+                                                <button class="btn-init-secondary" style="margin-top: 12px; padding: 16px; font-size: 16px; color: #32d74b; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(50, 215, 75, 0.1), rgba(50, 215, 75, 0.15)); border-color: rgba(50, 215, 75, 0.2); width: 100%; border-radius: 18px;" onclick="openGrowthModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                            🎯 Налаштувати стратегію росту
                         </button>
 
                     </div>
@@ -1635,6 +1691,233 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             <span id="ai-copy-text">Скопіювати промпт для ШІ</span>
         </button>
+
+        <div style="text-align: center; margin: 16px 0 8px 0; color: var(--text-tertiary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Або для збільшення доходу</div>
+        <button class="btn-init-secondary" id="btn-ai-growth-copy" style="margin: 0; height: 56px; font-size: 15px; color: #32d74b; background: linear-gradient(135deg, rgba(50, 215, 75, 0.1), rgba(50, 215, 75, 0.15)); border-color: rgba(50, 215, 75, 0.2); display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%; transition: 0.3s;" onclick="generateAndCopyGrowthPrompt()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+            <span id="ai-growth-copy-text">Промпт: Стратегія Росту</span>
+        </button>
+
+    </div>
+</div>
+
+<div id="growth-modal" class="modal-overlay" onclick="closeGrowthModal(event)" style="z-index: 1300;">
+    <div class="modal-content" style="max-width: 520px; max-height: 90vh; overflow-y: hidden; display: flex; flex-direction: column; padding: 32px 24px;" onclick="event.stopPropagation()">
+        <div class="modal-header" style="margin-bottom: 16px;">
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #32d74b;">
+                🎯 Стратегія росту
+            </h3>
+            <button class="btn-close-modal" onclick="closeGrowthModal()">✕</button>
+        </div>
+        
+        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 24px; overflow: hidden;">
+            <div id="growth-progress-bar" style="width: 14%; height: 100%; background: linear-gradient(90deg, var(--sys-green), #1e702e); transition: width 0.4s ease;"></div>
+        </div>
+
+        <div id="growth-steps-container" style="flex: 1; overflow-y: auto; overflow-x: hidden; padding-right: 8px; padding-bottom: 20px;">
+            
+            <div class="growth-step" id="growth-step-1">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sys-blue)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="10" r="3"></circle><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"></path></svg>
+                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Точка А</h2>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Хто ви зараз та як отримуєте гроші?</p>
+                </div>
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Ваша поточна посада / Ніша</label>
+                <input type="text" id="growth-job" class="ios-input" placeholder="Напр. Senior QA, Власник кав'ярні" style="margin-bottom: 24px; font-size: 16px; padding: 20px;">
+                
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Тип вашого доходу зараз (можна декілька)</label>
+                
+                <div class="choice-group" id="growth-income-type">
+                    <div class="choice-item" data-value="Лінійний (фіксована ЗП за час)" onclick="toggleChoice(this, true)">
+                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                        <span>Лінійний (фіксована ЗП за ваш час)</span>
+                    </div>
+                    <div class="choice-item" data-value="Відрядний (% від продажів / проєкти)" onclick="toggleChoice(this, true)">
+                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                        <span>Відрядний (% від продажів / проєкти)</span>
+                    </div>
+                    <div class="choice-item" data-value="Масштабований (бізнес / пасивний)" onclick="toggleChoice(this, true)">
+                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                        <span>Масштабований (бізнес / пасивний)</span>
+                    </div>
+                </div>
+
+                <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px;" onclick="nextGrowthStep(1)">Далі</button>
+            </div>
+
+            <div class="growth-step" id="growth-step-2" style="display: none;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ff9f0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Точка Б</h2>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Куди ми йдемо та як швидко?</p>
+                </div>
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Цільовий чистий дохід на місяць</label>
+                <input type="text" id="growth-target-income" class="ios-input" placeholder="Напр. $5000" style="margin-bottom: 24px; font-size: 16px; padding: 20px;">
+                
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Бажаний період досягнення</label>
+                
+                <div class="choice-group" id="growth-period">
+                    <div class="choice-item" data-value="Спринт (3 місяці)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Спринт (3 місяці)</span>
+                    </div>
+                    <div class="choice-item selected" data-value="Півріччя (6 місяців)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Півріччя (6 місяців)</span>
+                    </div>
+                    <div class="choice-item" data-value="Рік (12 місяців)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Рік (12 місяців)</span>
+                    </div>
+                    <div class="choice-item" data-value="Довгостроково (3-5 років)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Довгостроково (3-5 років)</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(2)">Назад</button>
+                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(2)">Далі</button>
+                </div>
+            </div>
+
+            <div class="growth-step" id="growth-step-3" style="display: none;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Суперсила</h2>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">В чому ви кращі за 90% інших?</p>
+                </div>
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Ваша Зона Геніальності (Навички)</label>
+                <textarea id="growth-skills" class="ios-input" placeholder="Що вам дається легко, а іншим важко? Які у вас топ-навички та мови? (Напр. Автоматизація тестів, English C1, перемовини)" style="margin-bottom: 24px; font-size: 16px; padding: 20px; height: 140px; resize: none;"></textarea>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(3)">Назад</button>
+                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(3)">Далі</button>
+                </div>
+            </div>
+
+            <div class="growth-step" id="growth-step-4" style="display: none;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Вектор та Ринок</h2>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Куди саме ми б'ємо?</p>
+                </div>
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Головний фокус зростання (можна декілька)</label>
+                
+                <div class="choice-group" id="growth-vector">
+                    <div class="choice-item" data-value="Вертикальний (ріст ЗП на поточній роботі)" onclick="toggleChoice(this, true)">
+                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                        <span>Вертикальний (ріст ЗП на роботі)</span>
+                    </div>
+                    <div class="choice-item" data-value="Горизонтальний (нова компанія / сфера)" onclick="toggleChoice(this, true)">
+                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                        <span>Горизонтальний (нова компанія / сфера)</span>
+                    </div>
+                    <div class="choice-item" data-value="Автономний (фріланс / консалтинг)" onclick="toggleChoice(this, true)">
+                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                        <span>Автономний (фріланс / консалтинг)</span>
+                    </div>
+                    <div class="choice-item" data-value="Бізнес (своє агентство / стартап)" onclick="toggleChoice(this, true)">
+                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                        <span>Бізнес (своє агентство / стартап)</span>
+                    </div>
+                </div>
+                
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Цільовий ринок</label>
+                <div class="choice-group" id="growth-market" style="margin-bottom: 32px;">
+                    <div class="choice-item" data-value="Локальний (Свій регіон)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Локальний (Свій регіон)</span>
+                    </div>
+                    <div class="choice-item" data-value="Глобальний (США, Європа, Remote)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Глобальний (США, Європа, Remote)</span>
+                    </div>
+                    <div class="choice-item selected" data-value="Де більше платять" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Там, де більше платять</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(4)">Назад</button>
+                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(4)">Далі</button>
+                </div>
+            </div>
+
+            <div class="growth-step" id="growth-step-5" style="display: none;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#66d4cf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Ресурси</h2>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Скільки пального в баку?</p>
+                </div>
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Вільний час на тиждень для розвитку</label>
+                <div class="choice-group" id="growth-time">
+                    <div class="choice-item" data-value="0-2 години (Мінімум часу)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>0-2 години (Дуже зайнятий)</span>
+                    </div>
+                    <div class="choice-item selected" data-value="3-5 годин (Готовий виділяти вечори)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>3-5 годин (Готовий виділяти вечори)</span>
+                    </div>
+                    <div class="choice-item" data-value="10+ годин (Готовий багато працювати)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>10+ годин (Готовий пахати)</span>
+                    </div>
+                </div>
+
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Готовність інвестувати гроші в себе</label>
+                <div class="choice-group" id="growth-investment" style="margin-bottom: 32px;">
+                    <div class="choice-item" data-value="Тільки безкоштовні шляхи" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Тільки безкоштовні шляхи (бюджету немає)</span>
+                    </div>
+                    <div class="choice-item selected" data-value="Готовий вкладати до 10% доходу" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Готовий вкладати до 10% доходу (курси)</span>
+                    </div>
+                    <div class="choice-item" data-value="Готовий агресивно інвестувати гроші" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Готовий агресивно купувати швидкість</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(5)">Назад</button>
+                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(5)">Далі</button>
+                </div>
+            </div>
+
+            <div class="growth-step" id="growth-step-6" style="display: none;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sys-blue)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Оточення</h2>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">З ким ви спілкуєтесь?</p>
+                </div>
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Оцініть своє професійне оточення</label>
+                
+                <div class="choice-group" id="growth-environment" style="margin-bottom: 32px;">
+                    <div class="choice-item" data-value="Я 'найрозумніший у кімнаті' (немає за ким тягнутися)" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span style="line-height: 1.4;">Я "найрозумніший у кімнаті" (немає за ким тягнутися)</span>
+                    </div>
+                    <div class="choice-item selected" data-value="Є кілька людей мого рівня" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span>Є кілька людей мого рівня</span>
+                    </div>
+                    <div class="choice-item" data-value="Маю доступ до людей, що заробляють в 3-5 разів більше" onclick="toggleChoice(this, false)">
+                        <div class="radio-indicator"></div><span style="line-height: 1.4;">Доступ до людей, що заробляють в 3-5 разів більше</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(6)">Назад</button>
+                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(6)">Далі</button>
+                </div>
+            </div>
+
+            <div class="growth-step" id="growth-step-7" style="display: none;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sys-red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Головний саботаж</h2>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Від якої дискомфортної дії ви тікаєте?</p>
+                </div>
+                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Що вам заважає прямо зараз?</label>
+                <textarea id="growth-barrier" class="ios-input" placeholder="Напр. Боюсь попросити підвищення, не вмію себе продавати, вигорання, страх перед Upwork..." style="margin-bottom: 32px; font-size: 16px; padding: 20px; height: 140px; resize: none;"></textarea>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(7)">Назад</button>
+                    <button class="btn-init-primary btn-green" style="margin: 0; flex: 1; height: 60px; font-size: 17px;" onclick="saveGrowthProfile()">Зберегти та Згенерувати 🚀</button>
+                </div>
+            </div>
+
+        </div>
     </div>
 </div>
 
@@ -2302,6 +2585,11 @@ if (!globalData.debts) globalData.debts = {};
                 ...d,
                 schedule: d.schedule_json ? JSON.parse(d.schedule_json) : {}
             }));
+
+                        // ЗАВАНТАЖЕННЯ АНКЕТИ "СТРАТЕГІЯ РОСТУ"
+            if (data.growthProfile) {
+                try { currentUser.growthProfile = JSON.parse(data.growthProfile); } catch(e) {}
+            }
 
             if (globalData.jars[userId].length === 0) {
                 const isBiz = currentUser.account_type === 'business';
@@ -5604,6 +5892,281 @@ function generatePayrollSparklineHTML(currentTotal) {
         return str;
     }
 
+        // ==========================================
+    // 16. СТРАТЕГІЯ РОСТУ (WIZARD ТА ПРОМПТ)
+    // ==========================================
+
+    let currentGrowthStep = 1;
+    const totalGrowthSteps = 7;
+
+    // Логіка для кастомних селектів (карток)
+    function toggleChoice(el, isMultiple) {
+        if (!isMultiple) {
+            const group = el.closest('.choice-group');
+            group.querySelectorAll('.choice-item').forEach(item => item.classList.remove('selected'));
+            el.classList.add('selected');
+        } else {
+            el.classList.toggle('selected');
+        }
+    }
+
+    function getChoiceValues(groupId) {
+        const group = document.getElementById(groupId);
+        if (!group) return '';
+        const selected = Array.from(group.querySelectorAll('.choice-item.selected'));
+        return selected.map(el => el.dataset.value).join('|');
+    }
+
+    function setChoiceValues(groupId, valuesStr) {
+        const group = document.getElementById(groupId);
+        if (!group || !valuesStr) return;
+        const values = valuesStr.split('|');
+        group.querySelectorAll('.choice-item').forEach(item => {
+            if (values.includes(item.dataset.value)) item.classList.add('selected');
+            else item.classList.remove('selected');
+        });
+    }
+
+    function checkGrowthPromptButtonState() {
+        const btn = document.getElementById('btn-ai-growth-copy');
+        if (!btn) return;
+        if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) {
+            btn.style.opacity = '0.5';
+            btn.onclick = () => {
+                closeAiExportModal();
+                openGrowthModal();
+            };
+            document.getElementById('ai-growth-copy-text').innerText = "Спочатку заповніть анкету";
+        } else {
+            btn.style.opacity = '1';
+            btn.onclick = generateAndCopyGrowthPrompt;
+            document.getElementById('ai-growth-copy-text').innerText = "Промпт: Стратегія Росту";
+        }
+    }
+
+    const oldOpenAiModal = openAiExportModal;
+    openAiExportModal = function() {
+        oldOpenAiModal();
+        checkGrowthPromptButtonState();
+    };
+
+    function showGrowthStep(step) {
+        const progress = (step / totalGrowthSteps) * 100;
+        document.getElementById('growth-progress-bar').style.width = `${progress}%`;
+
+        for (let i = 1; i <= totalGrowthSteps; i++) {
+            document.getElementById(`growth-step-${i}`).style.display = 'none';
+        }
+        document.getElementById(`growth-step-${step}`).style.display = 'block';
+    }
+
+    function nextGrowthStep(current) {
+        // Валідація
+        if (current === 1 && !document.getElementById('growth-job').value.trim()) {
+            document.getElementById('growth-job').style.animation = 'shake 0.4s';
+            setTimeout(() => document.getElementById('growth-job').style.animation = '', 400);
+            return;
+        }
+        if (current === 1 && !getChoiceValues('growth-income-type')) { return; } // Хоча б 1 вибраний
+        
+        if (current === 2 && !document.getElementById('growth-target-income').value.trim()) {
+            document.getElementById('growth-target-income').style.animation = 'shake 0.4s';
+            setTimeout(() => document.getElementById('growth-target-income').style.animation = '', 400);
+            return;
+        }
+
+        if (current === 3 && !document.getElementById('growth-skills').value.trim()) {
+            document.getElementById('growth-skills').style.animation = 'shake 0.4s';
+            setTimeout(() => document.getElementById('growth-skills').style.animation = '', 400);
+            return;
+        }
+
+        if (current === 4 && !getChoiceValues('growth-vector')) { return; }
+
+        if (current < totalGrowthSteps) {
+            currentGrowthStep++;
+            showGrowthStep(currentGrowthStep);
+        }
+    }
+
+    function prevGrowthStep(current) {
+        if (current > 1) {
+            currentGrowthStep--;
+            showGrowthStep(currentGrowthStep);
+        }
+    }
+
+    function openGrowthModal() {
+        document.getElementById('growth-modal').classList.add('active');
+        currentGrowthStep = 1;
+        showGrowthStep(currentGrowthStep);
+
+        if (currentUser && currentUser.growthProfile) {
+            const gp = currentUser.growthProfile;
+            document.getElementById('growth-job').value = gp.job || '';
+            document.getElementById('growth-target-income').value = gp.targetIncome || '';
+            document.getElementById('growth-skills').value = gp.skills || '';
+            document.getElementById('growth-barrier').value = gp.barrier || '';
+            
+            if (gp.incomeType) setChoiceValues('growth-income-type', gp.incomeType);
+            if (gp.period) setChoiceValues('growth-period', gp.period);
+            if (gp.vector) setChoiceValues('growth-vector', gp.vector);
+            if (gp.market) setChoiceValues('growth-market', gp.market);
+            if (gp.time) setChoiceValues('growth-time', gp.time);
+            if (gp.investment) setChoiceValues('growth-investment', gp.investment);
+            if (gp.environment) setChoiceValues('growth-environment', gp.environment);
+        }
+    }
+
+    function closeGrowthModal(e) {
+        if (!e || e.target.id === 'growth-modal' || e.target.closest('.btn-close-modal')) {
+            document.getElementById('growth-modal').classList.remove('active');
+        }
+    }
+
+    async function saveGrowthProfile() {
+        if (!currentUser) return;
+        
+        if (!document.getElementById('growth-barrier').value.trim()) {
+            document.getElementById('growth-barrier').style.animation = 'shake 0.4s';
+            setTimeout(() => document.getElementById('growth-barrier').style.animation = '', 400);
+            return;
+        }
+
+        const profile = {
+            job: document.getElementById('growth-job').value,
+            incomeType: getChoiceValues('growth-income-type'),
+            targetIncome: document.getElementById('growth-target-income').value,
+            period: getChoiceValues('growth-period'),
+            skills: document.getElementById('growth-skills').value,
+            vector: getChoiceValues('growth-vector'),
+            market: getChoiceValues('growth-market'),
+            time: getChoiceValues('growth-time'),
+            investment: getChoiceValues('growth-investment'),
+            environment: getChoiceValues('growth-environment'),
+            barrier: document.getElementById('growth-barrier').value
+        };
+        currentUser.growthProfile = profile;
+        
+        try {
+            const token = localStorage.getItem('budget_auth_token');
+            await fetch(`${API_URL}/api/profile`, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+                body: JSON.stringify({ userId: currentUser.id, growthProfile: profile }) 
+            });
+        } catch (e) { console.error("Помилка збереження профілю", e); }
+        
+        closeGrowthModal();
+        openAiExportModal();
+        setTimeout(generateAndCopyGrowthPrompt, 300);
+    }
+
+        function generateAndCopyGrowthPrompt() {
+        if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) return;
+        const gp = currentUser.growthProfile;
+        
+        // Беремо період з перемикача модалки (За місяць чи За весь час)
+        const type = document.getElementById('ai-export-type').value || 'month';
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        
+        let prompt = `Виступи в ролі топового кар'єрного Executive-коуча та фінансового стратега.\n`;
+        prompt += `Моя мета: кардинально збільшити свій чистий дохід, оптимізувати поточні фінанси та отримати покроковий Roadmap (план дій).\n\n`;
+        
+        const formatAnswers = (str) => str ? str.split('|').join(', ') : '';
+
+        prompt += `### ТОЧКА А (Хто я зараз)\n`;
+        prompt += `- Моя поточна роль / ніша: ${gp.job}\n`;
+        prompt += `- Джерела мого доходу: ${formatAnswers(gp.incomeType)}\n\n`;
+
+        prompt += `### ТОЧКА Б (Куди я йду)\n`;
+        prompt += `- Цільовий чистий дохід: ${gp.targetIncome} на місяць\n`;
+        prompt += `- Дедлайн досягнення (мій горизонт): ${formatAnswers(gp.period)}\n`;
+        prompt += `- Головний фокус зростання (Вектори): ${formatAnswers(gp.vector)}\n`;
+        prompt += `- Цільовий ринок: ${formatAnswers(gp.market)}\n\n`;
+
+        prompt += `### МІЙ АРСЕНАЛ (Суперсила та Ресурси)\n`;
+        prompt += `- Що я роблю краще за інших (Топ-навички): ${gp.skills}\n`;
+        prompt += `- Скільки часу можу приділяти розвитку: ${formatAnswers(gp.time)} на тиждень\n`;
+        prompt += `- Мій бюджет на розвиток: ${formatAnswers(gp.investment)}\n`;
+        prompt += `- Моє оточення зараз: ${formatAnswers(gp.environment)}\n\n`;
+
+        prompt += `### ГОЛОВНИЙ БАР'ЄР (Саботаж)\n`;
+        prompt += `- Відверто про те, що мені заважає діяти прямо зараз: ${gp.barrier}\n\n`;
+
+        // ==== ДОДАЄМО ПОВНУ ФІНАНСОВУ МАТЕМАТИКУ ====
+        prompt += `### МІЙ ФІНАНСОВИЙ ФУНДАМЕНТ (Тил)\n`;
+        
+        const jars = globalData.jars[currentUser.id] || [];
+        const totalJars = jars.reduce((sum, j) => sum + j.balance, 0);
+        prompt += `- Всього накопичень: ${totalJars.toFixed(2)} ₴\n`;
+        jars.forEach(j => {
+            prompt += `  * ${j.name}: ${j.balance} ₴ ${j.goal > 0 ? `(Ціль: ${j.goal} ₴)` : ''}\n`;
+        });
+
+        const debts = globalData.debts[currentUser.id] || [];
+        const activeDebts = debts.filter(d => !d.is_archived || d.is_archived === 0);
+        if (activeDebts.length > 0) {
+            prompt += `\n- АКТИВНІ БОРГОВІ ЗОБОВ'ЯЗАННЯ:\n`;
+            activeDebts.forEach(d => {
+                const remaining = getHistoricalDebtBalance(d.id, currentYear, currentMonth);
+                prompt += `  * ${d.name}: Залишок ${remaining.toFixed(2)} ${d.currency} із загальної суми ${d.total_amount} ${d.currency} (Ставка: ${d.interest_rate}% / міс)\n`;
+            });
+        }
+
+        prompt += `\n### РУХ КОШТІВ (CASH FLOW)\n`;
+        if (type === 'month') {
+            prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz);
+        } else {
+            const years = Object.keys(appData).map(Number).sort((a,b) => a-b);
+            years.forEach(y => {
+                const months = Object.keys(appData[y]).map(Number).sort((a,b) => a-b);
+                months.forEach(m => {
+                    if (appData[y][m].initialized) {
+                        prompt += generateAiDataForMonth(y, m, isBiz);
+                    }
+                });
+            });
+        }
+
+        prompt += `ВИМОГИ ДО ВІДПОВІДІ:\n`;
+        prompt += `1. Не пиши воду і банальності. Дій як наставник, що бере $1000/год.\n`;
+        prompt += `2. Проаналізуй мої витрати та борги. Якщо там є "дірки", які заважають мені інвестувати в ріст — прямо вкажи на них.\n`;
+        prompt += `3. Проаналізуй мій бар'єр і дай жорстку, але дієву пораду, як його пробити.\n`;
+        prompt += `4. Запропонуй конкретні моделі монетизації моїх навичок згідно з обраним вектором росту.\n`;
+        prompt += `5. Побудуй Roadmap розбитий на ключові етапи.\n`;
+        prompt += `6. Дай мені 3 задачі (Action steps) на найближчі 48 годин.\n`;
+
+        const btn = document.getElementById('btn-ai-growth-copy');
+        const btnText = document.getElementById('ai-growth-copy-text');
+        const originalBg = btn.style.background;
+
+        const fallbackCopy = (text) => {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                btnText.innerText = "Успішно скопійовано!";
+                btn.style.background = 'linear-gradient(135deg, var(--sys-green), #1e702e)';
+            } catch (err) {}
+            document.body.removeChild(textArea);
+            setTimeout(() => { closeAiExportModal(); btnText.innerText = "Промпт: Стратегія Росту"; btn.style.background = originalBg; }, 2000);
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(prompt).then(() => {
+                btnText.innerText = "Успішно скопійовано!";
+                btn.style.background = 'linear-gradient(135deg, var(--sys-green), #1e702e)';
+                setTimeout(() => { closeAiExportModal(); btnText.innerText = "Промпт: Стратегія Росту"; btn.style.background = originalBg; }, 2000);
+            }).catch(() => fallbackCopy(prompt));
+        } else {
+            fallbackCopy(prompt);
+        }
+    }
 </script>    
 </body>
 </html>
