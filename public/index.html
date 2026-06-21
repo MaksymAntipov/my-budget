@@ -416,6 +416,97 @@
             font-weight: 700;
         }
 
+        .fp-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+        .fp-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-tertiary);
+            margin-bottom: 10px;
+        }
+        .fp-progress {
+            height: 5px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+            margin: 6px 0 8px;
+        }
+        .fp-progress-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+        .fp-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .fp-stat-label { color: var(--text-secondary); font-weight: 600; }
+        .fp-stat-value { color: var(--text-primary); font-weight: 700; white-space: nowrap; }
+        .fp-step-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 10px;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+        .fp-step-1 { background: rgba(10, 132, 255, 0.12); color: var(--sys-blue); border: 1px solid rgba(10, 132, 255, 0.2); }
+        .fp-step-2 { background: rgba(46, 160, 67, 0.12); color: var(--sys-green); border: 1px solid rgba(46, 160, 67, 0.2); }
+        .fp-compare-row { font-size: 11px; margin-top: 4px; display: flex; justify-content: space-between; gap: 6px; }
+        .fp-ok { color: var(--sys-green); font-weight: 700; }
+        .fp-over { color: var(--sys-red); font-weight: 700; }
+        .fp-input-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .fp-input-wrap { flex: 1; min-width: 90px; }
+        .fp-input-wrap label { display: block; font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 600; }
+        .fp-input-wrap input {
+            width: 100%;
+            height: 34px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: var(--text-primary);
+            padding: 0 10px;
+            font-size: 13px;
+            font-weight: 600;
+            outline: none;
+            font-family: inherit;
+        }
+        .fp-strategic-item {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+        }
+        .fp-bucket-select {
+            height: 28px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            padding: 0 6px;
+            margin-top: 6px;
+            font-family: inherit;
+            max-width: 100%;
+        }
+        .fp-jar-type-select {
+            height: 30px;
+            font-size: 11px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            padding: 0 8px;
+            font-family: inherit;
+            margin-top: 8px;
+            width: 100%;
+        }
+
         .year-selector { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #ffffff, #a1a1a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .year-btn { background: rgba(255, 255, 255, 0.05); -webkit-text-fill-color: var(--text-primary); color: var(--text-primary); width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s;}
         .year-btn:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.05); }
@@ -1587,6 +1678,12 @@
         <div style="background: rgba(0,0,0,0.3); padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
             <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">Створити новий</h4>
             <input type="text" id="new-jar-name" class="ios-input" placeholder="Назва (наприклад, На авто)" style="margin-bottom: 12px; height: 56px;">
+            <select id="new-jar-type" class="ios-input fp-jar-type-select" style="margin-bottom: 12px; height: 48px;">
+                <option value="regular">Звичайний конверт</option>
+                <option value="emergency">Подушка безпеки</option>
+                <option value="strategic">Стратегічна ціль</option>
+                <option value="investment">Інвестиції</option>
+            </select>
             <input type="number" id="new-jar-goal" class="ios-input" placeholder="Ціль (сума, необов'язково)" style="margin-bottom: 20px; height: 56px;">
             <button class="btn-init-primary" style="margin: 0; height: 56px;" onclick="createNewEnvelope()">Створити</button>
         </div>
@@ -2793,6 +2890,9 @@ async function performLogin(user) {
         const bHoursRow = document.getElementById('business-hours-row');
         if(bHoursRow) bHoursRow.style.display = isBiz ? 'flex' : 'none';
 
+        const jarTypeEl = document.getElementById('new-jar-type');
+        if (jarTypeEl) jarTypeEl.style.display = isBiz ? 'none' : 'block';
+
         // Показуємо cashflow-box для всіх
         const cfRowInvoices = document.getElementById('cf-row-invoices');
         const cfDivInvoices = document.getElementById('cf-divider-invoices');
@@ -2816,7 +2916,7 @@ async function performLogin(user) {
             document.getElementById('daily-limit-box').style.display = 'flex';
         }
 
-        render502030Guide();
+        renderFinancialPlanBlock();
     }
 
     async function loadDataFromServer(userId) {
@@ -3245,10 +3345,23 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
     // ==========================================
 
     const RULE_502030_ITEMS = [
-        { pct: 50, share: 0.5, label: 'Потреби', color: 'var(--sys-blue)', title: 'Базові потребності (Needs)', desc: 'Житло, комуналка, базові продукти, транспорт, мінімальні платежі по кредитах. Те, без чого не можна прожити.' },
-        { pct: 30, share: 0.3, label: 'Бажання', color: '#ff9f0a', title: 'Бажання (Wants)', desc: 'Ресторани, хобі, підписки, шопінг, розваги. Вільні гроші на радість без провини.' },
-        { pct: 20, share: 0.2, label: 'Збереження', color: 'var(--sys-green)', title: 'Збереження та борги (Savings)', desc: 'Дострокове погашення кредитів, фінансова подушка, інвестиції. Платите «майбутньому собі».' },
+        { pct: 50, share: 0.5, label: 'Потреби', color: 'var(--sys-blue)', bucket: 'needs', title: 'Базові потребності (Needs)', desc: 'Житло, комуналка, базові продукти, транспорт, мінімальні платежі по кредитах. Те, без чого не можна прожити.' },
+        { pct: 30, share: 0.3, label: 'Бажання', color: '#ff9f0a', bucket: 'wants', title: 'Бажання (Wants)', desc: 'Ресторани, хобі, підписки, шопінг, розваги. Вільні гроші на радість без провини.' },
+        { pct: 20, share: 0.2, label: 'Збереження', color: 'var(--sys-green)', bucket: 'savings', title: 'Збереження та борги (Savings)', desc: 'Дострокове погашення кредитів, фінансова подушка, інвестиції. Платите «майбутньому собі».' },
     ];
+
+    const JAR_TYPE_LABELS = {
+        regular: 'Звичайний',
+        emergency: 'Подушка',
+        strategic: 'Стратегія',
+        investment: 'Інвестиції',
+    };
+
+    const BUDGET_BUCKET_LABELS = {
+        needs: 'Потреби 50%',
+        wants: 'Бажання 30%',
+        savings: 'Збереж. 20%',
+    };
 
     function calc502030(incomeUah) {
         return {
@@ -3258,13 +3371,149 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         };
     }
 
+    function getFinancialPlan() {
+        if (!currentUser) return { desiredMonthlyUsd: 1500, brokerBalanceUsd: 0, returnRatePct: 7, jarTypes: {} };
+        if (!currentUser.growthProfile) currentUser.growthProfile = {};
+        if (!currentUser.growthProfile.financialPlan) {
+            currentUser.growthProfile.financialPlan = {
+                desiredMonthlyUsd: 1500,
+                brokerBalanceUsd: 0,
+                returnRatePct: 7,
+                jarTypes: {},
+            };
+        }
+        if (!currentUser.growthProfile.financialPlan.jarTypes) {
+            currentUser.growthProfile.financialPlan.jarTypes = {};
+        }
+        return currentUser.growthProfile.financialPlan;
+    }
+
+    let financialPlanSaveTimer = null;
+    function updateFinancialPlanField(field, value) {
+        const fp = getFinancialPlan();
+        fp[field] = parseFloat(value) || 0;
+        if (financialPlanSaveTimer) clearTimeout(financialPlanSaveTimer);
+        financialPlanSaveTimer = setTimeout(() => saveFinancialPlan(), 600);
+        renderFinancialPlanBlock();
+    }
+
+    async function saveFinancialPlan() {
+        if (!currentUser) return;
+        const fp = getFinancialPlan();
+        const profile = { ...(currentUser.growthProfile || {}), financialPlan: fp };
+        currentUser.growthProfile = profile;
+        try {
+            const token = localStorage.getItem('budget_auth_token');
+            await fetch(`${API_URL}/api/profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ userId: currentUser.id, growthProfile: profile }),
+            });
+        } catch (e) {
+            console.error('Помилка збереження фінплану', e);
+        }
+    }
+
+    function getJarType(jar) {
+        const fp = getFinancialPlan();
+        return fp.jarTypes[String(jar.id)] || 'regular';
+    }
+
+    function setJarType(jarId, type) {
+        const fp = getFinancialPlan();
+        fp.jarTypes[String(jarId)] = type;
+        saveFinancialPlan();
+        renderEnvelopes();
+        renderFinancialPlanBlock();
+        updateSavingsDisplay();
+    }
+
+    function getCategoryBudgetBucket(cat) {
+        if (cat.budgetBucket) return cat.budgetBucket;
+        if (cat.isSavings) return 'savings';
+        if (cat.name === "Погашення боргів") return 'savings';
+        return 'needs';
+    }
+
+    function setCategoryBudgetBucket(categoryId, bucket) {
+        const cat = expenses.find(e => e.id === categoryId);
+        if (!cat) return;
+        cat.budgetBucket = bucket;
+        saveData();
+        renderExpenses();
+        renderFinancialPlanBlock();
+    }
+
+    function get502030Actuals() {
+        const actuals = { needs: 0, wants: 0, savings: 0 };
+        expenses.forEach(exp => {
+            const bucket = getCategoryBudgetBucket(exp);
+            actuals[bucket] += getCategoryTotal(exp);
+        });
+        return actuals;
+    }
+
+    function getCushionBalanceUah() {
+        const jars = globalData.jars[currentUser?.id] || [];
+        return jars.filter(j => getJarType(j) === 'emergency').reduce((sum, j) => sum + (parseFloat(j.balance) || 0), 0);
+    }
+
+    function getInvestmentJarsBalanceUah() {
+        const jars = globalData.jars[currentUser?.id] || [];
+        return jars.filter(j => getJarType(j) === 'investment').reduce((sum, j) => sum + (parseFloat(j.balance) || 0), 0);
+    }
+
+    function uahToUsd(uah) {
+        return currentExchangeRate > 0 ? uah / currentExchangeRate : 0;
+    }
+
+    function usdToUah(usd) {
+        return usd * (currentExchangeRate || 0);
+    }
+
+    function calcYearsToCapital(fvUsd, pvUsd, monthlyPmtUsd, ratePct) {
+        const r = (ratePct || 7) / 100;
+        const pmtAnnual = monthlyPmtUsd * 12;
+        if (fvUsd <= 0) return null;
+        if (pvUsd >= fvUsd) return 0;
+        if (pmtAnnual <= 0 && pvUsd <= 0) return null;
+
+        if (Math.abs(r) < 0.0001) {
+            return (fvUsd - pvUsd) / pmtAnnual;
+        }
+
+        const numerator = fvUsd * r + pmtAnnual;
+        const denominator = pvUsd * r + pmtAnnual;
+        if (numerator <= 0 || denominator <= 0 || numerator <= denominator) return null;
+
+        return Math.log(numerator / denominator) / Math.log(1 + r);
+    }
+
+    function formatYearsLabel(years) {
+        if (years === null || years === undefined || !isFinite(years)) return '—';
+        if (years <= 0) return 'Досягнуто';
+        if (years < 1) return '< 1 року';
+        return `~${Math.round(years)} ${years >= 5 ? 'років' : years >= 2 ? 'роки' : 'рік'}`;
+    }
+
+    function fpProgressBar(pct, color) {
+        const w = Math.min(100, Math.max(0, pct));
+        return `<div class="fp-progress"><div class="fp-progress-fill" style="width:${w}%;background:${color}"></div></div>`;
+    }
+
     function toggleRule502030Details(e) {
         if (e) e.stopPropagation();
         const panel = document.getElementById('rule-502030-details');
         if (panel) panel.classList.toggle('open');
     }
 
-    function render502030Guide() {
+    function toggleFinancialPlanSettings(e) {
+        if (e) e.stopPropagation();
+        const panel = document.getElementById('fp-settings-panel');
+        if (panel) panel.classList.toggle('open');
+    }
+
+    function renderFinancialPlanBlock() {
         const block = document.getElementById('rule-502030-block');
         if (!block) return;
 
@@ -3278,29 +3527,38 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
 
         block.style.display = 'block';
         const income = currentIncomeUah || 0;
+        const fp = getFinancialPlan();
 
         if (income <= 0) {
             block.innerHTML = `
                 <div class="rule-502030-header">
-                    <span class="rule-502030-title">Рекомендація 50/30/20</span>
+                    <span class="rule-502030-title">Фінансовий план</span>
                 </div>
-                <div class="rule-502030-empty">Додайте доходи, щоб побачити рекомендований розподіл бюджету.</div>
+                <div class="rule-502030-empty">Додайте доходи, щоб побачити рекомендації 50/30/20 та довгострокові цілі.</div>
             `;
             return;
         }
 
         const amounts = calc502030(income);
+        const actuals = get502030Actuals();
         const amountKeys = ['needs', 'wants', 'savings'];
 
-        const rowsHtml = RULE_502030_ITEMS.map((item, i) => `
+        const rowsHtml = RULE_502030_ITEMS.map((item, i) => {
+            const rec = amounts[amountKeys[i]];
+            const act = actuals[item.bucket];
+            const delta = act - rec;
+            const deltaHtml = act > 0
+                ? `<div class="fp-compare-row"><span style="color:var(--text-tertiary)">факт: ${formatMoney(act)} ₴</span><span class="${delta > 0 ? 'fp-over' : 'fp-ok'}">${delta > 0 ? '+' : ''}${formatMoney(delta)}</span></div>`
+                : '';
+            return `
             <div class="rule-502030-row">
                 <span class="rule-502030-row-label">
                     <span class="rule-502030-dot" style="background: ${item.color};"></span>
                     <span>${item.label} (${item.pct}%)</span>
                 </span>
-                <span class="rule-502030-row-amount tabular">${formatMoney(amounts[amountKeys[i]])} ₴</span>
-            </div>
-        `).join('');
+                <span class="rule-502030-row-amount tabular">${formatMoney(rec)} ₴</span>
+            </div>${deltaHtml}`;
+        }).join('');
 
         const detailsHtml = RULE_502030_ITEMS.map(item => `
             <div class="rule-502030-detail-item">
@@ -3308,10 +3566,43 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             </div>
         `).join('');
 
+        const cushionTarget = amounts.needs * 6;
+        const cushionActual = getCushionBalanceUah();
+        const cushionPct = cushionTarget > 0 ? (cushionActual / cushionTarget) * 100 : 0;
+        const cushionDone = cushionActual >= cushionTarget && cushionTarget > 0;
+
+        const capitalTargetUsd = (fp.desiredMonthlyUsd || 0) * 12 * 25;
+        const capitalCurrentUsd = (fp.brokerBalanceUsd || 0) + uahToUsd(getInvestmentJarsBalanceUah());
+        const capitalPct = capitalTargetUsd > 0 ? (capitalCurrentUsd / capitalTargetUsd) * 100 : 0;
+
+        const monthlyInvestUsd = uahToUsd(amounts.savings);
+        const yearsToCapital = calcYearsToCapital(capitalTargetUsd, capitalCurrentUsd, monthlyInvestUsd, fp.returnRatePct);
+
+        const strategicJars = (globalData.jars[currentUser.id] || []).filter(j => getJarType(j) === 'strategic');
+        const strategicHtml = strategicJars.length > 0
+            ? strategicJars.map(j => {
+                const pct = j.goal > 0 ? Math.min(100, (j.balance / j.goal) * 100) : 0;
+                return `<div class="fp-strategic-item">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <span>${escapeHtml(j.name)}</span>
+                        <span class="tabular">${formatMoney(j.balance)} / ${j.goal > 0 ? formatMoney(j.goal) : '—'} ₴</span>
+                    </div>
+                    ${j.goal > 0 ? fpProgressBar(pct, '#bf5af2') : ''}
+                </div>`;
+            }).join('')
+            : `<div class="rule-502030-empty" style="margin:0;">Створіть конверт типу «Стратегічна ціль» для квартири, бізнесу тощо.</div>`;
+
+        const stepHtml = cushionDone
+            ? `<div class="fp-step-badge fp-step-2">Крок 2: подушка готова — 20% збережень направляйте на брокерський рахунок та капітал</div>`
+            : `<div class="fp-step-badge fp-step-1">Крок 1: спочатку фінансова подушка (6 міс. потреб) — ${formatMoney(Math.max(0, cushionTarget - cushionActual))} ₴ залишилось</div>`;
+
         block.innerHTML = `
             <div class="rule-502030-header">
                 <span class="rule-502030-title">Рекомендація 50/30/20</span>
-                <button type="button" class="rule-502030-info-btn" onclick="toggleRule502030Details(event)" title="Пояснення правила">i</button>
+                <div style="display:flex;gap:6px;">
+                    <button type="button" class="rule-502030-info-btn" onclick="toggleFinancialPlanSettings(event)" title="Налаштування">⚙</button>
+                    <button type="button" class="rule-502030-info-btn" onclick="toggleRule502030Details(event)" title="Пояснення">i</button>
+                </div>
             </div>
             <div class="rule-502030-bar">
                 <div class="rule-502030-bar-seg" style="width: 50%; background: var(--sys-blue);"></div>
@@ -3320,8 +3611,59 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             </div>
             ${rowsHtml}
             <div id="rule-502030-details" class="rule-502030-details">${detailsHtml}</div>
+
+            <div id="fp-settings-panel" class="rule-502030-details">
+                <div class="fp-input-row">
+                    <div class="fp-input-wrap">
+                        <label>Бажані витрати / міс ($)</label>
+                        <input type="number" value="${fp.desiredMonthlyUsd || ''}" onchange="updateFinancialPlanField('desiredMonthlyUsd', this.value)">
+                    </div>
+                    <div class="fp-input-wrap">
+                        <label>Брокерський рахунок ($)</label>
+                        <input type="number" value="${fp.brokerBalanceUsd || ''}" onchange="updateFinancialPlanField('brokerBalanceUsd', this.value)">
+                    </div>
+                    <div class="fp-input-wrap">
+                        <label>Дохідність / рік (%)</label>
+                        <input type="number" value="${fp.returnRatePct || 7}" onchange="updateFinancialPlanField('returnRatePct', this.value)">
+                    </div>
+                </div>
+                <div class="rule-502030-detail-item"><strong>Правило ×25:</strong> ${formatMoney(fp.desiredMonthlyUsd || 0)} × 12 × 25 = ${formatMoney(capitalTargetUsd)} $ цільовий капітал</div>
+            </div>
+
+            <div class="fp-section">
+                <div class="fp-section-title">Подушка безпеки (6 міс. потреб)</div>
+                <div class="fp-stat-row">
+                    <span class="fp-stat-label">Накопичено / ціль</span>
+                    <span class="fp-stat-value tabular">${formatMoney(cushionActual)} / ${formatMoney(cushionTarget)} ₴</span>
+                </div>
+                ${fpProgressBar(cushionPct, 'var(--sys-blue)')}
+                <div class="rule-502030-detail-item" style="margin:0;"><strong>Неприкосновенна:</strong> конверти типу «Подушка безпеки»</div>
+            </div>
+
+            <div class="fp-section">
+                <div class="fp-section-title">Особистий капітал (правило ×25)</div>
+                <div class="fp-stat-row">
+                    <span class="fp-stat-label">Накопичено / ціль</span>
+                    <span class="fp-stat-value tabular">${formatMoney(capitalCurrentUsd)} / ${formatMoney(capitalTargetUsd)} $</span>
+                </div>
+                ${fpProgressBar(capitalPct, 'var(--sys-green)')}
+                <div class="fp-stat-row">
+                    <span class="fp-stat-label">При ${formatMoney(monthlyInvestUsd)} $/міс (20%)</span>
+                    <span class="fp-stat-value">${formatYearsLabel(yearsToCapital)}</span>
+                </div>
+                ${currentExchangeRate > 0 ? `<div class="fp-stat-row"><span class="fp-stat-label">≈ в ₴</span><span class="fp-stat-value tabular">${formatMoney(usdToUah(capitalTargetUsd))} ₴</span></div>` : ''}
+            </div>
+
+            <div class="fp-section">
+                <div class="fp-section-title">Стратегічні цілі (з 20%)</div>
+                ${strategicHtml}
+            </div>
+
+            ${stepHtml}
         `;
     }
+
+    const render502030Guide = renderFinancialPlanBlock;
 
     async function fetchExchangeRate() {
         try {
@@ -3988,6 +4330,11 @@ function getHistoricalIncome(year, month) {
 
             const isSavingsClass = exp.isSavings ? 'color: var(--sys-green);' : '';
             const paidCardClass = allItemsPaid ? 'paid-card' : '';
+            const bucket = getCategoryBudgetBucket(exp);
+            const bucketSelectHtml = !isBiz ? `
+                            <select class="fp-bucket-select" onclick="event.stopPropagation()" onchange="setCategoryBudgetBucket(${exp.id}, this.value)" ${exp.isSavings ? 'disabled title="Заощадження — це 20%"' : ''}>
+                                ${Object.entries(BUDGET_BUCKET_LABELS).map(([val, label]) => `<option value="${val}" ${bucket === val ? 'selected' : ''}>${label}</option>`).join('')}
+                            </select>` : '';
 
             const div = document.createElement('div');
             div.className = `expense-card-pro ${rankClass} ${paidCardClass}`;
@@ -3997,6 +4344,7 @@ function getHistoricalIncome(year, month) {
                         <div class="expense-pro-title-group">
                             ${badgeHtml}
                             <input class="expense-pro-input" type="text" value="${exp.name}" placeholder="Назва категорії" oninput="updateCategoryName(${exp.id}, this.value)" onclick="event.stopPropagation()" style="${isSavingsClass}">
+                            ${bucketSelectHtml}
                         </div>
                         <div class="expense-pro-trend">
                             ${sparkData.trendHtml}
@@ -4029,7 +4377,7 @@ function getHistoricalIncome(year, month) {
 
     function updateCategoryName(id, val) {
         const cat = expenses.find(e => e.id === id);
-        if (cat) { cat.name = val; saveData(); updateChart(); }
+        if (cat) { cat.name = val; saveData(); updateChart(); renderFinancialPlanBlock(); }
     }
 
     function addCategory() {
@@ -4325,7 +4673,7 @@ let payrollAccruedTotal = 0;
         if (incTrendBadgeEl) incTrendBadgeEl.innerHTML = incSparkData.trendHtml;
         if (incSparkContainerEl) incSparkContainerEl.innerHTML = incSparkData.sparklineSvg + `<div class="sparkline-labels">${incSparkData.labelsHtml}</div>`;
 
-        render502030Guide();
+        renderFinancialPlanBlock();
 
 let workingDays = 21;
         let hoursPerDay = 8;
@@ -4454,8 +4802,9 @@ function renderEnvelopes() {
         userJars.forEach(jar => {
             const percent = jar.goal > 0 ? Math.min(100, (jar.balance / jar.goal) * 100) : 0;
             const goalText = jar.goal > 0 ? `/ ${formatMoney(jar.goal)} ₴` : '';
+            const jarType = getJarType(jar);
+            const isPersonal = currentUser && currentUser.account_type !== 'business';
             
-            // Компактний інпут для основного конверта
             const balanceDisplay = jar.isMain 
                 ? `<div style="display: flex; align-items: center; gap: 6px;"><input type="number" value="${jar.balance}" onchange="updateMainJarBalance(${jar.id}, this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--sys-green); font-size: 16px; font-weight: 700; width: 110px; padding: 6px 10px; outline: none; transition: 0.3s; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" onfocus="this.style.background='rgba(255,255,255,0.1)'" onblur="this.style.background='rgba(255,255,255,0.05)'"> <span>₴</span></div>`
                 : `<span style="color: var(--sys-green);">${formatMoney(jar.balance)} ₴</span>`;
@@ -4465,16 +4814,23 @@ function renderEnvelopes() {
             
             // Бейджик для основного рахунку
             const mainBadge = jar.isMain ? `<span style="font-size: 11px; background: rgba(10, 132, 255, 0.15); padding: 2px 6px; border-radius: 6px; color: var(--sys-blue); flex-shrink: 0;">Основний</span>` : '';
+            const typeBadge = isPersonal && jarType !== 'regular' ? `<span style="font-size: 11px; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; color: var(--text-secondary); flex-shrink: 0;">${JAR_TYPE_LABELS[jarType]}</span>` : '';
+            const typeSelect = isPersonal && !jar.isMain ? `
+                <select class="fp-jar-type-select" onchange="setJarType(${jar.id}, this.value)">
+                    ${Object.entries(JAR_TYPE_LABELS).map(([val, label]) => `<option value="${val}" ${jarType === val ? 'selected' : ''}>${label}</option>`).join('')}
+                </select>` : '';
 
             list.innerHTML += `
             <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                     <div style="font-weight: 700; font-size: 16px; color: var(--text-primary); display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
-                        <span style="overflow: hidden; text-overflow: ellipsis;">${jar.name}</span>
+                        <span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(jar.name)}</span>
                         ${mainBadge}
+                        ${typeBadge}
                     </div>
                     ${deleteBtn}
                 </div>
+                ${typeSelect}
 
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                     <div style="overflow: hidden; padding-right: 8px;">
@@ -4496,11 +4852,21 @@ function renderEnvelopes() {
 
     function createNewEnvelope() {
         const name = document.getElementById('new-jar-name').value, goal = parseFloat(document.getElementById('new-jar-goal').value) || 0;
+        const typeEl = document.getElementById('new-jar-type');
+        const jarType = typeEl ? typeEl.value : 'regular';
         if(!name) return;
         if(!globalData.jars[currentUser.id]) globalData.jars[currentUser.id] = [];
-        globalData.jars[currentUser.id].push({ id: Date.now(), name, goal, balance: 0, isMain: false });
-        document.getElementById('new-jar-name').value = ''; document.getElementById('new-jar-goal').value = '';
-        saveGlobalData(); renderEnvelopes(); updateSavingsDisplay();
+        const newId = Date.now();
+        globalData.jars[currentUser.id].push({ id: newId, name, goal, balance: 0, isMain: false });
+        if (jarType !== 'regular') {
+            const fp = getFinancialPlan();
+            fp.jarTypes[String(newId)] = jarType;
+            saveFinancialPlan();
+        }
+        document.getElementById('new-jar-name').value = '';
+        document.getElementById('new-jar-goal').value = '';
+        if (typeEl) typeEl.value = 'regular';
+        saveGlobalData(); renderEnvelopes(); updateSavingsDisplay(); renderFinancialPlanBlock();
     }
 
     function updateMainJarBalance(id, val) {
@@ -4511,6 +4877,9 @@ function renderEnvelopes() {
     function deleteEnvelope(id) {
         showConfirm("Видалити конверт?", "Кошти, відкладені цього місяця, повернуться у вільний залишок.", () => {
             globalData.jars[currentUser.id] = globalData.jars[currentUser.id].filter(j => j.id != id);
+            const fp = getFinancialPlan();
+            delete fp.jarTypes[String(id)];
+            saveFinancialPlan();
             let savingsCat = expenses.find(e => e.isSavings);
             if (savingsCat) {
                 savingsCat.items = savingsCat.items.filter(item => item.envelopeId != id);
@@ -6414,7 +6783,8 @@ function generatePayrollSparklineHTML(currentTotal) {
             time: getChoiceValues('growth-time'),
             investment: getChoiceValues('growth-investment'),
             environment: getChoiceValues('growth-environment'),
-            barrier: document.getElementById('growth-barrier').value
+            barrier: document.getElementById('growth-barrier').value,
+            financialPlan: (currentUser.growthProfile && currentUser.growthProfile.financialPlan) || getFinancialPlan(),
         };
         currentUser.growthProfile = profile;
         
