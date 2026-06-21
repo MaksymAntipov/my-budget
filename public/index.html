@@ -279,7 +279,44 @@
         .user-nav-actions { display: flex; gap: 8px; }
         
         .badge-type { background: linear-gradient(135deg, rgba(10, 132, 255, 0.15), rgba(10, 132, 255, 0.05)); color: var(--sys-blue); padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 8px; display: inline-block; border: 1px solid rgba(10, 132, 255, 0.2);}
+        #account-type-badge { appearance: none; -webkit-appearance: none; }
         .badge-business { background: linear-gradient(135deg, rgba(46, 160, 67, 0.15), rgba(46, 160, 67, 0.05)); color: var(--sys-green); border-color: rgba(46, 160, 67, 0.2);}
+        .badge-type--switchable { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; font-family: inherit; }
+        .badge-type--switchable:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        .profile-switcher-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 160px;
+            background: rgba(30, 30, 32, 0.96);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            padding: 6px;
+            z-index: 2000;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+            backdrop-filter: blur(16px);
+        }
+        .profile-switcher-dropdown.open { display: block; }
+        .profile-switcher-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .profile-switcher-item:hover { background: rgba(255,255,255,0.08); }
+        .profile-switcher-item--biz { color: var(--sys-green); }
+        .profile-switcher-item--personal { color: var(--sys-blue); }
 
         .year-selector { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #ffffff, #a1a1a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .year-btn { background: rgba(255, 255, 255, 0.05); -webkit-text-fill-color: var(--text-primary); color: var(--text-primary); width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s;}
@@ -1092,6 +1129,7 @@
     let tempAuthData = null; 
     let otpTimer = null;
     let saveTimeout = null;
+    let availableProfiles = [];
 
     function escapeHtml(str) {
         return String(str)
@@ -1115,7 +1153,10 @@
                     <div id="nav-avatar" style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2), 0 4px 8px rgba(10,132,255,0.3);"></div>
                     <div style="display: flex; align-items: center;">
                         <span id="current-user-name-display" style="font-weight: 700; font-size: 16px; color: var(--text-primary); letter-spacing: -0.3px;"></span>
-                        <span id="account-type-badge" class="badge-type" style="display: none;">Фіз. особа</span>
+                        <div id="profile-type-container" style="position: relative; margin-left: 8px;">
+                            <button type="button" id="account-type-badge" class="badge-type" style="display: none;" onclick="toggleProfileSwitcher(event)">Фіз. особа</button>
+                            <div id="profile-switcher-dropdown" class="profile-switcher-dropdown"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="user-nav-actions">
@@ -2220,6 +2261,8 @@
         });
         // ----------------------------------------------
 
+        document.addEventListener('click', closeProfileSwitcher);
+
         const savedUserId = localStorage.getItem('budget_saved_user_id');
         const savedUserInfo = localStorage.getItem('budget_saved_user_info');
         const savedToken = localStorage.getItem('budget_auth_token');
@@ -2402,6 +2445,11 @@
                     localStorage.setItem('budget_auth_token', data.token);
                 }
 
+                if (data.users) {
+                    availableProfiles = data.users;
+                    localStorage.setItem('budget_available_profiles', JSON.stringify(availableProfiles));
+                }
+
                 if (data.users && data.users.length > 1) {
                     showAccountSelect(data.users);
                 } else {
@@ -2490,6 +2538,89 @@
         setTimeout(() => element.style.animation = '', 400);
     }
 
+async function fetchAvailableProfiles() {
+        const cached = localStorage.getItem('budget_available_profiles');
+        if (cached) {
+            try { availableProfiles = JSON.parse(cached); } catch (e) { availableProfiles = []; }
+        }
+
+        const token = localStorage.getItem('budget_auth_token');
+        if (!token) return availableProfiles;
+
+        try {
+            const response = await fetch(`${API_URL}/api/profiles`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.status === 401) {
+                logout();
+                return [];
+            }
+            if (response.ok) {
+                const data = await response.json();
+                availableProfiles = data.profiles || [];
+                localStorage.setItem('budget_available_profiles', JSON.stringify(availableProfiles));
+            }
+        } catch (e) {
+            console.error('Помилка завантаження профілів', e);
+        }
+
+        return availableProfiles;
+    }
+
+    function updateProfileSwitcherUI() {
+        const badge = document.getElementById('account-type-badge');
+        const dropdown = document.getElementById('profile-switcher-dropdown');
+        if (!badge || !dropdown) return;
+
+        dropdown.classList.remove('open');
+        dropdown.innerHTML = '';
+
+        const otherProfiles = availableProfiles.filter(p => p.id !== currentUser?.id);
+
+        if (otherProfiles.length === 0) {
+            badge.classList.remove('badge-type--switchable');
+            badge.disabled = false;
+            return;
+        }
+
+        badge.classList.add('badge-type--switchable');
+        otherProfiles.forEach(p => {
+            const isBiz = p.account_type === 'business';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'profile-switcher-item ' + (isBiz ? 'profile-switcher-item--biz' : 'profile-switcher-item--personal');
+            btn.innerHTML = `
+                <span>${isBiz ? 'Бізнес' : 'Фіз. особа'}</span>
+                <span style="font-size: 11px; opacity: 0.6; font-weight: 500;">${escapeHtml(p.name)}</span>
+            `;
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                switchProfile(p);
+            };
+            dropdown.appendChild(btn);
+        });
+    }
+
+    function toggleProfileSwitcher(e) {
+        if (e) e.stopPropagation();
+        if (availableProfiles.filter(p => p.id !== currentUser?.id).length === 0) return;
+        document.getElementById('profile-switcher-dropdown').classList.toggle('open');
+    }
+
+    function closeProfileSwitcher() {
+        const dropdown = document.getElementById('profile-switcher-dropdown');
+        if (dropdown) dropdown.classList.remove('open');
+    }
+
+    async function switchProfile(user) {
+        if (!user || !currentUser || user.id === currentUser.id) return;
+        closeProfileSwitcher();
+        await saveData(true);
+        appData = {};
+        expenses = [];
+        await performLogin(user);
+    }
+
 async function performLogin(user) {
         currentUser = user;
         
@@ -2509,7 +2640,9 @@ async function performLogin(user) {
             appContainer.style.pointerEvents = 'auto';
         }, 50);
 
+        await fetchAvailableProfiles();
         applyUIForAccountType();
+        updateProfileSwitcherUI();
         await loadDataFromServer(user.id);
     }
 
@@ -2517,9 +2650,12 @@ async function performLogin(user) {
         const isBiz = currentUser && currentUser.account_type === 'business';
         
         const badge = document.getElementById('account-type-badge');
-        badge.style.display = 'inline-block';
-        badge.innerText = isBiz ? 'Бізнес' : 'Фіз. особа';
+        badge.style.display = 'inline-flex';
+        badge.innerHTML = (isBiz ? 'Бізнес' : 'Фіз. особа') + (availableProfiles.filter(p => p.id !== currentUser?.id).length > 0 ? ' <span style="opacity:0.7;font-size:9px;">▾</span>' : '');
         badge.className = isBiz ? 'badge-type badge-business' : 'badge-type';
+        if (availableProfiles.filter(p => p.id !== currentUser?.id).length > 0) {
+            badge.classList.add('badge-type--switchable');
+        }
 
         document.getElementById('title-sources').innerText = isBiz ? 'Обіг за рахунками за місяць' : 'Джерела доходу';
         document.getElementById('title-incomes').innerText = isBiz ? 'Обіг' : 'Доходи';
@@ -2752,10 +2888,14 @@ async function flushSaveToServer(year, month) {
 function logout() {
         currentUser = null;
         appData = {};
+        availableProfiles = [];
         
         localStorage.removeItem('budget_saved_user_id');
         localStorage.removeItem('budget_saved_user_info');
         localStorage.removeItem('budget_auth_token');
+        localStorage.removeItem('budget_available_profiles');
+        
+        closeProfileSwitcher();
         
         const appContainer = document.getElementById('app-container');
         appContainer.style.opacity = '0';
