@@ -1092,6 +1092,19 @@
     let tempAuthData = null; 
     let otpTimer = null;
     let saveTimeout = null;
+
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function escapeAttr(str) {
+        return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
 </script>
 
 <div id="app-container" style="opacity: 0; pointer-events: none; transition: opacity 0.5s ease; width: 100%; display: none; flex-direction: column; align-items: center; min-height: 100vh;">
@@ -2209,11 +2222,17 @@
 
         const savedUserId = localStorage.getItem('budget_saved_user_id');
         const savedUserInfo = localStorage.getItem('budget_saved_user_info');
+        const savedToken = localStorage.getItem('budget_auth_token');
         
-        if (savedUserId && savedUserInfo) {
+        if (savedUserId && savedUserInfo && savedToken) {
             const user = JSON.parse(savedUserInfo);
             await performLogin(user);
         } else {
+            if (savedUserId || savedUserInfo || savedToken) {
+                localStorage.removeItem('budget_saved_user_id');
+                localStorage.removeItem('budget_saved_user_info');
+                localStorage.removeItem('budget_auth_token');
+            }
             showAuthScreen();
         }
     }
@@ -2424,7 +2443,7 @@
                 <div style="background: rgba(0,0,0,0.3); width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05);">${iconSvg}</div>
                 <div style="text-align: left;">
                     <div style="font-weight: 700; font-size: 16px;">${typeName}</div>
-                    <div style="font-size: 14px; color: #a1a1a6; margin-top: 4px;">${u.name} ${u.surname}</div>
+                    <div style="font-size: 14px; color: #a1a1a6; margin-top: 4px;">${escapeHtml(u.name)} ${escapeHtml(u.surname)}</div>
                 </div>
             `;
             
@@ -2572,6 +2591,11 @@ async function performLogin(user) {
             });
             const data = await response.json();
 
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+
             if (!response.ok) return console.error("Помилка завантаження:", data.error);
 
             if (!globalData.jars) globalData.jars = {};
@@ -2581,10 +2605,11 @@ async function performLogin(user) {
 
 if (!globalData.debts) globalData.debts = {};
             // ПАРСИНГ: Розшифровуємо schedule_json у нормальний об'єкт
-            globalData.debts[userId] = (data.debts || []).map(d => ({
-                ...d,
-                schedule: d.schedule_json ? JSON.parse(d.schedule_json) : {}
-            }));
+            globalData.debts[userId] = (data.debts || []).map(d => {
+                let schedule = {};
+                try { schedule = d.schedule_json ? JSON.parse(d.schedule_json) : {}; } catch (e) {}
+                return { ...d, schedule };
+            });
 
                         // ЗАВАНТАЖЕННЯ АНКЕТИ "СТРАТЕГІЯ РОСТУ"
             if (data.growthProfile) {
@@ -2642,65 +2667,86 @@ if (!globalData.debts) globalData.debts = {};
         }
     }
 
-async function saveDataToServer() {
+async function flushSaveToServer(year, month) {
         if (!currentUser) return;
 
-        if (saveTimeout) {
-            clearTimeout(saveTimeout);
+        const currentMonthData = appData[year]?.[month] || {};
+        const payload = {
+            userId: currentUser.id,
+            year, month,
+            incomes: currentMonthData.incomes || [],
+            expenses: currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []) || [],
+            cogs: currentMonthData.cogs || {type: 'percent', value: 0},
+            payroll: currentMonthData.payroll || [],
+            jars: globalData.jars[currentUser.id] || [],
+            debts: globalData.debts[currentUser.id] || [],
+            suppliers: globalData.suppliers[currentUser.id] || [],
+            invoices: currentMonthData.invoices || []
+        };
+
+        try {
+            const token = localStorage.getItem('budget_auth_token');
+            const response = await fetch(`${API_URL}/api/data`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+
+            if (!response.ok) {
+                const errData = await response.json();
+                console.error("СЕРВЕР ВІДХИЛИВ ДАНІ:", errData);
+                alert(`Помилка бази даних: ${errData.error}`);
+            }
+        } catch (e) {
+            console.error("Помилка збереження на сервер:", e);
         }
+    }
+
+    function scheduleSaveToServer() {
+        if (!currentUser) return;
+
+        const year = currentYear;
+        const month = currentMonth;
+
+        if (saveTimeout) clearTimeout(saveTimeout);
 
         saveTimeout = setTimeout(async () => {
-            const currentMonthData = appData[currentYear]?.[currentMonth] || {};
-            const payload = {
-                userId: currentUser.id,
-                year: currentYear, month: currentMonth,
-                incomes: currentMonthData.incomes || [],
-                expenses: currentMonthData.expenses || expenses || [],
-                cogs: currentMonthData.cogs || {type: 'percent', value: 0},
-                payroll: currentMonthData.payroll || [], 
-                jars: globalData.jars[currentUser.id] || [],
-                debts: globalData.debts[currentUser.id] || [],
-                suppliers: globalData.suppliers[currentUser.id] || [],
-                invoices: currentMonthData.invoices || []
-            };
-            
-            // Логуємо, щоб точно бачити, що летить на сервер
-            console.log("Відправка на сервер. Payroll:", payload.payroll);
-
-            try {
-                const token = localStorage.getItem('budget_auth_token');
-                const response = await fetch(`${API_URL}/api/data`, { 
-                    method: 'POST', 
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }, 
-                    body: JSON.stringify(payload) 
-                });
-                
-                // Якщо сервер видав 500 помилку (наприклад, немає колонки в БД)
-                if (!response.ok) {
-                    const errData = await response.json();
-                    console.error("СЕРВЕР ВІДХИЛИВ ДАНІ:", errData);
-                    alert(`Помилка бази даних: ${errData.error}`);
-                }
-            } catch (e) {
-                console.error("Помилка збереження на сервер:", e);
-            }
+            saveTimeout = null;
+            await flushSaveToServer(year, month);
         }, 1000);
     }
 
-    async function saveData() {
+    function saveDataToServer() {
+        scheduleSaveToServer();
+    }
+
+    async function saveData(immediate = false) {
         if (!appData[currentYear]) appData[currentYear] = {};
         if (appData[currentYear][currentMonth] && appData[currentYear][currentMonth].initialized) {
             appData[currentYear][currentMonth].expenses = expenses;
         }
-        await saveDataToServer(); 
-        updateSavingsDisplay(); 
+        if (immediate) {
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+                saveTimeout = null;
+            }
+            await flushSaveToServer(currentYear, currentMonth);
+        } else {
+            scheduleSaveToServer();
+        }
+        updateSavingsDisplay();
     }
 
-    async function saveGlobalData() {
-        await saveDataToServer(); 
+    async function saveGlobalData(immediate = false) {
+        await saveData(immediate);
     }
 
 function logout() {
@@ -2879,8 +2925,8 @@ function logout() {
         });
     }
 
-    function changeYear(delta) {
-        saveData();
+    async function changeYear(delta) {
+        await saveData(true);
         currentYear += delta;
         if (!appData[currentYear]) appData[currentYear] = {};
         if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
@@ -2888,9 +2934,9 @@ function logout() {
         applyMonthData();
     }
 
-    function selectMonth(m, btnElement) {
+    async function selectMonth(m, btnElement) {
         if (m === currentMonth) return;
-        saveData();
+        await saveData(true);
         currentMonth = m;
         if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
         renderCalendar();
@@ -4172,7 +4218,7 @@ function renderEnvelopes() {
             userJars.forEach((jar, index) => {
                 const text = `${jar.name} (зараз ${formatMoney(jar.balance)} ₴)`;
                 if (index === 0) { firstJarId = jar.id; firstJarName = text; }
-                optionsContainer.innerHTML += `<div class="custom-dropdown-option" onclick="selectTransferJar(event, ${jar.id}, '${text}')">${text}</div>`;
+                optionsContainer.innerHTML += `<div class="custom-dropdown-option" onclick="selectTransferJar(event, ${jar.id}, '${escapeAttr(text)}')">${escapeHtml(text)}</div>`;
             });
             selectTransferJar(null, firstJarId, firstJarName);
         }
@@ -4187,7 +4233,7 @@ function renderEnvelopes() {
     function selectTransferJar(event, id, text) {
         if(event) event.stopPropagation();
         document.getElementById('transfer-jar-select').value = id;
-        document.getElementById('transfer-jar-selected').innerHTML = text;
+        document.getElementById('transfer-jar-selected').innerHTML = escapeHtml(text);
         document.getElementById('transfer-jar-dropdown').classList.remove('open');
     }
 
