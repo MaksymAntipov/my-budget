@@ -443,68 +443,91 @@
         }
         .fp-stat-label { color: var(--text-secondary); font-weight: 600; }
         .fp-stat-value { color: var(--text-primary); font-weight: 700; white-space: nowrap; }
-        .fp-step-badge {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 6px 10px;
-            border-radius: 10px;
-            margin-top: 8px;
-            line-height: 1.4;
-        }
-        .fp-step-1 { background: rgba(10, 132, 255, 0.12); color: var(--sys-blue); border: 1px solid rgba(10, 132, 255, 0.2); }
-        .fp-step-2 { background: rgba(46, 160, 67, 0.12); color: var(--sys-green); border: 1px solid rgba(46, 160, 67, 0.2); }
         .fp-compare-row { font-size: 11px; margin-top: 4px; display: flex; justify-content: space-between; gap: 6px; }
         .fp-ok { color: var(--sys-green); font-weight: 700; }
         .fp-over { color: var(--sys-red); font-weight: 700; }
-        .fp-input-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-        .fp-input-wrap { flex: 1; min-width: 90px; }
-        .fp-input-wrap label { display: block; font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 600; }
+        .fp-input-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        @media (max-width: 520px) {
+            .fp-input-row { grid-template-columns: 1fr; }
+        }
+        .fp-input-wrap { min-width: 0; }
+        .fp-input-wrap label {
+            display: block;
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-bottom: 6px;
+            font-weight: 600;
+            line-height: 1.35;
+            min-height: 28px;
+        }
         .fp-input-wrap input {
             width: 100%;
-            height: 34px;
+            height: 40px;
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
+            border-radius: 12px;
             color: var(--text-primary);
-            padding: 0 10px;
-            font-size: 13px;
+            padding: 0 12px;
+            font-size: 14px;
             font-weight: 600;
             outline: none;
             font-family: inherit;
+            box-sizing: border-box;
         }
-        .fp-strategic-item {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            padding: 8px 10px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 10px;
-        }
-        .fp-bucket-select {
-            height: 28px;
-            font-size: 11px;
+        .custom-dropdown.compact { width: 100%; }
+        .custom-dropdown.compact .custom-dropdown-selected {
+            height: 56px;
+            font-size: 15px;
             font-weight: 600;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            color: var(--text-secondary);
-            padding: 0 6px;
-            margin-top: 6px;
-            font-family: inherit;
-            max-width: 100%;
+            padding: 0 40px 0 16px;
+            border-radius: 16px;
+            line-height: 1.2;
         }
-        .fp-jar-type-select {
-            height: 30px;
-            font-size: 11px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
+        .custom-dropdown.compact-xs { width: 100%; margin-top: 8px; }
+        .custom-dropdown.compact-xs .custom-dropdown-selected {
+            height: 36px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 0 32px 0 12px;
+            border-radius: 12px;
             color: var(--text-secondary);
-            padding: 0 8px;
-            font-family: inherit;
-            margin-top: 8px;
-            width: 100%;
+            line-height: 1.2;
+        }
+        .custom-dropdown.compact .custom-dropdown-options,
+        .custom-dropdown.compact-xs .custom-dropdown-options {
+            border-radius: 16px;
+            max-height: 240px;
+        }
+        .custom-dropdown.compact .custom-dropdown-option,
+        .custom-dropdown.compact-xs .custom-dropdown-option {
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            justify-content: flex-start;
+            gap: 10px;
+        }
+        .custom-dropdown-option.selected {
+            background: rgba(10, 132, 255, 0.12);
+            color: var(--sys-blue);
+        }
+        .custom-dropdown-option .option-check {
+            width: 18px;
+            min-width: 18px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--sys-blue);
+            flex-shrink: 0;
+        }
+        .custom-dropdown-option .option-label {
+            flex: 1;
+            text-align: left;
+            line-height: 1.3;
+            white-space: normal;
         }
 
         .year-selector { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #ffffff, #a1a1a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -1678,12 +1701,13 @@
         <div style="background: rgba(0,0,0,0.3); padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
             <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">Створити новий</h4>
             <input type="text" id="new-jar-name" class="ios-input" placeholder="Назва (наприклад, На авто)" style="margin-bottom: 12px; height: 56px;">
-            <select id="new-jar-type" class="ios-input fp-jar-type-select" style="margin-bottom: 12px; height: 48px;">
-                <option value="regular">Звичайний конверт</option>
-                <option value="emergency">Подушка безпеки</option>
-                <option value="strategic">Стратегічна ціль</option>
-                <option value="investment">Інвестиції</option>
-            </select>
+            <div id="new-jar-type-wrap" style="margin-bottom: 12px;">
+                <input type="hidden" id="new-jar-type-value" value="regular">
+                <div class="custom-dropdown compact" onclick="event.stopPropagation(); this.classList.toggle('open')">
+                    <div class="custom-dropdown-selected" id="new-jar-type-display">Звичайний конверт</div>
+                    <div class="custom-dropdown-options" id="new-jar-type-options"></div>
+                </div>
+            </div>
             <input type="number" id="new-jar-goal" class="ios-input" placeholder="Ціль (сума, необов'язково)" style="margin-bottom: 20px; height: 56px;">
             <button class="btn-init-primary" style="margin: 0; height: 56px;" onclick="createNewEnvelope()">Створити</button>
         </div>
@@ -2890,8 +2914,8 @@ async function performLogin(user) {
         const bHoursRow = document.getElementById('business-hours-row');
         if(bHoursRow) bHoursRow.style.display = isBiz ? 'flex' : 'none';
 
-        const jarTypeEl = document.getElementById('new-jar-type');
-        if (jarTypeEl) jarTypeEl.style.display = isBiz ? 'none' : 'block';
+        const jarTypeWrap = document.getElementById('new-jar-type-wrap');
+        if (jarTypeWrap) jarTypeWrap.style.display = isBiz ? 'none' : 'block';
 
         // Показуємо cashflow-box для всіх
         const cfRowInvoices = document.getElementById('cf-row-invoices');
@@ -3353,7 +3377,6 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
     const JAR_TYPE_LABELS = {
         regular: 'Звичайний',
         emergency: 'Подушка',
-        strategic: 'Стратегія',
         investment: 'Інвестиції',
     };
 
@@ -3362,6 +3385,78 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         wants: 'Бажання 30%',
         savings: 'Збереж. 20%',
     };
+
+    function getJarTypeOptions() {
+        return Object.entries(JAR_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+    }
+
+    function buildDropdownOptionsHtml(items, selectedValue, onclickBuilder) {
+        return items.map(item => `
+            <div class="custom-dropdown-option ${selectedValue === item.value ? 'selected' : ''}" onclick="${onclickBuilder(item.value)}">
+                <span class="option-check">${selectedValue === item.value ? '✓' : ''}</span>
+                <span class="option-label">${escapeHtml(item.label)}</span>
+            </div>
+        `).join('');
+    }
+
+    function buildJarTypeDropdownHtml(jarId, selectedValue, sizeClass) {
+        const selectedLabel = JAR_TYPE_LABELS[selectedValue] || JAR_TYPE_LABELS.regular;
+        const cls = sizeClass === 'compact' ? 'compact' : 'compact-xs';
+        return `
+            <div class="custom-dropdown ${cls}" onclick="event.stopPropagation(); this.classList.toggle('open')">
+                <div class="custom-dropdown-selected">${escapeHtml(selectedLabel)}</div>
+                <div class="custom-dropdown-options">
+                    ${buildDropdownOptionsHtml(getJarTypeOptions(), selectedValue, (val) => `selectJarTypeDropdown(event, ${jarId}, '${val}')`)}
+                </div>
+            </div>
+        `;
+    }
+
+    function buildBucketDropdownHtml(categoryId, selectedValue, disabled) {
+        if (disabled) {
+            return `<div class="custom-dropdown compact-xs" style="opacity: 0.7; pointer-events: none;">
+                <div class="custom-dropdown-selected">${escapeHtml(BUDGET_BUCKET_LABELS[selectedValue] || BUDGET_BUCKET_LABELS.savings)}</div>
+            </div>`;
+        }
+        const items = Object.entries(BUDGET_BUCKET_LABELS).map(([value, label]) => ({ value, label }));
+        return `
+            <div class="custom-dropdown compact-xs" onclick="event.stopPropagation(); this.classList.toggle('open')">
+                <div class="custom-dropdown-selected">${escapeHtml(BUDGET_BUCKET_LABELS[selectedValue] || BUDGET_BUCKET_LABELS.needs)}</div>
+                <div class="custom-dropdown-options">
+                    ${buildDropdownOptionsHtml(items, selectedValue, (val) => `selectCategoryBucket(event, ${categoryId}, '${val}')`)}
+                </div>
+            </div>
+        `;
+    }
+
+    function initNewJarTypeDropdown() {
+        const optionsEl = document.getElementById('new-jar-type-options');
+        if (!optionsEl) return;
+        const current = document.getElementById('new-jar-type-value')?.value || 'regular';
+        optionsEl.innerHTML = buildDropdownOptionsHtml(getJarTypeOptions(), current, (val) => `selectNewJarType(event, '${val}')`);
+    }
+
+    function selectNewJarType(event, value) {
+        event.stopPropagation();
+        const valueEl = document.getElementById('new-jar-type-value');
+        const displayEl = document.getElementById('new-jar-type-display');
+        if (valueEl) valueEl.value = value;
+        if (displayEl) displayEl.innerText = JAR_TYPE_LABELS[value] || JAR_TYPE_LABELS.regular;
+        initNewJarTypeDropdown();
+        event.target.closest('.custom-dropdown')?.classList.remove('open');
+    }
+
+    function selectJarTypeDropdown(event, jarId, value) {
+        event.stopPropagation();
+        setJarType(jarId, value);
+        event.target.closest('.custom-dropdown')?.classList.remove('open');
+    }
+
+    function selectCategoryBucket(event, categoryId, bucket) {
+        event.stopPropagation();
+        setCategoryBudgetBucket(categoryId, bucket);
+        event.target.closest('.custom-dropdown')?.classList.remove('open');
+    }
 
     function calc502030(incomeUah) {
         return {
@@ -3445,8 +3540,12 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
     }
 
     function get502030Actuals() {
+        return get502030ActualsFromExpenses(expenses);
+    }
+
+    function get502030ActualsFromExpenses(expenseList) {
         const actuals = { needs: 0, wants: 0, savings: 0 };
-        expenses.forEach(exp => {
+        (expenseList || []).forEach(exp => {
             const bucket = getCategoryBudgetBucket(exp);
             actuals[bucket] += getCategoryTotal(exp);
         });
@@ -3573,7 +3672,6 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         const cushionTarget = monthlyNeedsForCushion * 6;
         const cushionActual = getCushionBalanceUah();
         const cushionPct = cushionTarget > 0 ? (cushionActual / cushionTarget) * 100 : 0;
-        const cushionDone = cushionActual >= cushionTarget && cushionTarget > 0;
 
         const capitalTargetUsd = (fp.desiredMonthlyUsd || 0) * 12 * 25;
         const capitalCurrentUsd = (fp.brokerBalanceUsd || 0) + uahToUsd(getInvestmentJarsBalanceUah());
@@ -3581,24 +3679,6 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
 
         const monthlyInvestUsd = uahToUsd(amounts.savings);
         const yearsToCapital = calcYearsToCapital(capitalTargetUsd, capitalCurrentUsd, monthlyInvestUsd, fp.returnRatePct);
-
-        const strategicJars = (globalData.jars[currentUser.id] || []).filter(j => getJarType(j) === 'strategic');
-        const strategicHtml = strategicJars.length > 0
-            ? strategicJars.map(j => {
-                const pct = j.goal > 0 ? Math.min(100, (j.balance / j.goal) * 100) : 0;
-                return `<div class="fp-strategic-item">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                        <span>${escapeHtml(j.name)}</span>
-                        <span class="tabular">${formatMoney(j.balance)} / ${j.goal > 0 ? formatMoney(j.goal) : '—'} ₴</span>
-                    </div>
-                    ${j.goal > 0 ? fpProgressBar(pct, '#bf5af2') : ''}
-                </div>`;
-            }).join('')
-            : `<div class="rule-502030-empty" style="margin:0;">Створіть конверт типу «Стратегічна ціль» для квартири, бізнесу тощо.</div>`;
-
-        const stepHtml = cushionDone
-            ? `<div class="fp-step-badge fp-step-2">Крок 2: подушка готова — 20% збережень направляйте на брокерський рахунок та капітал</div>`
-            : `<div class="fp-step-badge fp-step-1">Крок 1: спочатку фінансова подушка (6 міс. потреб) — ${formatMoney(Math.max(0, cushionTarget - cushionActual))} ₴ залишилось</div>`;
 
         block.innerHTML = `
             <div class="rule-502030-header">
@@ -3619,7 +3699,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             <div id="fp-settings-panel" class="rule-502030-details">
                 <div class="fp-input-row">
                     <div class="fp-input-wrap">
-                        <label>Бажані витрати / міс ($)</label>
+                        <label>Бажані витрати на місяць ($)</label>
                         <input type="number" value="${fp.desiredMonthlyUsd || ''}" onchange="updateFinancialPlanField('desiredMonthlyUsd', this.value)">
                     </div>
                     <div class="fp-input-wrap">
@@ -3627,7 +3707,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
                         <input type="number" value="${fp.brokerBalanceUsd || ''}" onchange="updateFinancialPlanField('brokerBalanceUsd', this.value)">
                     </div>
                     <div class="fp-input-wrap">
-                        <label>Дохідність / рік (%)</label>
+                        <label>Очікувана дохідність (%/рік)</label>
                         <input type="number" value="${fp.returnRatePct || 7}" onchange="updateFinancialPlanField('returnRatePct', this.value)">
                     </div>
                 </div>
@@ -3659,12 +3739,6 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
                 ${currentExchangeRate > 0 ? `<div class="fp-stat-row"><span class="fp-stat-label">≈ в ₴</span><span class="fp-stat-value tabular">${formatMoney(usdToUah(capitalTargetUsd))} ₴</span></div>` : ''}
             </div>
 
-            <div class="fp-section">
-                <div class="fp-section-title">Стратегічні цілі (з 20%)</div>
-                ${strategicHtml}
-            </div>
-
-            ${stepHtml}
         `;
     }
 
@@ -4336,10 +4410,7 @@ function getHistoricalIncome(year, month) {
             const isSavingsClass = exp.isSavings ? 'color: var(--sys-green);' : '';
             const paidCardClass = allItemsPaid ? 'paid-card' : '';
             const bucket = getCategoryBudgetBucket(exp);
-            const bucketSelectHtml = !isBiz ? `
-                            <select class="fp-bucket-select" onclick="event.stopPropagation()" onchange="setCategoryBudgetBucket(${exp.id}, this.value)" ${exp.isSavings ? 'disabled title="Заощадження — це 20%"' : ''}>
-                                ${Object.entries(BUDGET_BUCKET_LABELS).map(([val, label]) => `<option value="${val}" ${bucket === val ? 'selected' : ''}>${label}</option>`).join('')}
-                            </select>` : '';
+            const bucketSelectHtml = !isBiz ? buildBucketDropdownHtml(exp.id, bucket, !!exp.isSavings) : '';
 
             const div = document.createElement('div');
             div.className = `expense-card-pro ${rankClass} ${paidCardClass}`;
@@ -4794,7 +4865,11 @@ let workingDays = 21;
         document.getElementById('total-savings-display').innerText = formatMoney(total);
     }
 
-    function openEnvelopesModal() { renderEnvelopes(); document.getElementById('jars-modal').classList.add('active'); }
+    function openEnvelopesModal() {
+        initNewJarTypeDropdown();
+        renderEnvelopes();
+        document.getElementById('jars-modal').classList.add('active');
+    }
     function closeEnvelopesModal(e) { if (!e || e.target.id === 'jars-modal' || e.target.className === 'btn-close-modal') document.getElementById('jars-modal').classList.remove('active'); }
 
 function renderEnvelopes() {
@@ -4820,10 +4895,7 @@ function renderEnvelopes() {
             // Бейджик для основного рахунку
             const mainBadge = jar.isMain ? `<span style="font-size: 11px; background: rgba(10, 132, 255, 0.15); padding: 2px 6px; border-radius: 6px; color: var(--sys-blue); flex-shrink: 0;">Основний</span>` : '';
             const typeBadge = isPersonal && jarType !== 'regular' ? `<span style="font-size: 11px; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; color: var(--text-secondary); flex-shrink: 0;">${JAR_TYPE_LABELS[jarType]}</span>` : '';
-            const typeSelect = isPersonal && !jar.isMain ? `
-                <select class="fp-jar-type-select" onchange="setJarType(${jar.id}, this.value)">
-                    ${Object.entries(JAR_TYPE_LABELS).map(([val, label]) => `<option value="${val}" ${jarType === val ? 'selected' : ''}>${label}</option>`).join('')}
-                </select>` : '';
+            const typeSelect = isPersonal && !jar.isMain ? buildJarTypeDropdownHtml(jar.id, jarType, 'compact-xs') : '';
 
             list.innerHTML += `
             <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
@@ -4857,8 +4929,7 @@ function renderEnvelopes() {
 
     function createNewEnvelope() {
         const name = document.getElementById('new-jar-name').value, goal = parseFloat(document.getElementById('new-jar-goal').value) || 0;
-        const typeEl = document.getElementById('new-jar-type');
-        const jarType = typeEl ? typeEl.value : 'regular';
+        const jarType = document.getElementById('new-jar-type-value')?.value || 'regular';
         if(!name) return;
         if(!globalData.jars[currentUser.id]) globalData.jars[currentUser.id] = [];
         const newId = Date.now();
@@ -4870,7 +4941,7 @@ function renderEnvelopes() {
         }
         document.getElementById('new-jar-name').value = '';
         document.getElementById('new-jar-goal').value = '';
-        if (typeEl) typeEl.value = 'regular';
+        selectNewJarType({ stopPropagation: () => {} }, 'regular');
         saveGlobalData(); renderEnvelopes(); updateSavingsDisplay(); renderFinancialPlanBlock();
     }
 
@@ -6474,6 +6545,77 @@ function generatePayrollSparklineHTML(currentTotal) {
     // ==========================================
     // 15. ЕКСПОРТ ДЛЯ ШІ (AI ANALYTICS)
     // ==========================================
+
+    function generateAiFinancialPlanSection(incomeUah) {
+        if (!currentUser || currentUser.account_type === 'business') return '';
+        if (!incomeUah || incomeUah <= 0) return '';
+
+        const fp = getFinancialPlan();
+        const amounts = calc502030(incomeUah);
+        const actuals = get502030ActualsFromExpenses(expenses);
+
+        let str = `\n### ФІНАНСОВИЙ ПЛАН (50/30/20 та довгострокові цілі)\n`;
+        if (currentExchangeRate > 0) {
+            str += `Курс НБУ: ${formatMoney(currentExchangeRate)} ₴/$\n\n`;
+        }
+
+        str += `Правило 50/30/20 (рекомендовано vs факт):\n`;
+        RULE_502030_ITEMS.forEach(item => {
+            const rec = amounts[item.bucket];
+            const act = actuals[item.bucket];
+            const delta = act - rec;
+            str += `  - ${item.label} (${item.pct}%): рекомендовано ${formatMoney(rec)} ₴, факт ${formatMoney(act)} ₴`;
+            if (act > 0) str += ` (${delta > 0 ? '+' : ''}${formatMoney(delta)} ₴)`;
+            str += `\n`;
+        });
+
+        const catsWithSpend = (expenses || []).filter(c => getCategoryTotal(c) > 0);
+        if (catsWithSpend.length > 0) {
+            str += `\nКатегорії витрат за групами 50/30/20:\n`;
+            catsWithSpend.forEach(cat => {
+                const bucket = getCategoryBudgetBucket(cat);
+                str += `  - [${BUDGET_BUCKET_LABELS[bucket] || bucket}] ${cat.name}: ${formatMoney(getCategoryTotal(cat))} ₴\n`;
+            });
+        }
+
+        const monthlyNeedsForCushion = actuals.needs > 0 ? actuals.needs : amounts.needs;
+        const cushionBasis = actuals.needs > 0 ? 'фактичні потреби' : 'рекомендовані 50%';
+        const cushionTarget = monthlyNeedsForCushion * 6;
+        const cushionActual = getCushionBalanceUah();
+        const cushionRemaining = Math.max(0, cushionTarget - cushionActual);
+        const cushionPctDone = cushionTarget > 0 ? ((cushionActual / cushionTarget) * 100).toFixed(1) : '0';
+
+        str += `\nПодушка безпеки (6 міс. потреб):\n`;
+        str += `  - База: ${cushionBasis} — ${formatMoney(monthlyNeedsForCushion)} ₴/міс\n`;
+        str += `  - Ціль: ${formatMoney(cushionTarget)} ₴\n`;
+        str += `  - Накопичено (конверти «Подушка»): ${formatMoney(cushionActual)} ₴\n`;
+        str += `  - Залишилось: ${formatMoney(cushionRemaining)} ₴ (${cushionPctDone}% виконано)\n`;
+
+        const capitalTargetUsd = (fp.desiredMonthlyUsd || 0) * 12 * 25;
+        const investmentJarsUah = getInvestmentJarsBalanceUah();
+        const capitalCurrentUsd = (fp.brokerBalanceUsd || 0) + uahToUsd(investmentJarsUah);
+        const monthlyInvestUsd = uahToUsd(amounts.savings);
+        const yearsToCapital = calcYearsToCapital(capitalTargetUsd, capitalCurrentUsd, monthlyInvestUsd, fp.returnRatePct);
+
+        str += `\nОсобистий капітал (правило ×25):\n`;
+        str += `  - Бажані витрати: ${formatMoney(fp.desiredMonthlyUsd || 0)} $/міс\n`;
+        str += `  - Цільовий капітал: ${formatMoney(capitalTargetUsd)} $ (${formatMoney(fp.desiredMonthlyUsd || 0)} × 12 × 25)\n`;
+        str += `  - Накопичено: ${formatMoney(capitalCurrentUsd)} $ (брокер ${formatMoney(fp.brokerBalanceUsd || 0)} $ + інвест-конверти ≈${formatMoney(uahToUsd(investmentJarsUah))} $)\n`;
+        if (currentExchangeRate > 0) str += `  - Ціль ≈ ${formatMoney(usdToUah(capitalTargetUsd))} ₴\n`;
+        str += `  - Очікувана дохідність: ${fp.returnRatePct || 7}%/рік\n`;
+        str += `  - При 20% (${formatMoney(monthlyInvestUsd)} $/міс): ${formatYearsLabel(yearsToCapital)} до цілі\n`;
+
+        return str;
+    }
+
+    function getMonthIncomeUah(year, month) {
+        const data = appData[year]?.[month];
+        if (!data?.incomes) return 0;
+        return data.incomes.reduce((sum, inc) => {
+            const amt = parseFloat(inc.amount) || 0;
+            return sum + (inc.currency === 'USD' ? amt * currentExchangeRate : amt);
+        }, 0);
+    }
     
     function openAiExportModal() {
         document.getElementById('ai-export-modal').classList.add('active');
@@ -6499,7 +6641,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         const profileTypeStr = isBiz ? 'Бізнес' : 'Особистий (фіз. особа)';
         
         let prompt = `Виступи в ролі професійного фінансового аналітика. Проаналізуй мої фінансові дані (Тип профілю: ${profileTypeStr}) та надай детальний звіт.\n`;
-        prompt += `Зверни увагу на співвідношення доходів і витрат, оціни рівень заощаджень або швидкість погашення боргів. Надай 3-5 конкретних і практичних рекомендацій щодо оптимізації бюджету та збільшення вільного капіталу.\n\n`;
+        prompt += `Зверни увагу на співвідношення доходів і витрат, правило 50/30/20 (потреби / бажання / збереження), фінансову подушку (6 міс. потреб), цільовий особистий капітал (правило ×25), типи конвертів та швидкість погашення боргів. Оціни, наскільки фактичні витрати відповідають рекомендаціям. Надай 3-5 конкретних і практичних рекомендацій щодо оптимізації бюджету та збільшення вільного капіталу.\n\n`;
         
         prompt += `### ПОТОЧНИЙ СТАН КАПІТАЛУ\n`;
         
@@ -6507,7 +6649,9 @@ function generatePayrollSparklineHTML(currentTotal) {
         const totalJars = jars.reduce((sum, j) => sum + j.balance, 0);
         prompt += `- Всього накопичень: ${totalJars.toFixed(2)} ₴\n`;
         jars.forEach(j => {
-            prompt += `  * ${j.name}: ${j.balance} ₴ ${j.goal > 0 ? `(Ціль: ${j.goal} ₴)` : ''}\n`;
+            const jarType = getJarType(j);
+            const typeLabel = jarType !== 'regular' ? ` [${JAR_TYPE_LABELS[jarType] || jarType}]` : '';
+            prompt += `  * ${j.name}${typeLabel}: ${j.balance} ₴ ${j.goal > 0 ? `(Ціль: ${j.goal} ₴)` : ''}\n`;
         });
 
         const debts = globalData.debts[currentUser.id] || [];
@@ -6518,6 +6662,10 @@ function generatePayrollSparklineHTML(currentTotal) {
                 const remaining = getHistoricalDebtBalance(d.id, currentYear, currentMonth);
                 prompt += `- ${d.name}: Залишок ${remaining.toFixed(2)} ${d.currency} із загальної суми ${d.total_amount} ${d.currency} (Ставка: ${d.interest_rate}%)\n`;
             });
+        }
+
+        if (!isBiz) {
+            prompt += generateAiFinancialPlanSection(getMonthIncomeUah(currentYear, currentMonth));
         }
 
         prompt += `\n### РУХ КОШТІВ (CASH FLOW)\n`;
@@ -6536,7 +6684,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             });
         }
 
-        prompt += `\nНа основі цих даних, напиши свій висновок, вкажи на слабкі місця та дай поради.`;
+        prompt += `\nНа основі цих даних, напиши свій висновок. Окремо проаналізуй дотримання правила 50/30/20, стан подушки безпеки та прогрес до особистого капіталу (×25). Вкажи на слабкі місця та дай поради.`;
 
         const btn = document.getElementById('btn-ai-copy');
         const btnText = document.getElementById('ai-copy-text');
@@ -6617,7 +6765,8 @@ function generatePayrollSparklineHTML(currentTotal) {
                 const catTotal = cat.items.reduce((sum, item) => sum + (parseFloat(item.amount)||0), 0);
                 if (catTotal > 0) {
                     totalExpenses += catTotal;
-                    str += `  - Категорія "${cat.name}": ${catTotal.toFixed(2)} ₴\n`;
+                    const bucketLabel = !isBiz ? `[${BUDGET_BUCKET_LABELS[getCategoryBudgetBucket(cat)] || '—'}] ` : '';
+                    str += `  - ${bucketLabel}Категорія "${cat.name}": ${catTotal.toFixed(2)} ₴\n`;
                     cat.items.forEach(item => {
                         str += `      * ${item.name}: ${item.amount} ₴\n`;
                     });
@@ -6625,6 +6774,20 @@ function generatePayrollSparklineHTML(currentTotal) {
             });
         } else {
             str += `  - Немає витрат\n`;
+        }
+
+        if (!isBiz && totalIncomeUah > 0) {
+            const amounts = calc502030(totalIncomeUah);
+            const actuals = get502030ActualsFromExpenses(data.expenses || []);
+            str += `Розподіл 50/30/20 за місяць:\n`;
+            RULE_502030_ITEMS.forEach(item => {
+                const rec = amounts[item.bucket];
+                const act = actuals[item.bucket];
+                const delta = act - rec;
+                str += `  - ${item.label} (${item.pct}%): рекомендовано ${rec.toFixed(2)} ₴, факт ${act.toFixed(2)} ₴`;
+                if (act > 0) str += ` (${delta > 0 ? '+' : ''}${delta.toFixed(2)} ₴)`;
+                str += `\n`;
+            });
         }
 
         const netProfit = totalIncomeUah - totalCogs - totalPayroll - totalExpenses;
@@ -6846,7 +7009,9 @@ function generatePayrollSparklineHTML(currentTotal) {
         const totalJars = jars.reduce((sum, j) => sum + j.balance, 0);
         prompt += `- Всього накопичень: ${totalJars.toFixed(2)} ₴\n`;
         jars.forEach(j => {
-            prompt += `  * ${j.name}: ${j.balance} ₴ ${j.goal > 0 ? `(Ціль: ${j.goal} ₴)` : ''}\n`;
+            const jarType = getJarType(j);
+            const typeLabel = jarType !== 'regular' ? ` [${JAR_TYPE_LABELS[jarType] || jarType}]` : '';
+            prompt += `  * ${j.name}${typeLabel}: ${j.balance} ₴ ${j.goal > 0 ? `(Ціль: ${j.goal} ₴)` : ''}\n`;
         });
 
         const debts = globalData.debts[currentUser.id] || [];
@@ -6857,6 +7022,10 @@ function generatePayrollSparklineHTML(currentTotal) {
                 const remaining = getHistoricalDebtBalance(d.id, currentYear, currentMonth);
                 prompt += `  * ${d.name}: Залишок ${remaining.toFixed(2)} ${d.currency} із загальної суми ${d.total_amount} ${d.currency} (Ставка: ${d.interest_rate}% / міс)\n`;
             });
+        }
+
+        if (!isBiz) {
+            prompt += generateAiFinancialPlanSection(getMonthIncomeUah(currentYear, currentMonth));
         }
 
         prompt += `\n### РУХ КОШТІВ (CASH FLOW)\n`;
@@ -6881,6 +7050,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         prompt += `4. Запропонуй конкретні моделі монетизації моїх навичок згідно з обраним вектором росту.\n`;
         prompt += `5. Побудуй Roadmap розбитий на ключові етапи.\n`;
         prompt += `6. Дай мені 3 задачі (Action steps) на найближчі 48 годин.\n`;
+        prompt += `7. Врахуй фінансовий план (50/30/20, подушка 6 міс., капітал ×25): не пропонуй ризиковані кроки, поки подушка не закрита; вкажи, які категорії витрат порушують баланс.\n`;
 
         const btn = document.getElementById('btn-ai-growth-copy');
         const btnText = document.getElementById('ai-growth-copy-text');
