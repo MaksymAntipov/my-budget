@@ -3566,7 +3566,11 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             </div>
         `).join('');
 
-        const cushionTarget = amounts.needs * 6;
+        const monthlyNeedsForCushion = actuals.needs > 0 ? actuals.needs : amounts.needs;
+        const cushionBasisLabel = actuals.needs > 0
+            ? `6 × фактичні потреби (${formatMoney(actuals.needs)} ₴/міс)`
+            : `6 × рекомендовані 50% (${formatMoney(amounts.needs)} ₴/міс)`;
+        const cushionTarget = monthlyNeedsForCushion * 6;
         const cushionActual = getCushionBalanceUah();
         const cushionPct = cushionTarget > 0 ? (cushionActual / cushionTarget) * 100 : 0;
         const cushionDone = cushionActual >= cushionTarget && cushionTarget > 0;
@@ -3637,6 +3641,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
                     <span class="fp-stat-value tabular">${formatMoney(cushionActual)} / ${formatMoney(cushionTarget)} ₴</span>
                 </div>
                 ${fpProgressBar(cushionPct, 'var(--sys-blue)')}
+                <div class="rule-502030-detail-item" style="margin:0;">${cushionBasisLabel}</div>
                 <div class="rule-502030-detail-item" style="margin:0;"><strong>Неприкосновенна:</strong> конверти типу «Подушка безпеки»</div>
             </div>
 
