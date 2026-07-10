@@ -1,1287 +1,14 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MySkrynia</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com; connect-src 'self' https://api.myskrynia.com.ua https://bank.gov.ua; font-src 'self' data:;">
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%232c2c2e%22/><text y=%2265%22 x=%2220%22 font-size=%2260%22>💎</text></svg>">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <style>
-        /* Заборона ланцюгового скролу (scroll bleed) для внутрішніх скролів */
-        .modal-content, .auth-card, .modal-items-container, #jars-list, #debts-list {
-            overscroll-behavior: contain;
-        }
-
-        /* HERO БЛОК АВТОРИЗАЦИЇ */
-        .auth-hero {
-            text-align: center;
-            margin-bottom: 32px;
-            max-width: 420px;
-            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
-        .auth-hero-title {
-            font-size: 34px;
-            font-weight: 300; 
-            color: #ffffff;
-            margin: 0 0 12px 0;
-            line-height: 1.2;
-            letter-spacing: -0.5px;
-        }
-        .auth-hero-subtitle {
-            font-size: 16px;
-            color: var(--text-secondary);
-            margin: 0 0 24px 0;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            opacity: 0.8;
-        }
-
-        /* НОВІ СТИЛІ ДЛЯ КНОПКИ ІНСТРУКЦІЇ */
-        .auth-hero-guide {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: rgba(10, 132, 255, 0.1);
-            padding: 12px 24px;
-            border-radius: 24px;
-            border: 1px solid rgba(10, 132, 255, 0.2);
-            font-size: 14px;
-            color: var(--text-primary);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .auth-hero-guide:hover {
-            background: rgba(10, 132, 255, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.2);
-        }
-        .auth-hero-guide svg {
-            color: var(--sys-blue);
-        }
-
-        /* СТИЛІ ФЛАЮЧОЇ КНОПКИ ДОНАТУ (Справа знизу) */
-        .floating-donate-btn {
-            position: fixed;
-            bottom: 32px;
-            right: 32px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(30, 30, 32, 0.8);
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 69, 58, 0.3);
-            padding: 12px 20px;
-            border-radius: 30px;
-            color: var(--text-primary);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            z-index: 10000;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            opacity: 0;
-            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-            animation-delay: 0.5s;
-        }
-        .floating-donate-btn:hover {
-            background: rgba(255, 69, 58, 0.15);
-            border-color: rgba(255, 69, 58, 0.6);
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 12px 32px rgba(255, 69, 58, 0.2);
-        }
-        .floating-donate-btn svg {
-            color: #ff453a;
-        }
-
-        @media (max-width: 600px) {
-            .floating-donate-btn {
-                bottom: 20px;
-                right: 20px;
-                padding: 10px 16px;
-                font-size: 13px;
-            }
-        }
-
-
-        .auth-hero-donate:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-        .auth-hero-donate span {
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        /* СТИЛІ ДЛЯ CHANGELOG */
-        .auth-hero-changelog {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(46, 160, 67, 0.1); 
-            padding: 8px 16px;
-            border-radius: 20px;
-            border: 1px solid rgba(46, 160, 67, 0.2);
-            color: white;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-        .auth-hero-changelog:hover {
-            background: rgba(46, 160, 67, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(46, 160, 67, 0.2);
-        }
-        .changelog-item {
-            padding: 20px;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 20px;
-            margin-bottom: 12px;
-            text-align: left;
-        }
-        .changelog-date {
-            font-size: 12px;
-            color: var(--text-tertiary);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .changelog-content {
-            font-size: 15px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            margin: 12px 0 0 0;
-            padding-left: 20px;
-        }
-        .changelog-content li { margin-bottom: 8px; }
-        .changelog-content li:last-child { margin-bottom: 0; }
-
-        :root {
-            --sys-blue: #0a84ff;
-            --sys-blue-glow: rgba(10, 132, 255, 0.4);
-            --sys-green: #2ea043; 
-            --sys-green-glow: rgba(46, 160, 67, 0.4);
-            --sys-red: #ff453a;
-            --sys-gray: #8e8e93;
-            --sys-light-gray: #1c1c1e;
-            
-            --text-primary: #ffffff;
-            --text-secondary: #a1a1a6;
-            --text-tertiary: #636366;
-            
-            --glass-bg: rgba(30, 30, 32, 0.75); 
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --glass-shadow: 0 16px 40px rgba(0, 0, 0, 0.3); 
-            
-            --input-bg: rgba(0, 0, 0, 0.3);
-            --input-focus: rgba(10, 132, 255, 0.15);
-            
-            --mono-card-bg: linear-gradient(135deg, #2c2c2e 0%, #1a1a1c 100%);
-        }
-
-        * { box-sizing: border-box; }
-        /* КАСТОМНИЙ СКРОЛБАР ДЛЯ ВСЬОГО ПРОЄКТУ */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent; 
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* Для Firefox */
-        * {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-        }
-
-        body {
-            background-color: #000000; 
-            background-image: radial-gradient(circle at top right, #2c2c2e 0%, #000000 100%);
-            background-attachment: fixed;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: var(--text-primary);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type="number"] {
-            -moz-appearance: textfield;
-            color: var(--text-primary);
-        }
-        input[type="text"], input[type="email"] {
-            color: var(--text-primary);
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes flowVertical {
-            0% { top: -100%; opacity: 0; }
-            50% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-        @keyframes flowHorizontal {
-            0% { left: -100%; opacity: 0; }
-            50% { opacity: 1; }
-            100% { left: 100%; opacity: 0; }
-        }
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-2px, 0, 0); }
-            20%, 80% { transform: translate3d(4px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
-            40%, 60% { transform: translate3d(8px, 0, 0); }
-        }
-        @keyframes cardShine {
-            0% { transform: translateX(-100%) skewX(-15deg); }
-            20%, 100% { transform: translateX(200%) skewX(-15deg); }
-        }
-
-        .top-nav { width: 100%; max-width: 1100px; margin: 0 auto 24px auto; position: relative; z-index: 50; animation: fadeInUp 0.5s ease forwards;}
-        .header-nav { display: flex; flex-direction: column; padding: 24px 28px; gap: 12px; }
-        .user-nav-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px; font-size: 14px; }
-        .user-nav-actions { display: flex; gap: 8px; }
-        
-        .badge-type { background: linear-gradient(135deg, rgba(10, 132, 255, 0.15), rgba(10, 132, 255, 0.05)); color: var(--sys-blue); padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 8px; display: inline-block; border: 1px solid rgba(10, 132, 255, 0.2);}
-        #account-type-badge { appearance: none; -webkit-appearance: none; }
-        .badge-business { background: linear-gradient(135deg, rgba(46, 160, 67, 0.15), rgba(46, 160, 67, 0.05)); color: var(--sys-green); border-color: rgba(46, 160, 67, 0.2);}
-        .badge-type--switchable { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; font-family: inherit; }
-        .badge-type--switchable:hover { filter: brightness(1.15); transform: translateY(-1px); }
-        .profile-switcher-dropdown {
-            display: none;
-            position: absolute;
-            top: calc(100% + 8px);
-            left: 0;
-            min-width: 160px;
-            background: rgba(30, 30, 32, 0.96);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 14px;
-            padding: 6px;
-            z-index: 2000;
-            box-shadow: 0 12px 32px rgba(0,0,0,0.45);
-            backdrop-filter: blur(16px);
-        }
-        .profile-switcher-dropdown.open { display: block; }
-        .profile-switcher-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            text-align: left;
-            padding: 10px 12px;
-            border: none;
-            border-radius: 10px;
-            background: transparent;
-            color: var(--text-primary);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        .profile-switcher-item:hover { background: rgba(255,255,255,0.08); }
-        .profile-switcher-item--biz { color: var(--sys-green); }
-        .profile-switcher-item--personal { color: var(--sys-blue); }
-
-        .rule-502030 {
-            margin: 4px 0 14px;
-            padding: 12px 14px;
-            border-radius: 14px;
-            background: rgba(0, 0, 0, 0.22);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .rule-502030-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .rule-502030-title {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-tertiary);
-        }
-        .rule-502030-info-btn {
-            appearance: none;
-            -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            line-height: 1;
-            padding: 0;
-            flex-shrink: 0;
-        }
-        .rule-502030-info-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
-        .rule-502030-bar {
-            display: flex;
-            height: 5px;
-            border-radius: 999px;
-            overflow: hidden;
-            margin-bottom: 10px;
-            background: rgba(255, 255, 255, 0.06);
-        }
-        .rule-502030-bar-seg { height: 100%; }
-        .rule-502030-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 5px 0;
-            font-size: 12px;
-        }
-        .rule-502030-row-label {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            color: var(--text-secondary);
-            font-weight: 600;
-            min-width: 0;
-        }
-        .rule-502030-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .rule-502030-row-amount {
-            font-weight: 700;
-            color: var(--text-primary);
-            white-space: nowrap;
-        }
-        .rule-502030-empty {
-            font-size: 12px;
-            color: var(--text-tertiary);
-            line-height: 1.45;
-        }
-        .rule-502030-details {
-            display: none;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .rule-502030-details.open { display: block; }
-        .rule-502030-detail-item {
-            font-size: 11px;
-            color: var(--text-tertiary);
-            line-height: 1.45;
-            margin-bottom: 8px;
-        }
-        .rule-502030-detail-item:last-child { margin-bottom: 0; }
-        .rule-502030-detail-item strong {
-            color: var(--text-secondary);
-            font-weight: 700;
-        }
-
-        .fp-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
-        .fp-section-title {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-tertiary);
-            margin-bottom: 10px;
-        }
-        .fp-progress {
-            height: 5px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.06);
-            overflow: hidden;
-            margin: 6px 0 8px;
-        }
-        .fp-progress-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
-        .fp-stat-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 8px;
-            font-size: 12px;
-            margin-bottom: 4px;
-        }
-        .fp-stat-label { color: var(--text-secondary); font-weight: 600; }
-        .fp-stat-value { color: var(--text-primary); font-weight: 700; white-space: nowrap; }
-        .fp-compare-row { font-size: 11px; margin-top: 4px; display: flex; justify-content: space-between; gap: 6px; }
-        .fp-ok { color: var(--sys-green); font-weight: 700; }
-        .fp-over { color: var(--sys-red); font-weight: 700; }
-        .fp-input-row {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-        @media (max-width: 520px) {
-            .fp-input-row { grid-template-columns: 1fr; }
-        }
-        .fp-input-wrap { min-width: 0; }
-        .fp-input-wrap label {
-            display: block;
-            font-size: 10px;
-            color: var(--text-tertiary);
-            margin-bottom: 6px;
-            font-weight: 600;
-            line-height: 1.35;
-            min-height: 28px;
-        }
-        .fp-input-wrap input {
-            width: 100%;
-            height: 40px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            color: var(--text-primary);
-            padding: 0 12px;
-            font-size: 14px;
-            font-weight: 600;
-            outline: none;
-            font-family: inherit;
-            box-sizing: border-box;
-        }
-        .custom-dropdown.compact { width: 100%; }
-        .custom-dropdown.compact .custom-dropdown-selected {
-            height: 56px;
-            font-size: 15px;
-            font-weight: 600;
-            padding: 0 40px 0 16px;
-            border-radius: 16px;
-            line-height: 1.2;
-        }
-        .custom-dropdown.compact-xs { width: 100%; margin-top: 8px; }
-        .custom-dropdown.compact-xs .custom-dropdown-selected {
-            height: 36px;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 0 32px 0 12px;
-            border-radius: 12px;
-            color: var(--text-secondary);
-            line-height: 1.2;
-        }
-        .custom-dropdown.compact .custom-dropdown-options,
-        .custom-dropdown.compact-xs .custom-dropdown-options {
-            border-radius: 16px;
-            max-height: 240px;
-        }
-        .custom-dropdown.compact .custom-dropdown-option,
-        .custom-dropdown.compact-xs .custom-dropdown-option {
-            padding: 14px 16px;
-            font-size: 14px;
-            font-weight: 600;
-            justify-content: flex-start;
-            gap: 10px;
-        }
-        .custom-dropdown-option.selected {
-            background: rgba(10, 132, 255, 0.12);
-            color: var(--sys-blue);
-        }
-        .custom-dropdown-option .option-check {
-            width: 18px;
-            min-width: 18px;
-            text-align: center;
-            font-size: 13px;
-            color: var(--sys-blue);
-            flex-shrink: 0;
-        }
-        .custom-dropdown-option .option-label {
-            flex: 1;
-            text-align: left;
-            line-height: 1.3;
-            white-space: normal;
-        }
-
-        .year-selector { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #ffffff, #a1a1a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .year-btn { background: rgba(255, 255, 255, 0.05); -webkit-text-fill-color: var(--text-primary); color: var(--text-primary); width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s;}
-        .year-btn:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.05); }
-        .months-carousel { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 8px; scrollbar-width: none; }
-        .months-carousel::-webkit-scrollbar { display: none; }
-        .month-pill { padding: 12px 20px; border-radius: 24px; background: rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 16px; font-weight: 600; white-space: nowrap; transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); cursor: pointer; border: 1px solid transparent; font-family: inherit;}
-        .month-pill:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
-        .month-pill.active { background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; box-shadow: 0 8px 16px rgba(10, 132, 255, 0.3); font-weight: 700; transform: scale(1.05); border-color: transparent;}
-        
-        .month-pill.filled { background: linear-gradient(135deg, rgba(46, 160, 67, 0.1), rgba(46, 160, 67, 0.2)); color: var(--sys-green); border-color: rgba(46, 160, 67, 0.2);}
-        .month-pill.filled:hover { background: rgba(46, 160, 67, 0.25); color: #32d74b; }
-        .month-pill.filled.active { background: linear-gradient(135deg, var(--sys-green), #1e702e); color: white; box-shadow: 0 8px 16px rgba(46, 160, 67, 0.3); border-color: transparent;}
-
-        .auth-glass-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            display: flex;
-            flex-direction: column; 
-            align-items: center;
-            justify-content: center;
-            background: transparent !important; 
-            z-index: 9999;
-            opacity: 0; visibility: hidden; transition: all 0.4s ease;
-            padding: 20px;
-        }
-        .auth-glass-overlay.active { opacity: 1; visibility: visible; }
-
-        .auth-card {
-            background: rgba(30, 30, 32, 0.7);
-            -webkit-backdrop-filter: blur(40px) saturate(200%);
-            backdrop-filter: blur(40px) saturate(200%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 32px;
-            padding: 40px 24px;
-            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            width: 100%;
-            max-width: 380px;
-            position: relative;
-            transform: scale(0.95); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .auth-glass-overlay.active .auth-card { transform: scale(1); }
-
-        .auth-header { text-align: center; margin-bottom: 28px; }
-        .auth-icon { font-size: 56px; margin-bottom: 16px; line-height: 1; animation: scaleIn 0.5s ease forwards; filter: drop-shadow(0 8px 16px rgba(255,255,255,0.1));}
-        .auth-title { font-size: 26px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0; letter-spacing: -0.5px;}
-        .auth-subtitle { font-size: 15px; color: #a1a1a6; margin: 0; }
-        .auth-card .ios-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; }
-        .auth-card .ios-input:focus { background: rgba(0,0,0,0.5); border-color: var(--sys-blue); box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2); }
-        .auth-card .btn-init-secondary { background: rgba(255,255,255,0.05); color: white; }
-        .auth-card .btn-init-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
-
-        .auth-footer-security {
-            margin-top: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            font-size: 13px;
-            color: #a1a1a6;
-            font-weight: 500;
-            opacity: 0.8;
-            transform: translateY(10px);
-            transition: all 0.4s ease;
-        }
-        .auth-glass-overlay.active .auth-footer-security { transform: translateY(0); }
-
-        /* СТИЛІ ДЛЯ ЛІЧИЛЬНИКА ПРОФІЛІВ */
-        .auth-stats-badge {
-            position: absolute;
-            top: 24px;
-            right: 24px;
-            background: rgba(30, 30, 32, 0.6);
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 8px 16px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            font-size: 13px;
-            color: var(--text-secondary);
-            font-weight: 500;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-            z-index: 100;
-            opacity: 0;
-            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-            animation-delay: 0.3s;
-        }
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            background-color: var(--sys-green);
-            border-radius: 50%;
-            margin-right: 10px;
-            box-shadow: 0 0 8px var(--sys-green);
-            animation: pulse-animation 2s infinite;
-        }
-        @keyframes pulse-animation {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 160, 67, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 160, 67, 0); }
-        }
-
-        .type-selector { display: flex; gap: 8px; margin-bottom: 20px; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.05);}
-        .type-btn { flex: 1; padding: 12px; border: none; background: transparent; border-radius: 14px; font-size: 15px; font-weight: 600; color: #a1a1a6; cursor: pointer; transition: 0.3s; }
-        .type-btn.active { background: linear-gradient(135deg, #3a3a3c, #2c2c2e); color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);}
-
-        .savings-container { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 16px; font-weight: 600; color: var(--text-secondary); }
-        .savings-amount { color: #fff; background: linear-gradient(135deg, #2c2c2e, #1c1c1e); font-weight: 700; cursor: pointer; padding: 10px 18px; border-radius: 16px; transition: all 0.2s; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);}
-        .savings-amount:hover { background: linear-gradient(135deg, #3a3a3c, #2c2c2e); transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,0.3); }
-        .savings-amount:active { transform: scale(0.96); }
-
-        .debt-amount { color: var(--sys-red); background: linear-gradient(135deg, rgba(255, 69, 58, 0.1), rgba(255, 69, 58, 0.05)); font-weight: 700; cursor: pointer; padding: 10px 18px; border-radius: 16px; transition: all 0.2s; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); border: 1px solid rgba(255, 69, 58, 0.2);}
-        .debt-amount:hover { background: linear-gradient(135deg, rgba(255, 69, 58, 0.15), rgba(255, 69, 58, 0.1)); transform: translateY(-2px); box-shadow: 0 12px 24px rgba(255, 69, 58, 0.3); }
-        .debt-amount:active { transform: scale(0.96); }
-
-        .dashboard-wrapper { position: relative; width: 100%; max-width: 1100px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; margin: 0 auto;}
-
-        .container { 
-            width: 100%; 
-            display: grid; 
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
-            gap: 24px; 
-            align-items: start; 
-            transition: filter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s; 
-            position: relative; 
-        }
-        
-        .container.blurred { filter: blur(14px) grayscale(40%); opacity: 0.5; pointer-events: none; user-select: none; }
-
-        .flow-container { display: flex; justify-content: center; margin: 16px 0; height: 30px; position: relative; }
-        .flow-track-vertical { width: 4px; height: 100%; background: rgba(255,255,255,0.05); border-radius: 2px; position: relative; overflow: hidden; }
-        .flow-particle-vertical {
-            position: absolute; top: 0; left: 0; right: 0; height: 20px;
-            background: linear-gradient(to bottom, transparent, var(--sys-blue), transparent);
-            animation: flowVertical 1.5s infinite linear; border-radius: 2px;
-        }
-        .flow-track-horizontal {
-            display: none; position: absolute; top: 150px; left: 50%; transform: translateX(-50%);
-            width: 40px; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; z-index: 0;
-        }
-        .flow-particle-horizontal {
-            position: absolute; top: 0; bottom: 0; width: 20px; left: 0;
-            background: linear-gradient(to right, transparent, var(--sys-blue), transparent);
-            animation: flowHorizontal 1.5s infinite linear; border-radius: 2px;
-        }
-
-        @media (min-width: 901px) { .flow-track-horizontal { display: block; } }
-
-        .init-overlay { position: absolute; top: 15vh; left: 50%; transform: translateX(-50%) scale(0.95) translateY(10px); z-index: 100; display: flex; flex-direction: column; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; width: 90%; max-width: 360px;}
-        .init-overlay.active { opacity: 1; visibility: visible; transform: translateX(-50%) scale(1) translateY(0); pointer-events: auto; }
-        .init-card { background: rgba(30, 30, 32, 0.85); -webkit-backdrop-filter: blur(40px) saturate(200%); backdrop-filter: blur(40px) saturate(200%); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; padding: 40px 28px; box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5); text-align: center; width: 100%; }
-        .init-icon { font-size: 64px; margin-bottom: 24px; line-height: 1; animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));}
-        .init-title { font-size: 26px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary); letter-spacing: -0.5px;}
-        .init-subtitle { font-size: 15px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.5; font-weight: 500;}
-        
-        .btn-init-primary { background: #ffffff; color: #000000; width: 100%; padding: 18px; border-radius: 18px; font-size: 16px; font-weight: 700; margin-bottom: 12px; border: none; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 16px rgba(255,255,255,0.15);}
-        .btn-init-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(255,255,255,0.2); background: #f5f5f7;}
-        .btn-init-primary:active:not(:disabled) { transform: scale(0.96); box-shadow: none; }
-        .btn-init-primary:disabled { opacity: 0.7; cursor: not-allowed; }
-        
-        .btn-green { background: linear-gradient(135deg, var(--sys-green) 0%, #1e702e 100%); color: white; box-shadow: 0 8px 16px rgba(46, 160, 67, 0.2);}
-        .btn-green:hover:not(:disabled) { box-shadow: 0 12px 24px rgba(46, 160, 67, 0.3); background: linear-gradient(135deg, #32d74b 0%, var(--sys-green) 100%); }
-        
-        .btn-init-secondary { background: rgba(255,255,255,0.05); color: var(--text-primary); width: 100%; padding: 18px; border-radius: 18px; font-size: 16px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;}
-        .btn-init-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
-        .btn-init-secondary:active:not(:disabled) { transform: scale(0.96); }
-
-        .glass-card { background: var(--glass-bg); -webkit-backdrop-filter: blur(40px) saturate(200%); backdrop-filter: blur(40px) saturate(200%); border: 1px solid var(--glass-border); border-radius: 28px; padding: 32px; box-shadow: var(--glass-shadow); opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; position: relative; z-index: 1;}
-        .left-panel .glass-card:nth-child(1) { animation-delay: 0.1s; }
-        .left-panel .glass-card:nth-child(3) { animation-delay: 0.2s; } 
-        .right-panel .glass-card { animation-delay: 0.3s; }
-        .right-panel { position: relative; height: 100%; }
-        .right-panel .glass-card { position: -webkit-sticky; position: sticky; top: 20px; z-index: 100; }
-
-        h1, h2 { margin-top: 0; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #ffffff 0%, #a1a1a6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        h1 { font-size: 26px; margin-bottom: 24px; }
-        h2 { font-size: 22px; margin-bottom: 20px; }
-        
-        .tabular { font-variant-numeric: tabular-nums; }
-
-        .converter-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; justify-content: space-between;}
-        .converter-header h2 { margin: 0; line-height: 1.2; flex: 1 1 auto; word-break: break-word; }
-        .rate-badge { flex-shrink: 0; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; color: var(--text-secondary); text-align: right; margin-top: 2px; border: 1px solid rgba(255,255,255,0.05);}
-
-        .ios-input {
-            width: 100%; padding: 18px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.1);
-            background: var(--input-bg); font-size: 16px; outline: none; transition: all 0.3s ease;
-            font-family: inherit; color: var(--text-primary); box-sizing: border-box; font-weight: 500;
-        }
-        .ios-input:focus { background: rgba(0,0,0,0.5); border-color: var(--sys-blue); box-shadow: 0 4px 16px rgba(10,132,255,0.15); }
-        
-        .otp-input {
-            font-size: 36px;
-            letter-spacing: 16px;
-            font-weight: 700;
-            text-align: center;
-            padding-left: 34px; 
-        }
-
-        .custom-dropdown { position: relative; user-select: none; z-index: 1; }
-        .custom-dropdown.open { z-index: 9999 !important; }
-        .custom-dropdown-selected { 
-            background: var(--input-bg); padding: 0 40px 0 16px; border-radius: 16px; font-size: 16px; font-weight: 600;
-            cursor: pointer; display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.1); 
-            transition: 0.3s; height: 100%; width: 100%; box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;
-        }
-        .custom-dropdown-selected:hover { background: rgba(255,255,255,0.05); }
-        .custom-dropdown-selected::after { 
-            content: ''; position: absolute; right: 16px; top: 50%; border: solid var(--text-secondary); 
-            border-width: 0 2px 2px 0; display: inline-block; padding: 4px; transform: translateY(-70%) rotate(45deg); transition: 0.3s; 
-        }
-        .custom-dropdown.open .custom-dropdown-selected::after { transform: translateY(-30%) rotate(-135deg); }
-        .custom-dropdown.open .custom-dropdown-selected { background: rgba(0,0,0,0.5); border-color: var(--sys-blue); box-shadow: 0 4px 16px rgba(10,132,255,0.15); }
-        .custom-dropdown-options { 
-            position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: rgba(28, 28, 30, 0.95); 
-            -webkit-backdrop-filter: blur(40px) saturate(200%); backdrop-filter: blur(40px) saturate(200%); 
-            border-radius: 18px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); 
-            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
-            overflow: hidden; max-height: 250px; overflow-y: auto; color: white;
-        }
-        .custom-dropdown.open .custom-dropdown-options { opacity: 1; visibility: visible; transform: translateY(0); }
-        .custom-dropdown-option { padding: 16px; font-size: 16px; font-weight: 500; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .custom-dropdown-option:last-child { border-bottom: none; }
-        .custom-dropdown-option:hover { background: rgba(10,132,255,0.15); color: var(--sys-blue); }
-
-        .usd-input-wrapper { position: relative; background: var(--input-bg); border-radius: 18px; overflow: hidden; transition: all 0.3s; border: 1px solid rgba(255,255,255,0.1); }
-        .usd-input-wrapper:focus-within { border-color: var(--sys-blue); background: rgba(0,0,0,0.5); box-shadow: 0 4px 16px rgba(10,132,255,0.15); }
-        .usd-input-wrapper span { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-weight: 700; font-size: 22px; }
-        .usd-input-wrapper input { width: 100%; padding: 22px 16px 22px 48px; background: transparent; border: none; font-size: 22px; font-weight: 700; color: var(--text-primary); outline: none;}
-
-        .info-block { background: rgba(0, 0, 0, 0.2); border-radius: 20px; padding: 4px 20px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 16px; gap: 10px; flex-wrap: wrap;}
-        .info-row:last-child { border-bottom: none; }
-        .text-label { color: var(--text-secondary); font-weight: 600; }
-        .text-value { font-weight: 700; color: var(--text-primary); text-align: right; word-break: break-word;}
-        .value-main { font-size: 22px; color: var(--sys-green); background: linear-gradient(135deg, var(--sys-green), #1e702e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
-
-        .cogs-input-group { display: flex; gap: 12px; align-items: center; }
-        .cogs-input-group input { flex: 1; height: 52px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); padding: 0 16px; font-size: 16px; font-weight: 500; background: var(--input-bg); outline: none; transition: 0.3s; font-family: inherit; color: white;}
-        .cogs-input-group input:focus { border-color: var(--sys-blue); box-shadow: 0 4px 16px rgba(10,132,255,0.15); background: rgba(0,0,0,0.5);}
-
-        .expenses-container { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
-        
-        .expense-item { 
-            display: flex; gap: 12px; 
-            padding: 24px 16px 16px 16px; 
-            border-radius: 22px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); 
-            align-items: center; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; z-index: 1; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .expense-item:hover, .expense-item:focus-within { z-index: 10; transform: scale(1.02); background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1); box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
-        
-        .expense-item input.input-name { background: transparent; border: 1px solid transparent; padding: 0 12px; height: 48px; border-radius: 14px; font-size: 16px; font-weight: 600; color: var(--text-primary); transition: 0.3s; outline: none; flex: 1; min-width: 100px; }
-        .expense-item input.input-name:focus { background: rgba(0,0,0,0.3); border-color: rgba(10, 132, 255, 0.3); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
-        
-        .amount-column { position: relative; flex: 0 0 auto; }
-        .calculated-amount-btn { min-width: 120px; height: 48px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 0 16px; font-size: 16px; font-weight: 700; color: white; cursor: pointer; transition: all 0.2s; font-variant-numeric: tabular-nums; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .calculated-amount-btn:hover { background: rgba(255,255,255,0.1); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.2);}
-        
-        .expense-item.fully-paid .calculated-amount-btn { background: linear-gradient(135deg, rgba(46, 160, 67, 0.1), rgba(46, 160, 67, 0.2)); border-color: rgba(46, 160, 67, 0.3); color: var(--sys-green); }
-        .paid-tick { display: none; }
-        .expense-item.fully-paid .paid-tick { display: block; color: var(--sys-green); }
-        
-        .preview-tooltip { position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%) translateY(10px) scale(0.95); background: rgba(44, 44, 46, 0.95); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: white; padding: 16px 20px; border-radius: 18px; font-size: 14px; font-weight: 500; z-index: 50; opacity: 0; visibility: hidden; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 16px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); pointer-events: none; width: max-content; max-width: 260px; text-align: left; }
-        .preview-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: rgba(44, 44, 46, 0.95) transparent transparent transparent; }
-        .amount-column:hover .preview-tooltip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1); }
-        .preview-item { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
-        .preview-item:last-child { margin-bottom: 0; }
-        .preview-item-name { opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .preview-item-amount { font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-
-        .expense-10y { position: absolute; bottom: calc(100% + 8px); right: 0; font-size: 12px; color: var(--text-tertiary); text-align: right; white-space: nowrap; font-weight: 500;}
-        .val-10y { font-weight: 700; color: var(--text-secondary); }
-        
-        .expense-info { font-size: 16px; background: linear-gradient(135deg, var(--sys-blue), #5ac8fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; min-width: 64px; text-align: right; font-weight: 700; flex: 0 0 auto; height: 48px; display: flex; align-items: center; justify-content: flex-end; }
-        
-        button { cursor: pointer; border: none; font-family: inherit; transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s; }
-        
-        .btn-add { background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.15)); color: var(--sys-blue); width: 100%; margin-top: 16px; padding: 18px; border-radius: 18px; font-size: 16px; font-weight: 700; transition: all 0.3s; border: 1px solid rgba(10, 132, 255, 0.2);}
-        .btn-add:hover { background: linear-gradient(135deg, rgba(10, 132, 255, 0.15), rgba(10, 132, 255, 0.25)); transform: translateY(-1px); }
-        .btn-add:active { transform: scale(0.98); }
-
-        .btn-savings-transfer { background: linear-gradient(135deg, rgba(46, 160, 67, 0.1), rgba(46, 160, 67, 0.15)); color: var(--sys-green); width: 100%; padding: 18px; border-radius: 18px; font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s; border: 1px solid rgba(46, 160, 67, 0.2);}
-        .btn-savings-transfer:hover { background: linear-gradient(135deg, rgba(46, 160, 67, 0.15), rgba(46, 160, 67, 0.25)); transform: translateY(-1px); }
-        .btn-savings-transfer:active { transform: scale(0.98); }
-        
-        .btn-delete { background: rgba(255,255,255,0.05); color: var(--text-tertiary); width: 48px; height: 48px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; font-size: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.1);}
-        .btn-delete:hover { background: linear-gradient(135deg, rgba(255, 69, 58, 0.15), rgba(255, 69, 58, 0.25)); color: var(--sys-red); border-color: transparent; }
-        .btn-delete:active { transform: scale(0.9); }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
-        .modal-overlay.active { opacity: 1; visibility: visible; }
-        .modal-content { background: rgba(28, 28, 30, 0.95); width: 90%; max-width: 500px; border-radius: 36px; padding: 36px; box-shadow: 0 32px 64px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); transform: scale(0.9) translateY(30px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 85vh; display: flex; flex-direction: column; color: white;}
-        .modal-overlay.active .modal-content { transform: scale(1) translateY(0); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .modal-title-group h3 { margin: 0; font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #ffffff 0%, #a1a1a6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .modal-total { font-size: 16px; color: var(--text-secondary); font-weight: 600; margin-top: 6px; }
-        .btn-close-modal { background: rgba(255,255,255,0.1); width: 40px; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 18px; flex-shrink: 0; transition: all 0.3s; border: 1px solid transparent;}
-        .btn-close-modal:hover { background: rgba(255,255,255,0.15); color: var(--text-primary); transform: rotate(90deg); border-color: rgba(255,255,255,0.2);}
-        .modal-items-container { overflow-y: auto; padding-right: 8px; margin-bottom: 16px; flex: 1; display: flex; flex-direction: column; gap: 12px;}
-        
-        .sub-item { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 20px; background: rgba(0,0,0,0.2); transition: 0.3s; border: 1px solid rgba(255,255,255,0.05);}
-        .sub-item-row { display: flex; gap: 12px; align-items: center; width: 100%; }
-        .sub-item input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 14px 16px; height: 50px; border-radius: 14px; font-size: 16px; font-weight: 500; outline: none; transition: 0.3s; min-width: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); color: white;}
-        .sub-item input:focus { background: rgba(0,0,0,0.3); border-color: var(--sys-blue); box-shadow: 0 4px 16px rgba(10,132,255,0.15); }
-        .sub-item-name { flex: 1.5; }
-        .sub-item-amount { flex: 1; text-align: right; font-variant-numeric: tabular-nums; }
-        .btn-sub-delete { background: rgba(255,255,255,0.05); color: var(--text-tertiary); width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0;}
-        .btn-sub-delete:hover { background: linear-gradient(135deg, rgba(255, 69, 58, 0.15), rgba(255, 69, 58, 0.25)); color: var(--sys-red); border-color: transparent;}
-        
-        .check-container { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); cursor: pointer; flex-shrink: 0; transition: all 0.3s; background: rgba(255,255,255,0.05);}
-        .check-container.checked { background: linear-gradient(135deg, var(--sys-green), #1e702e); border-color: transparent; box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);}
-        .check-container svg { display: none; stroke: white; stroke-width: 3; }
-        .check-container.checked svg { display: block; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
-        .sub-item-amount.paid-amount { color: var(--sys-green); font-weight: 700; background: linear-gradient(135deg, rgba(46, 160, 67, 0.05), rgba(46, 160, 67, 0.1)); border-color: rgba(46, 160, 67, 0.2);}
-
-        .btn-modal-done { background: #ffffff; color: #000000; width: 100%; padding: 18px; border-radius: 18px; font-size: 17px; font-weight: 700; margin-top: 12px; transition: all 0.3s; box-shadow: 0 8px 16px rgba(0,0,0,0.3); border: none;}
-        .btn-modal-done:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,0.4); background: #f5f5f7;}
-
-        /* ПРЕМИАЛЬНАЯ КАРТОЧКА СВОДКИ */
-        .summary-box { display: flex; flex-direction: column; padding: 26px 30px; border-radius: 24px; transition: all 0.3s; position: relative; overflow: hidden; box-shadow: 0 16px 32px rgba(0,0,0,0.4);}
-        .summary-main { background: linear-gradient(135deg, #1d1d1f 0%, #000000 100%); color: white; border: 1px solid rgba(255, 255, 255, 0.15); }
-        .summary-main .summary-progress { background: linear-gradient(90deg, rgba(46, 160, 67, 0.4), rgba(46, 160, 67, 0.8)); }
-        
-        .summary-main.danger { background: linear-gradient(135deg, #3a0e0e 0%, #1a0505 100%); color: white; border-color: rgba(255, 69, 58, 0.3); }
-        .summary-main.danger .summary-progress { background: linear-gradient(90deg, rgba(255, 69, 58, 0.4), rgba(255, 69, 58, 0.8)); }
-        
-        .summary-progress { position: absolute; top: 0; left: 0; bottom: 0; z-index: 0; transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        
-        .cashflow-box { background: rgba(0, 0, 0, 0.3); border-radius: 20px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.05); display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;}
-        .cf-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 600; color: var(--text-secondary); }
-        .cf-val { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums;}
-        .cf-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
-
-        .chart-container { position: relative; width: 100%; height: 240px; margin: 0 auto; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .chart-container:hover { transform: scale(1.03); }
-        .currency-symbol { font-weight: 600; opacity: 0.7; margin-left: 2px;}
-
-        .top-expense-1 { border: 1px solid rgba(255, 69, 58, 0.4) !important; background: linear-gradient(135deg, rgba(255, 69, 58, 0.1), rgba(255, 69, 58, 0.05)) !important; position: relative; }
-        .top-expense-2 { border: 1px solid rgba(255, 149, 0, 0.4) !important; background: linear-gradient(135deg, rgba(255, 149, 0, 0.1), rgba(255, 149, 0, 0.05)) !important; position: relative; }
-        .top-expense-3 { border: 1px solid rgba(10, 132, 255, 0.4) !important; background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.05)) !important; position: relative; }
-        
-        .top-badge-1 { background: linear-gradient(135deg, #ff453a, #d70015); color: white; }
-        .top-badge-2 { background: linear-gradient(135deg, #ff9f0a, #d27b00); color: white; }
-        .top-badge-3 { background: linear-gradient(135deg, #0a84ff, #005bb5); color: white; }
-        
-        .top-expense-badge { position: absolute; top: -12px; right: 24px; font-size: 12px; font-weight: 800; padding: 6px 10px; border-radius: 10px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); z-index: 10; text-transform: uppercase; letter-spacing: 0.5px;}
-
-        .top-subitem-1 { background: linear-gradient(135deg, rgba(255, 69, 58, 0.1), rgba(255, 69, 58, 0.05)) !important; border-color: rgba(255, 69, 58, 0.3) !important; }
-        .top-subitem-2 { background: linear-gradient(135deg, rgba(255, 149, 0, 0.1), rgba(255, 149, 0, 0.05)) !important; border-color: rgba(255, 149, 0, 0.3) !important; }
-        .top-subitem-3 { background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.05)) !important; border-color: rgba(10, 132, 255, 0.3) !important; }
-        
-        .top-subitem-badge { display: inline-block; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; align-self: flex-end; margin-bottom: 4px; text-transform: uppercase;}
-
-        .daily-limit-box { background: transparent; display: flex; align-items: center; justify-content: space-between; padding: 0 6px; margin-bottom: 16px;}
-        .daily-limit-title { font-size: 15px; color: var(--text-secondary); font-weight: 600; }
-        .daily-limit-val { font-size: 20px; font-weight: 800; color: var(--sys-green); font-variant-numeric: tabular-nums; background: linear-gradient(135deg, var(--sys-green), #1e702e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .jar-card { 
-            background: var(--mono-card-bg); 
-            border: 1px solid rgba(255,255,255,0.15); 
-            color: white; 
-            border-radius: 24px; 
-            padding: 24px; 
-            margin-bottom: 16px; 
-            position: relative; 
-            overflow: hidden; 
-            box-shadow: 0 16px 32px rgba(0,0,0,0.4); 
-            display: flex; 
-            flex-direction: column; 
-            gap: 20px;
-            flex-shrink: 0;
-        }
-        .jar-card::after {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 50%; height: 100%;
-            background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent);
-            transform: skewX(-20deg);
-            animation: cardShine 8s infinite ease-in-out;
-            pointer-events: none;
-        }
-        .jar-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px;}
-        .jar-balance { font-size: 28px; font-weight: 800; color: #fff; display: flex; align-items: center;}
-        .jar-progress-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);}
-        .jar-progress-fill { height: 100%; background: linear-gradient(90deg, var(--sys-green), #1e702e); border-radius: 4px; box-shadow: 0 0 10px rgba(46, 160, 67, 0.5);}
-
-        /* СТИЛІ ФУТЕРА */
-        .security-footer {
-            text-align: center;
-            padding: 40px 20px;
-            margin-top: auto;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            width: 100%;
-            max-width: 1100px;
-        }
-        .premium-thin-text {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-            font-weight: 200; 
-            font-size: 1.8rem;
-            color: var(--text-primary);
-            letter-spacing: 0.5px;
-            margin-bottom: 16px;
-            opacity: 0.9;
-        }
-        .cf-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            background: rgba(255, 255, 255, 0.05);
-            padding: 10px 20px;
-            border-radius: 30px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        @media (max-width: 900px) { 
-            .container { grid-template-columns: minmax(0, 1fr); gap: 24px;} 
-            body { padding: 16px; } 
-            .flow-track-horizontal { display: none; } 
-        }
-
-        @media (max-width: 600px) {
-            body { padding: 12px; }
-            /* ЦЕНТРИРУЕМ СЧЕТЧИК НА МОБИЛЬНЫХ */
-            .auth-stats-badge {
-                position: relative !important;
-                top: auto !important;
-                right: auto !important;
-                margin-bottom: 24px;
-            }
-            
-            .glass-card { padding: 24px 20px; border-radius: 32px; }
-            h1 { font-size: 24px; margin-bottom: 20px; }
-            h2 { font-size: 22px; margin-bottom: 20px; }
-            
-            .header-nav { padding: 16px 20px; }
-            .user-nav-row { flex-wrap: wrap; gap: 12px; }
-            .user-nav-actions { width: 100%; justify-content: space-between; }
-            .savings-container { flex-direction: column; gap: 12px; align-items: flex-start; }
-            
-            .info-block { padding: 0 20px; border-radius: 20px; }
-            
-            .expenses-container { gap: 16px; }
-            .expense-item { flex-wrap: wrap; padding: 20px; border-radius: 24px; }
-            .expense-item input.input-name { flex: 1 1 100%; margin-bottom: 12px; height: 50px; background: var(--input-bg); }
-            .amount-column { flex: 1 1 auto; min-width: 120px; }
-            .calculated-amount-btn { height: 50px; width: 100%; justify-content: center; background: linear-gradient(135deg, rgba(10,132,255,0.1), rgba(10,132,255,0.15)); color: var(--sys-blue); border-color: transparent;}
-            
-            .expense-10y { position: relative; bottom: auto; margin-bottom: 8px; text-align: left; }
-            .expense-info { flex: 0 0 auto; height: 50px; font-size: 18px; }
-            .btn-delete { height: 50px; width: 50px; background: linear-gradient(135deg, rgba(255,69,58,0.1), rgba(255,69,58,0.15)); color: var(--sys-red); border: none;}
-            
-            .summary-box { padding: 24px 20px; }
-            
-            .modal-content { padding: 28px 24px; width: 95%; border-radius: 32px;}
-            .sub-item-row { flex-wrap: wrap; }
-            .sub-item input { height: 48px; }
-            .sub-item-name { flex: 1 1 100%; }
-            .sub-item-amount { flex: 1 1 auto; }
-            .btn-sub-delete { height: 48px; padding: 0 15px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); box-shadow: none;}
-            
-            .auth-card { padding: 36px 24px; border-radius: 32px; }
-        }
-        /* КАЛЕНДАР ВИПЛАТ (ОНОВЛЕНИЙ) */
-        .schedule-matrix-wrapper { overflow-x: auto; max-height: 60vh; border-radius: 16px; background: var(--item-bg); border: 1px solid var(--glass-border); position: relative; }
-        .schedule-table { border-collapse: separate; border-spacing: 0; width: 100%; color: var(--text-primary); font-size: 14px; }
-        .schedule-table th, .schedule-table td { padding: 12px; border-bottom: 1px solid var(--glass-border); border-right: 1px solid var(--glass-border); text-align: right; min-width: 130px; }
-        
-        .schedule-table th { background: #1c1c1e; position: sticky; top: 0; z-index: 10; font-weight: 600; color: var(--text-secondary); }
-        .schedule-table th:first-child, .schedule-table td:first-child { position: sticky; left: 0; background: #1c1c1e; z-index: 11; text-align: left; min-width: 220px; box-shadow: 2px 0 5px rgba(0,0,0,0.3); }
-        .schedule-table th:first-child { z-index: 12; }
-        
-        /* Світла тема: Непрозорий фон для липкої колонки */
-        :root[data-theme="light"] .schedule-table th, :root[data-theme="light"] .schedule-table th:first-child, :root[data-theme="light"] .schedule-table td:first-child { background: #f2f2f7; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
-
-        .schedule-table tr:last-child td { border-bottom: none; }
-        .schedule-table td:last-child, .schedule-table th:last-child { border-right: none; }
-        
-        .drag-handle { cursor: grab; padding-right: 8px; color: var(--text-tertiary); font-size: 18px; vertical-align: middle; display: inline-block; }
-        .drag-handle:active { cursor: grabbing; }
-        
-        .schedule-input-group { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-        .schedule-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--sys-green); flex-shrink: 0; margin: 0; }
-        .schedule-input { width: 100%; background: transparent; border: none; outline: none; color: var(--text-primary); text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-        .schedule-input:focus { color: var(--sys-blue); }
-        .schedule-input::placeholder { color: var(--text-tertiary); opacity: 0.5; }
-        .schedule-input.is-paid { color: var(--sys-green); font-weight: 700; }
-        
-        .schedule-row.dragging { opacity: 0.4; background: var(--sys-blue-glow) !important; }
-        /* Нові індикатори для Drag and Drop */
-        .schedule-row.drag-over-top td { border-top: 2px solid var(--sys-blue) !important; }
-        .schedule-row.drag-over-bottom td { border-bottom: 2px solid var(--sys-blue) !important; }
-
-        /* Робимо іконку календаря світлою для темної теми */
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(1) opacity(0.7);
-            cursor: pointer;
-        }
-
-        /* Стилі для поля пошуку всередині дропдауну постачальників */
-        .dropdown-search-input {
-            width: 100%;
-            padding: 14px 16px;
-            background: rgba(0,0,0,0.6);
-            border: none;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            color: white;
-            font-size: 15px;
-            outline: none;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-        }
-        .dropdown-search-input::placeholder {
-            color: var(--text-tertiary);
-            font-weight: 500;
-        }
-        
-/* НОВИЙ ДИЗАЙН КАРТОК ВИТРАТ (КОМПАКТНИЙ) */
-        .expense-card-pro {
-            background: linear-gradient(135deg, rgba(44, 44, 46, 0.8) 0%, rgba(28, 28, 30, 0.9) 100%);
-            border-radius: 18px;
-            padding: 12px 16px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: stretch;
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            transition: transform 0.2s, border-color 0.2s;
-            position: relative;
-        }
-        .expense-card-pro:hover, .expense-card-pro:focus-within {
-            transform: scale(1.02);
-            border-color: rgba(255,255,255,0.15);
-            z-index: 10;
-        }
-
-        /* СТИЛЬ ДЛЯ ОПЛАЧЕНОЇ КАРТКИ */
-        .expense-card-pro.paid-card {
-            background: linear-gradient(135deg, rgba(46, 160, 67, 0.15) 0%, rgba(46, 160, 67, 0.05) 100%);
-            border-color: rgba(46, 160, 67, 0.3);
-        }
-        .expense-card-pro.paid-card:hover, .expense-card-pro.paid-card:focus-within {
-            border-color: rgba(46, 160, 67, 0.6);
-            box-shadow: 0 4px 16px rgba(46, 160, 67, 0.2);
-        }
-        
-        .expense-pro-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding-right: 12px;
-            border-right: 1px solid rgba(255,255,255,0.1);
-            min-width: 0; /* Щоб інпут не розпирав карточку */
-        }
-        
-        .expense-pro-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 4px;
-        }
-        
-        .expense-pro-title-group {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            flex: 1;
-            min-width: 0;
-            padding-right: 12px;
-        }
-        
-        .expense-pro-input {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 17px;
-            font-weight: 700;
-            outline: none;
-            padding: 0;
-            width: 100%;
-            margin-bottom: 4px;
-            font-family: inherit;
-            text-overflow: ellipsis;
-        }
-        .expense-pro-input:focus { color: var(--sys-blue); }
-        
-        .expense-pro-trend {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            justify-content: flex-start;
-            flex-shrink: 0;
-        }
-        
-        .trend-badge {
-            font-size: 11px;
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 6px;
-            display: inline-block;
-            margin-bottom: 4px;
-        }
-
-        /* Перемикання тексту відсотки/сума при наведенні */
-        .trend-badge .trend-hover-text { display: none; }
-        .trend-badge:hover .trend-main-text { display: none; }
-        .trend-badge:hover .trend-hover-text { display: inline; }
-
-        .trend-up { color: #ff453a; background: rgba(255, 69, 58, 0.15); }
-        .trend-down { color: #32d74b; background: rgba(50, 215, 75, 0.15); }
-        .trend-new { color: #ffd60a; background: rgba(255, 214, 10, 0.15); }
-        
-        .expense-pro-amount {
-            font-size: 20px;
-            font-weight: 800;
-            color: white;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap; /* Фікс: валюта завжди на одному рядку з цифрою */
-            display: flex;
-            align-items: center;
-        }
-        
-        .expense-pro-sparkline {
-            height: auto; /* Убрали жесткие 30px */
-            width: 100%;
-            margin-top: 4px;
-            position: relative;
-            padding-bottom: 6px; /* Добавили отступ снизу */
-        }
-        
-        .sparkline-labels {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 4px; /* Чуть отодвинули от линии */
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            padding: 0 2px;
-            line-height: 1; /* Убрали лишнюю высоту строки */
-        }
-        
-        .expense-pro-actions {
-            width: 44px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding-left: 12px;
-            justify-content: center;
-        }
-        
-        .btn-pro-action {
-            width: 36px;
-            height: 36px;
-            border-radius: 18px;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .btn-pro-add { background: rgba(255,255,255,0.1); color: white; font-size: 18px; }
-        .btn-pro-add:hover { background: var(--sys-blue); transform: scale(1.1); }
-        .btn-pro-del { background: rgba(255, 69, 58, 0.1); color: #ff453a; }
-        .btn-pro-del:hover { background: #ff453a; color: white; transform: scale(1.1); }
-        
-        /* Тултип з'являється при наведенні на весь блок картки */
-        .expense-pro-main:hover .preview-tooltip {
-            opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1);
-        }
-        /* АЛЕ ХОВАЄТЬСЯ, якщо курсор над інпутом або плашкою відсотків */
-        .expense-pro-main:has(.expense-pro-input:hover) .preview-tooltip,
-        .expense-pro-main:has(.trend-badge:hover) .preview-tooltip {
-            opacity: 0 !important; visibility: hidden !important; transform: translateX(-50%) translateY(10px) scale(0.95) !important;
-        }
-
-        .card-top-1 { border-color: rgba(255, 69, 58, 0.4); box-shadow: 0 4px 16px rgba(255, 69, 58, 0.1); }
-        .card-top-2 { border-color: rgba(255, 159, 10, 0.4); box-shadow: 0 4px 16px rgba(255, 159, 10, 0.1); }
-        .card-top-3 { border-color: rgba(10, 132, 255, 0.4); box-shadow: 0 4px 16px rgba(10, 132, 255, 0.1); }
-                /* --- СТИЛІ ДЛЯ ПРЕМІАЛЬНОЇ АНКЕТИ --- */
-        .choice-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-        .choice-item { 
-            background: rgba(255,255,255,0.05); 
-            border: 1px solid rgba(255,255,255,0.1); 
-            padding: 16px 20px; 
-            border-radius: 16px; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            gap: 14px; 
-            transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1); 
-            color: var(--text-primary);
-            font-size: 15px;
-            font-weight: 500;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .choice-item:hover { background: rgba(255,255,255,0.08); transform: translateY(-1px); }
-        .choice-item:active { transform: scale(0.98); }
-        
-        .choice-item.selected { 
-            background: rgba(50, 215, 75, 0.15); 
-            border-color: rgba(50, 215, 75, 0.4); 
-            box-shadow: 0 4px 12px rgba(50, 215, 75, 0.1);
-        }
-        
-        /* Індикатор множинного вибору (Чекбокс) */
-        .check-indicator {
-            width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.2);
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;
-            background: rgba(0,0,0,0.2);
-        }
-        .choice-item.selected .check-indicator {
-            border-color: var(--sys-green); background: var(--sys-green);
-        }
-        .check-indicator svg { display: none; width: 14px; height: 14px; stroke: white; stroke-width: 3; }
-        .choice-item.selected .check-indicator svg { display: block; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-
-        /* Індикатор одиночного вибору (Радіо) */
-        .radio-indicator {
-            width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2);
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;
-            background: rgba(0,0,0,0.2);
-        }
-        .choice-item.selected .radio-indicator {
-            border-color: var(--sys-green); background: var(--sys-green);
-        }
-        .choice-item.selected .radio-indicator::after {
-            content: ''; width: 8px; height: 8px; background: white; border-radius: 50%; animation: scaleIn 0.3s ease;
-        }
-
-    </style>
-</head>
-<body onload="init()">
-
-<script>
-    // ==========================================
+import {
+  escapeHtml,
+  escapeAttr,
+  newId,
+  jsId,
+  formatMoney,
+  formatNumberShort,
+} from './utils.js';
+import { API_URL } from './config.js';
+
+// ==========================================
     // НОВИНИ / CHANGELOG
     // ==========================================
     const changelogData = [  
@@ -1321,10 +48,9 @@
     ];
 
     // ==========================================
-    // 1. КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+    // 1. КОНСТАНТИ ТА ГЛОБАЛЬНІ ЗМІННІ
     // ==========================================
     const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
-    const API_URL = 'https://api.myskrynia.com.ua';
     const appleColors = [ '#ff453a', '#ff9f0a', '#ffd60a', '#2ea043', '#66d4cf', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#32ade6' ];
 
     let globalData = { jars: {}, debts: {}, suppliers: {} };
@@ -1346,1057 +72,7 @@
     let saveQueue = Promise.resolve();
     let availableProfiles = [];
 
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function escapeAttr(str) {
-        return String(str)
-            .replace(/\\/g, '\\\\')
-            .replace(/'/g, "\\'")
-            .replace(/\n/g, '\\n')
-            .replace(/\r/g, '\\r')
-            .replace(/</g, '\\u003c')
-            .replace(/>/g, '\\u003e');
-    }
-    function newId() {
-        return crypto.randomUUID();
-    }
-
-    function jsId(id) {
-        return "'" + escapeAttr(String(id)) + "'";
-    }
-</script>
-
-<div id="app-container" style="opacity: 0; pointer-events: none; transition: opacity 0.5s ease; width: 100%; display: none; flex-direction: column; align-items: center; min-height: 100vh;">
-    <div class="top-nav">
-        <div class="glass-card header-nav" style="padding: 24px 28px;">
-            <div class="user-nav-row">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div id="nav-avatar" style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2), 0 4px 8px rgba(10,132,255,0.3);"></div>
-                    <div style="display: flex; align-items: center;">
-                        <span id="current-user-name-display" style="font-weight: 700; font-size: 16px; color: var(--text-primary); letter-spacing: -0.3px;"></span>
-                        <div id="profile-type-container" style="position: relative; margin-left: 8px;">
-                            <button type="button" id="account-type-badge" class="badge-type" style="display: none;" onclick="toggleProfileSwitcher(event)">Фіз. особа</button>
-                            <div id="profile-switcher-dropdown" class="profile-switcher-dropdown"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="user-nav-actions">
-                    <button style="background: transparent; color: var(--sys-red); border: none; font-size: 14px; font-weight: 600; cursor: pointer; padding: 8px;" onclick="deleteProfile()">Видалити дані</button>
-                    <button style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" onclick="logout()">Вийти</button>
-                </div>
-            </div>
-            <div class="year-selector">
-                <button class="year-btn" onclick="changeYear(-1)">❮</button>
-                <span id="display-year">2026</span>
-                <button class="year-btn" onclick="changeYear(1)">❯</button>
-            </div>
-            <div class="months-carousel" id="months-container"></div>
-            <div class="savings-container">
-                <span id="savings-title">Мої заощадження:</span>
-                <span class="savings-amount tabular" onclick="openEnvelopesModal()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
-                    <span id="total-savings-display">0</span> ₴
-                </span>
-            </div>
-            <div class="savings-container" style="padding-top: 12px; border-top: none;">
-                <span id="debts-title" style="color: var(--text-secondary);">Зобов'язання:</span>
-                <span class="debt-amount tabular" onclick="openDebtsModal()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                    <span id="debt-minus-sign" style="display: none;">-</span><span id="total-debts-display">0</span> ₴
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <div class="dashboard-wrapper">
-        <div class="flow-track-horizontal"><div class="flow-particle-horizontal"></div></div>
-
-        <div id="init-overlay" class="init-overlay">
-            <div class="init-card">
-                <div class="init-icon">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                </div>
-                <div class="init-title">Новий місяць</div>
-                <div class="init-subtitle" id="init-subtitle-text">У цьому місяці ще немає записів. Як ви хочете почати?</div>
-                
-                <button id="btn-copy-prev" class="btn-init-primary" onclick="initializeMonth(true)">
-                    Перенести дані
-                </button>
-                <button class="btn-init-secondary" onclick="initializeMonth(false)">
-                    Почати з чистого аркуша
-                </button>
-            </div>
-        </div>
-
-        <div class="container" id="main-dashboard">
-            <div class="left-panel">
-                <div class="glass-card" style="margin-bottom: 0;">
-                    <div class="converter-header">
-                        <h2 id="title-sources">Джерела доходу</h2>
-                        <div class="rate-badge" id="rate-info">Завантаження...</div>
-                    </div>
-                    <div id="incomes-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
-                    <button class="btn-add" style="margin-top: 12px; padding: 14px; font-size: 15px;" onclick="addIncome()">+ Додати джерело</button>
-                </div>
-
-                <div class="flow-container">
-                    <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
-                </div>
-
-                <div class="glass-card" style="margin-bottom: 0;">
-                    <h1 id="title-incomes">Доходи</h1>
-                    <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px;">
-                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">За місяць:</span>
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                <div id="income-trend-badge"></div>
-                                <span class="text-value value-main tabular" style="font-size: 24px;"><span id="income-display">0.00</span><span class="currency-symbol">₴</span></span>
-                            </div>
-                        </div>
-                        
-                        <div class="expense-pro-sparkline" id="income-sparkline-container" style="margin-top: 0; margin-bottom: 12px;"></div>
-
-                        <div id="rule-502030-block" class="rule-502030" style="display: none;"></div>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 16px;">
-                            <span style="font-weight: 600; color: var(--text-secondary);">За рік:</span>
-                            <span class="text-value tabular"><span id="yearly-income-display">0.00</span><span class="currency-symbol">₴</span> <span style="color: var(--text-tertiary); font-weight: 500; font-size: 14px; margin-left: 6px;" id="yearly-income-usd-container">($<span id="yearly-income-usd">0.00</span>)</span></span>
-                        </div>
-                    </div>
-                    <div class="info-block">
-                        <div class="info-row">
-                            <span class="text-label" id="label-daily">У робочий день:</span>
-                            <span class="text-value tabular"><span id="daily-rate-usd-container" style="color: var(--text-tertiary); font-weight: 500;">$<span id="daily-rate-usd">0.00</span> <span style="margin: 0 4px;">/</span> </span><span id="daily-rate-uah">0.00</span><span class="currency-symbol">₴</span></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="text-label" id="label-hourly">Вартість 1 години:</span>
-                            <span class="text-value tabular"><span id="hourly-rate-usd-container" style="color: var(--text-tertiary); font-weight: 500;">$<span id="hourly-rate-usd">0.00</span> <span style="margin: 0 4px;">/</span> </span><span id="hourly-rate-uah">0.00</span><span class="currency-symbol">₴</span></span>
-                        </div>
-                        <div class="info-row" id="business-hours-row" style="display: none;">
-                            <span class="text-label" style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                Годин роботи на день:
-                            </span>
-                            <input type="number" id="business-hours-input" value="8" oninput="updateBusinessHours(this.value)" style="width: 64px; height: 36px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); border-radius: 12px; padding: 0 10px; text-align: center; font-size: 16px; font-weight: 700; outline: none; transition: 0.3s;" onfocus="this.style.borderColor='var(--sys-blue)'; this.style.background='rgba(0,0,0,0.5)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.05)';">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flow-container" id="after-incomes-flow">
-                    <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
-                </div>
-
-                <div id="invoices-block" class="glass-card" style="margin-bottom: 0; display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h2 style="margin: 0;">Закупівлі (Собівартість)</h2>
-                    </div>
-                    <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">Всього за місяць:</span>
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                <div id="invoices-trend-badge"></div>
-                                <span class="tabular" style="font-size: 22px; font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="invoices-total-amount">0.00</span> ₴</span>
-                            </div>
-                        </div>
-                        
-                        <div class="expense-pro-sparkline" id="invoices-sparkline-container" style="margin-top: 0; margin-bottom: 8px;"></div>
-                        
-                        <button class="btn-init-secondary" style="margin: 0; display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-primary); border: 1px solid rgba(255, 69, 58, 0.3); background: rgba(255, 69, 58, 0.1);" onclick="openInvoicesModal()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                            Керувати інвойсами
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flow-container" id="cogs-flow" style="display: none;">
-                    <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
-                </div>
-
-                    <div id="payroll-block" class="glass-card" style="margin-bottom: 0; display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h2 style="margin: 0;">Розрахунок зарплат</h2>
-                    </div>
-                    <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <span style="font-size: 16px; font-weight: 600; color: var(--text-secondary);">ЗП Фонд (нараховано):</span>
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                <div id="payroll-trend-badge"></div>
-<span class="tabular" style="font-size: 22px; font-weight: 700; color: var(--sys-red); background: linear-gradient(135deg, #ff453a, #d70015); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">-<span id="payroll-total-amount">0.00</span> ₴</span>                            </div>
-                        </div>
-                        
-                        <div class="expense-pro-sparkline" id="payroll-sparkline-container" style="margin-top: 0; margin-bottom: 8px;"></div>
-                        
-                        <button class="btn-init-secondary" style="margin: 0; display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-primary); border: 1px solid rgba(255, 69, 58, 0.3); background: rgba(255, 69, 58, 0.1);" onclick="openPayrollModal()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                            Керувати зарплатами
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flow-container" id="payroll-flow" style="display: none;">
-                    <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
-                </div>
-
-                <div class="glass-card">
-                    <h2>Витрати</h2>
-                    <div class="expenses-container" id="expenses-list"></div>
-                    <button class="btn-add" onclick="addCategory()">+ Додати категорію</button>
-                </div>
-            </div>
-
-            <div class="right-panel">
-                <div class="glass-card" style="position: sticky; top: 20px;">
-                    <h2 style="margin-bottom: 20px;">Зведення</h2>
-                    
-                    <div id="summary-card" class="summary-box summary-main" style="margin-bottom: 16px; padding: 20px 24px; position: relative;">
-                        <div id="summary-progress" class="summary-progress" style="width: 0%;"></div>
-                        <div class="summary-content" style="display: flex; flex-direction: column; width: 100%; z-index: 1; position: relative;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <div id="title-remaining" style="font-size: 16px; font-weight: 600; color: inherit; opacity: 0.9; letter-spacing: -0.3px;">Залишається в міс:</div>
-                                    <div class="tabular" style="font-size: 26px; font-weight: 800; color: inherit; display: flex; align-items: center;">
-                                        <span id="remaining-money">0.00</span> <span class="currency-symbol" style="margin-right: 8px;">₴</span>
-                                        <span style="opacity: 0.9; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 8px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);"><span id="remaining-percent">0</span>%</span>
-                                    </div>
-                                </div>
-                                <div id="profit-trend-badge"></div>
-                            </div>
-                            <div class="expense-pro-sparkline" id="profit-sparkline-container" style="margin-top: 0; margin-bottom: 0;"></div>
-                        </div>
-                    </div>
-
-                    <div id="daily-limit-box" class="daily-limit-box">
-                        <div class="daily-limit-title">Сьогодні ви можете витратити:</div>
-                        <div class="daily-limit-val" id="daily-limit-val-container"><span id="daily-limit-val">0.00</span> ₴</div>
-                    </div>
-                    
-                    <div id="cashflow-box" class="cashflow-box">
-                        <div class="cf-row" id="cf-row-invoices" style="display: none;"><span>Оплачені інвойси:</span> <span class="cf-val" id="cf-invoices" style="color: var(--sys-red);">0.00 ₴</span></div>
-                        
-                        <div class="cf-row" id="cf-row-gross" style="display: none; margin-top: 4px; padding: 8px 12px; background: rgba(46, 160, 67, 0.1); border-radius: 10px;">
-                            <span style="font-weight: 700; color: var(--sys-green);">Валовий прибуток:</span> 
-                            <span class="cf-val" id="cf-gross-profit" style="color: var(--sys-green); font-size: 16px;">0.00 ₴</span>
-                        </div>
-                        
-                        <div class="cf-divider" id="cf-divider-invoices" style="display: none;"></div>
-                        <div class="cf-row"><span>План витрат (опер.):</span> <span class="cf-val" id="cf-plan">0.00 ₴</span></div>
-                        <div class="cf-row"><span>Вже оплачено:</span> <span class="cf-val" id="cf-paid" style="color: var(--sys-green);">0.00 ₴</span></div>
-                        <div class="cf-divider"></div>
-                        <div class="cf-row"><span style="font-weight: 700; color: var(--text-primary);">Залишок до оплати:</span> <span class="cf-val" id="cf-left" style="color: var(--sys-red); font-size: 16px;">0.00 ₴</span></div>
-                    </div>
-
-                    <div id="recon-box" class="cashflow-box" style="display: none; background: rgba(0,0,0,0.4); border: 1px dashed rgba(255,255,255,0.15);">
-                        <div style="font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Звірка</div>
-                        <div class="cf-row"><span>Теоретичний залишок:</span> <span class="cf-val" id="recon-theoretical">0.00 ₴</span></div>
-                        <div class="cf-row"><span>Фактичний залишок:</span> <span class="cf-val" id="recon-actual" style="color: var(--sys-blue);">0.00 ₴</span></div>
-                    </div>
-                    
-                    <div class="chart-container" style="height: 340px;" id="budgetChartContainer">
-                        <div id="sankey_basic" style="width: 100%; height: 100%;"></div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 28px; margin-bottom: 28px;">
-                        <div style="background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.15)); padding: 20px; border-radius: 20px; text-align: center; border: 1px solid rgba(10, 132, 255, 0.2); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
-                            <div id="label-yearly-remaining" style="font-size: 14px; color: var(--sys-blue); font-weight: 700; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Чистими за рік</div>
-                            <div class="tabular" style="font-weight: 800; font-size: 20px; color: var(--text-primary);"><span id="yearly-remaining">0.00</span> ₴</div>
-                        </div>
-                        <div id="old-expenses-box" style="display: none;">
-                            <span id="total-expenses">0.00</span>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <button class="btn-init-primary btn-green" style="margin:0; padding: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px;" onclick="openTransferModal()">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                            <span id="text-transfer">Відкласти в конверт</span>
-                        </button>
-                        <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px;">
-                            <button class="btn-init-secondary" style="margin:0; padding: 16px; font-size: 15px; color: var(--sys-blue); display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.15)); border-color: rgba(10, 132, 255, 0.2);" onclick="openAnalyticsModal()">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                                Динаміка
-                            </button>
-                            <button class="btn-init-secondary" style="margin:0; padding: 16px; font-size: 15px; color: var(--sys-red); background: linear-gradient(135deg, rgba(255, 69, 58, 0.1), rgba(255, 69, 58, 0.15)); border-color: rgba(255, 69, 58, 0.2); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="clearCurrentMonth()">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                Очистити
-                            </button>
-                        </div>
-
-                        <button class="btn-init-secondary" style="margin-top: 12px; padding: 16px; font-size: 16px; color: #bf5af2; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(191, 90, 242, 0.1), rgba(191, 90, 242, 0.15)); border-color: rgba(191, 90, 242, 0.2); width: 100%; border-radius: 18px;" onclick="openAiExportModal()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L10.088 8.813A2 2 0 0 1 8.813 10.088L3 12L8.813 13.912A2 2 0 0 1 10.088 15.187L12 21L13.912 15.187A2 2 0 0 1 15.187 13.912L21 12L15.187 10.088A2 2 0 0 1 13.912 8.813L12 3Z"/></svg>
-                            Експорт для ШІ-аналітики
-                        </button>
-
-                                                <button class="btn-init-secondary" style="margin-top: 12px; padding: 16px; font-size: 16px; color: #32d74b; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(50, 215, 75, 0.1), rgba(50, 215, 75, 0.15)); border-color: rgba(50, 215, 75, 0.2); width: 100%; border-radius: 18px;" onclick="openGrowthModal()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                            🎯 Налаштувати стратегію росту
-                        </button>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="security-footer">
-            <div class="cf-badge">
-                <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
-                </svg>
-                <span>За безпеку даних відповідає Cloudflare</span>
-            </div>
-        </div>
-    </div>
-</div> 
-
-<div id="category-modal" class="modal-overlay" onclick="closeModal(event)">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div class="modal-title-group">
-                <h3 id="modal-category-name">Категорія</h3>
-                <div class="modal-total">Всього: <span id="modal-category-total" class="tabular" style="font-weight: 700; color: var(--text-primary);">0.00</span> ₴</div>
-            </div>
-            <button class="btn-close-modal" onclick="closeModal()">✕</button>
-        </div>
-        <div id="modal-subitems-list" class="modal-items-container"></div>
-        <button class="btn-add" style="margin-top:0; margin-bottom: 24px;" onclick="addSubItem()">+ Додати статтю витрат</button>
-        <button class="btn-modal-done" onclick="closeModal()">Готово</button>
-    </div>
-</div>
-
-<div id="confirm-modal" class="modal-overlay" onclick="closeConfirmModal(event)" style="z-index: 9999;">
-    <div class="modal-content" style="max-width: 400px; padding: 40px 32px 32px; text-align: center;" onclick="event.stopPropagation()">
-        <div style="font-size: 56px; margin-bottom: 20px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));">⚠️</div>
-        <h3 id="confirm-title" style="margin-bottom: 16px; font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Підтвердіть дію</h3>
-        <p id="confirm-text" style="color: var(--text-secondary); font-size: 16px; margin-bottom: 36px; line-height: 1.5; font-weight: 500;">Ви впевнені?</p>
-        <div style="display: flex; gap: 16px;">
-            <button class="btn-init-secondary" style="margin: 0; flex: 1;" onclick="closeConfirmModal()">Скасувати</button>
-            <button class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; flex: 1; box-shadow: 0 8px 16px rgba(10,132,255,0.3);" onclick="executeConfirm()">ОК</button>
-        </div>
-    </div>
-</div>
-
-<div id="transfer-modal" class="modal-overlay" onclick="closeTransferModal(event)">
-    <div class="modal-content" style="max-width: 420px;" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h3 style="margin: 0;" id="transfer-modal-title">Відкласти в конверт</h3>
-            <button class="btn-close-modal" onclick="closeTransferModal()">✕</button>
-        </div>
-        <p style="color: var(--text-secondary); font-size: 16px; font-weight: 500; margin-top: -12px; margin-bottom: 24px;">Вкажіть суму, яку хочете відкласти, та виберіть конверт.</p>
-        
-        <div class="custom-dropdown" id="transfer-jar-dropdown" onclick="event.stopPropagation(); this.classList.toggle('open')" style="width: 100%; margin-bottom: 20px;">
-            <div class="custom-dropdown-selected" id="transfer-jar-selected" style="height: 60px; font-weight: 600; font-size: 16px;">
-                Виберіть конверт
-            </div>
-            <div class="custom-dropdown-options" id="transfer-jar-options"></div>
-        </div>
-        <input type="hidden" id="transfer-jar-select">
-        
-        <div class="usd-input-wrapper" style="margin-bottom: 28px;">
-            <span style="color: var(--sys-green); font-size: 24px;">₴</span>
-            <input type="number" id="transfer-amount" style="color: var(--sys-green); font-size: 28px;" placeholder="0">
-        </div>
-        <button class="btn-init-primary btn-green" style="margin: 0; height: 60px; font-size: 18px; border: none; color: white;" onclick="executeTransfer()">Готово</button>
-    </div>
-</div>
-
-<div id="jars-modal" class="modal-overlay" onclick="closeEnvelopesModal(event)">
-    <div class="modal-content" style="max-width: 520px;" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h3 style="margin: 0;" id="jars-modal-title">Мої конверти</h3>
-            <button class="btn-close-modal" onclick="closeEnvelopesModal()">✕</button>
-        </div>
-        
-        <div id="jars-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; max-height: 45vh; overflow-y: auto; padding-right: 8px;"></div>
-        
-        <div style="background: rgba(0,0,0,0.3); padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
-            <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">Створити новий</h4>
-            <input type="text" id="new-jar-name" class="ios-input" placeholder="Назва (наприклад, На авто)" style="margin-bottom: 12px; height: 56px;">
-            <div id="new-jar-type-wrap" style="margin-bottom: 12px;">
-                <input type="hidden" id="new-jar-type-value" value="regular">
-                <div class="custom-dropdown compact" onclick="event.stopPropagation(); this.classList.toggle('open')">
-                    <div class="custom-dropdown-selected" id="new-jar-type-display">Звичайний конверт</div>
-                    <div class="custom-dropdown-options" id="new-jar-type-options"></div>
-                </div>
-            </div>
-            <input type="number" id="new-jar-goal" class="ios-input" placeholder="Ціль (сума, необов'язково)" style="margin-bottom: 20px; height: 56px;">
-            <button class="btn-init-primary" style="margin: 0; height: 56px;" onclick="createNewEnvelope()">Створити</button>
-        </div>
-    </div>
-</div>
-
-<div id="debts-modal" class="modal-overlay" onclick="closeDebtsModal(event)">
-    <div class="modal-content" style="max-width: 520px;" onclick="event.stopPropagation()">
-<div class="modal-header">
-            <h3 style="margin: 0; color: var(--sys-red);" id="debts-modal-title">Боргові зобов'язання</h3>
-            <div style="display: flex; gap: 8px;">
-                <button class="btn-init-secondary" style="margin: 0; width: auto; padding: 6px 12px; height: 36px; font-size: 13px; border-radius: 12px; border-color: rgba(255, 69, 58, 0.3); color: var(--sys-red);" onclick="openScheduleModal()">🗓 Графік</button>
-                <button class="btn-close-modal" onclick="closeDebtsModal()">✕</button>
-            </div>
-        </div>
-        
-        <div id="debts-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; max-height: 45vh; overflow-y: auto; padding-right: 8px;"></div>
-        
-        <div style="background: rgba(255, 69, 58, 0.1); padding: 24px; border-radius: 24px; border: 1px solid rgba(255, 69, 58, 0.2); box-shadow: inset 0 2px 4px rgba(255, 69, 58, 0.05);">
-            <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: var(--sys-red);">Додати борг / розстрочку</h4>
-            <input type="text" id="new-debt-name" class="ios-input" placeholder="Назва (наприклад, MacBook)" style="margin-bottom: 12px; height: 56px;">
-            
-            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                <input type="number" id="new-debt-amount" class="ios-input" placeholder="Сума боргу" style="flex: 2; height: 56px;">
-                <input type="number" id="new-debt-interest" class="ios-input" placeholder="% в міс." style="flex: 1; height: 56px;">
-                <div class="custom-dropdown" style="flex: 1;" onclick="event.stopPropagation(); this.classList.toggle('open')">
-                    <div class="custom-dropdown-selected" id="new-debt-currency" style="height: 56px; padding: 0 32px 0 16px; border-radius: 14px;">UAH</div>
-                    <div class="custom-dropdown-options">
-                        <div class="custom-dropdown-option" onclick="selectDebtCurrency(event, 'UAH')">UAH</div>
-                        <div class="custom-dropdown-option" onclick="selectDebtCurrency(event, 'USD')">USD</div>
-                    </div>
-                </div>
-            </div>
-            
-            <button class="btn-init-primary" style="margin: 0; height: 56px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" onclick="createNewDebt()">Додати</button>
-        </div>
-    </div>
-</div>
-
-<div id="pay-debt-modal" class="modal-overlay" onclick="closePayDebtModal(event)" style="z-index: 1050;">
-    <div class="modal-content" style="max-width: 420px;" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h3 style="margin: 0; color: var(--sys-red);">Внести платіж</h3>
-            <button class="btn-close-modal" onclick="closePayDebtModal()">✕</button>
-        </div>
-        <p style="color: var(--text-secondary); margin-top: -12px; margin-bottom: 24px;">Введіть суму платежу у валюті боргу. У бюджет витрата піде в гривневому еквіваленті за курсом НБУ.</p>
-        <input type="hidden" id="pay-debt-id">
-        <div class="usd-input-wrapper" style="margin-bottom: 28px;">
-            <span id="pay-debt-currency-symbol" style="color: var(--sys-red); font-size: 24px;">₴</span>
-            <input type="number" id="pay-debt-amount" style="color: var(--sys-red); font-size: 28px;" placeholder="0">
-        </div>
-        <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" onclick="executeDebtPayment()">Погасити</button>
-    </div>
-</div>
-
-<div id="invoices-modal" class="modal-overlay" onclick="closeInvoicesModal(event)" style="z-index: 1050;">
-    <div class="modal-content" style="max-width: 600px; width: 95%; max-height: 90vh;" onclick="event.stopPropagation()">
-        <div class="modal-header" style="margin-bottom: 16px;">
-            <h3 style="margin: 0;">Закупівлі та Постачальники</h3>
-            <button class="btn-close-modal" onclick="closeInvoicesModal()">✕</button>
-        </div>
-        
-        <div class="type-selector" style="margin-bottom: 16px;">
-            <button id="btn-tab-invoices" class="type-btn active" onclick="switchInvoiceTab('invoices')">Інвойси</button>
-            <button id="btn-tab-suppliers" class="type-btn" onclick="switchInvoiceTab('suppliers')">Обіг</button>
-        </div>
-
-        <div id="tab-invoices-content">
-            <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 16px;">
-                <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">+ Додати інвойс</h4>
-                
-                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <div class="custom-dropdown" id="supplier-dropdown-container" style="flex: 1;" onclick="toggleSupplierDropdown(event)">
-                        <div class="custom-dropdown-selected" id="new-invoice-supplier-display" style="height: 48px; padding: 0 32px 0 16px; border-radius: 14px; color: var(--text-secondary); font-weight: 500;">
-                            Оберіть постачальника...
-                        </div>
-                        <div class="custom-dropdown-options" id="new-invoice-supplier-options" style="max-height: 220px;">
-                            </div>
-                    </div>
-                    <input type="hidden" id="new-invoice-supplier-value" value="">
-                    
-                    <button class="btn-init-secondary" style="width: 48px; height: 48px; padding: 0; margin: 0; border-radius: 14px; flex-shrink: 0;" onclick="openNewSupplierModal()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    </button>
-                </div>
-
-                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <input type="date" id="new-invoice-date" class="ios-input" style="flex: 1; height: 48px; padding: 0 12px; color: white;">
-                    <input type="number" id="new-invoice-amount" class="ios-input tabular" placeholder="Сума (₴)" style="flex: 1; height: 48px; padding: 0 12px;">
-                </div>
-                
-                <div class="type-selector" style="margin-bottom: 12px; background: rgba(0,0,0,0.2);">
-                    <button id="btn-inv-cash" class="type-btn active" onclick="selectInvoicePayment('cash')" style="padding: 8px;">Готівка</button>
-                    <button id="btn-inv-card" class="type-btn" onclick="selectInvoicePayment('card')" style="padding: 8px;">Безготівка</button>
-                </div>
-                
-                <input type="hidden" id="new-invoice-payment" value="cash">
-                <button class="btn-init-primary" style="margin: 0; height: 48px; font-size: 15px; background: linear-gradient(135deg, #ff453a, #d70015); color: white; border: none;" onclick="addInvoice()">Зберегти інвойс</button>
-            </div>
-            
-            <div id="invoices-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 38vh; overflow-y: auto; padding-right: 4px;"></div>
-        </div>
-
-<div id="tab-suppliers-content" style="display: none;">
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-weight: 600; color: var(--text-secondary);">Всього закуплено:</span>
-                    <span id="suppliers-total-stat" style="font-weight: 800; font-size: 18px; color: white;">0.00 ₴</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
-                    <span style="color: var(--text-secondary);">Готівка: <span id="suppliers-total-cash" style="color: #ff9f0a; font-weight: 700;">0.00 ₴</span></span>
-                    <span style="color: var(--text-secondary);">Безготівка: <span id="suppliers-total-card" style="color: var(--sys-blue); font-weight: 700;">0.00 ₴</span></span>
-                </div>
-            </div>
-            <div id="suppliers-turnover-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 45vh; overflow-y: auto; padding-right: 4px;"></div>
-        </div>
-    </div>
-</div> <div id="new-supplier-modal" class="modal-overlay" onclick="closeNewSupplierModal(event)" style="z-index: 1100;">
-    <div class="modal-content" style="max-width: 400px; padding: 32px 24px; text-align: center;" onclick="event.stopPropagation()">
-        <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Новий постачальник</h3>
-        <p style="color: var(--text-secondary); font-size: 14px; margin-top: -8px; margin-bottom: 24px;">Введіть назву компанії або ФОП</p>
-        
-        <input type="text" id="new-supplier-name-input" class="ios-input" placeholder="Напр. Епіцентр, ФОП Іванов" style="margin-bottom: 24px; height: 52px; text-align: center;">
-        
-        <div style="display: flex; gap: 12px;">
-            <button class="btn-init-secondary" style="margin: 0; flex: 1;" onclick="closeNewSupplierModal()">Скасувати</button>
-            <button class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; flex: 1; box-shadow: 0 8px 16px rgba(10,132,255,0.3);" onclick="confirmAddSupplier()">Додати</button>
-        </div>
-    </div>
-</div>
-
-<div id="payroll-modal" class="modal-overlay" onclick="closePayrollModal(event)" style="z-index: 1050;">
-    <div class="modal-content" style="max-width: 600px; width: 95%; max-height: 90vh;" onclick="event.stopPropagation()">
-        <div class="modal-header" style="margin-bottom: 16px;">
-            <h3 style="margin: 0;">Зарплатна відомість</h3>
-            <button class="btn-close-modal" onclick="closePayrollModal()">✕</button>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 16px;">
-            <div>
-                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Нараховано загалом:</div>
-                <div id="modal-payroll-accrued" style="font-weight: 700; font-size: 18px; color: white;">0.00 ₴</div>
-            </div>
-            <div style="text-align: right;">
-                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Залишилось виплатити:</div>
-                <div id="modal-payroll-remaining" style="font-weight: 800; font-size: 18px; color: var(--sys-red);">0.00 ₴</div>
-            </div>
-        </div>
-
-        <div id="payroll-list" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; flex: 1;"></div>
-        
-        <button class="btn-add" style="margin-top: 16px; flex-shrink: 0;" onclick="openEmployeeModal(null)">+ Додати співробітника</button>
-    </div>
-</div>
-
-<div id="employee-modal" class="modal-overlay" onclick="closeEmployeeModal(event)" style="z-index: 1100;">
-    <div class="modal-content" style="max-width: 500px; padding: 32px 24px;" onclick="event.stopPropagation()">
-        <div class="modal-header" style="margin-bottom: 24px; display: flex; justify-content: flex-start; gap: 16px;">
-            <button class="btn-close-modal" style="margin: 0;" onclick="closeEmployeeModal()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            </button>
-            <h3 id="employee-modal-title" style="margin: 0; font-size: 22px;">Співробітник</h3>
-        </div>
-        
-        <input type="hidden" id="emp-edit-id">
-        
-        <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; max-height: 50vh; overflow-y: auto; padding-right: 8px;">
-            <div style="display: flex; gap: 12px;">
-                <div style="flex: 2;">
-                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">ПІБ / Посада</label>
-                    <input type="text" id="emp-edit-name" class="ios-input" placeholder="Напр. Іванов І.">
-                </div>
-                <div style="flex: 1;">
-                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">ІПН</label>
-                    <input type="text" id="emp-edit-tax" class="ios-input" placeholder="0000000000">
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 12px;">
-                <div style="flex: 1;">
-                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Ставка / год (₴)</label>
-                    <input type="number" id="emp-edit-rate" class="ios-input tabular" placeholder="0">
-                </div>
-                <div style="flex: 1;">
-                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Відпрацьовано годин</label>
-                    <input type="number" id="emp-edit-hours" class="ios-input tabular" placeholder="0">
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 12px;">
-                <div style="flex: 1;">
-                    <label style="font-size: 11px; color: var(--sys-green); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Премія (₴)</label>
-                    <input type="number" id="emp-edit-bonus" class="ios-input tabular" placeholder="0" style="color: var(--sys-green); border-color: rgba(46,160,67,0.3);">
-                </div>
-                <div style="flex: 1;">
-                    <label style="font-size: 11px; color: var(--sys-red); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Штраф (₴)</label>
-                    <input type="number" id="emp-edit-penalty" class="ios-input tabular" placeholder="0" style="color: var(--sys-red); border-color: rgba(255,69,58,0.3);">
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 12px;">
-                <div style="flex: 1;">
-                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Виплачено аванс (₴)</label>
-                    <input type="number" id="emp-edit-advance" class="ios-input tabular" placeholder="0">
-                </div>
-                <div style="flex: 1;">
-                    <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Оплачено частину (₴)</label>
-                    <input type="number" id="emp-edit-paidpart" class="ios-input tabular" placeholder="0">
-                </div>
-            </div>
-
-            <div>
-                <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; display: block;">Рахунок / Картка для виплати</label>
-                <input type="text" id="emp-edit-account" class="ios-input" placeholder="IBAN або номер картки">
-            </div>
-        </div>
-
-        <button class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; box-shadow: 0 8px 16px rgba(10,132,255,0.3); height: 56px; font-size: 16px;" onclick="saveEmployee()">Зберегти дані</button>
-    </div>
-</div>
-
-<div id="analytics-modal" class="modal-overlay" onclick="closeAnalyticsModal(event)">
-    <div class="modal-content" style="max-width: 850px; width: 95%; padding: 32px;" onclick="event.stopPropagation()">
-        <div class="modal-header" style="margin-bottom: 24px;">
-            <h3 style="margin: 0;">Динаміка бюджету</h3>
-            <button class="btn-close-modal" onclick="closeAnalyticsModal()">✕</button>
-        </div>
-        
-        <div class="chart-container" style="height: 50vh; min-height: 400px; width: 100%; margin: 0; transition: none;">
-            <canvas id="analyticsChartCanvas"></canvas>
-        </div>
-    </div>
-</div>
-
-<div id="ai-export-modal" class="modal-overlay" onclick="closeAiExportModal(event)" style="z-index: 1200;">
-    <div class="modal-content" style="max-width: 450px;" onclick="event.stopPropagation()">
-        <div class="modal-header" style="margin-bottom: 16px;">
-            <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #bf5af2;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L10.088 8.813A2 2 0 0 1 8.813 10.088L3 12L8.813 13.912A2 2 0 0 1 10.088 15.187L12 21L13.912 15.187A2 2 0 0 1 15.187 13.912L21 12L15.187 10.088A2 2 0 0 1 13.912 8.813L12 3Z"/></svg>
-                Аналіз від ШІ
-            </h3>
-            <button class="btn-close-modal" onclick="closeAiExportModal()">✕</button>
-        </div>
-        
-        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 0; margin-bottom: 24px; line-height: 1.4;">
-            Отримайте персональні фінансові поради. Оберіть період, ми згенеруємо промпт з вашими цифрами — просто скопіюйте його та вставте в ChatGPT, Claude або Gemini.
-        </p>
-
-        <div class="type-selector" style="margin-bottom: 24px;">
-            <button id="btn-ai-month" class="type-btn active" onclick="selectAiExportType('month')">За цей місяць</button>
-            <button id="btn-ai-all" class="type-btn" onclick="selectAiExportType('all')">За весь час</button>
-        </div>
-        <input type="hidden" id="ai-export-type" value="month">
-
-        <button class="btn-init-primary" id="btn-ai-copy" style="margin: 0; height: 56px; font-size: 16px; background: linear-gradient(135deg, #bf5af2, #5e5ce6); color: white; border: none; box-shadow: 0 8px 16px rgba(191, 90, 242, 0.3); display: flex; justify-content: center; align-items: center; gap: 8px;" onclick="generateAndCopyAiPrompt()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            <span id="ai-copy-text">Скопіювати промпт для ШІ</span>
-        </button>
-
-        <div style="text-align: center; margin: 16px 0 8px 0; color: var(--text-tertiary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Або для збільшення доходу</div>
-        <button class="btn-init-secondary" id="btn-ai-growth-copy" style="margin: 0; height: 56px; font-size: 15px; color: #32d74b; background: linear-gradient(135deg, rgba(50, 215, 75, 0.1), rgba(50, 215, 75, 0.15)); border-color: rgba(50, 215, 75, 0.2); display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%; transition: 0.3s;" onclick="generateAndCopyGrowthPrompt()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-            <span id="ai-growth-copy-text">Промпт: Стратегія Росту</span>
-        </button>
-
-    </div>
-</div>
-
-<div id="growth-modal" class="modal-overlay" onclick="closeGrowthModal(event)" style="z-index: 1300;">
-    <div class="modal-content" style="max-width: 520px; max-height: 90vh; overflow-y: hidden; display: flex; flex-direction: column; padding: 32px 24px;" onclick="event.stopPropagation()">
-        <div class="modal-header" style="margin-bottom: 16px;">
-            <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #32d74b;">
-                🎯 Стратегія росту
-            </h3>
-            <button class="btn-close-modal" onclick="closeGrowthModal()">✕</button>
-        </div>
-        
-        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 24px; overflow: hidden;">
-            <div id="growth-progress-bar" style="width: 14%; height: 100%; background: linear-gradient(90deg, var(--sys-green), #1e702e); transition: width 0.4s ease;"></div>
-        </div>
-
-        <div id="growth-steps-container" style="flex: 1; overflow-y: auto; overflow-x: hidden; padding-right: 8px; padding-bottom: 20px;">
-            
-            <div class="growth-step" id="growth-step-1">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sys-blue)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="10" r="3"></circle><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"></path></svg>
-                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Точка А</h2>
-                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Хто ви зараз та як отримуєте гроші?</p>
-                </div>
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Ваша поточна посада / Ніша</label>
-                <input type="text" id="growth-job" class="ios-input" placeholder="Напр. Senior QA, Власник кав'ярні" style="margin-bottom: 24px; font-size: 16px; padding: 20px;">
-                
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Тип вашого доходу зараз (можна декілька)</label>
-                
-                <div class="choice-group" id="growth-income-type">
-                    <div class="choice-item" data-value="Лінійний (фіксована ЗП за час)" onclick="toggleChoice(this, true)">
-                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                        <span>Лінійний (фіксована ЗП за ваш час)</span>
-                    </div>
-                    <div class="choice-item" data-value="Відрядний (% від продажів / проєкти)" onclick="toggleChoice(this, true)">
-                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                        <span>Відрядний (% від продажів / проєкти)</span>
-                    </div>
-                    <div class="choice-item" data-value="Масштабований (бізнес / пасивний)" onclick="toggleChoice(this, true)">
-                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                        <span>Масштабований (бізнес / пасивний)</span>
-                    </div>
-                </div>
-
-                <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px;" onclick="nextGrowthStep(1)">Далі</button>
-            </div>
-
-            <div class="growth-step" id="growth-step-2" style="display: none;">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ff9f0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Точка Б</h2>
-                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Куди ми йдемо та як швидко?</p>
-                </div>
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Цільовий чистий дохід на місяць</label>
-                <input type="text" id="growth-target-income" class="ios-input" placeholder="Напр. $5000" style="margin-bottom: 24px; font-size: 16px; padding: 20px;">
-                
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Бажаний період досягнення</label>
-                
-                <div class="choice-group" id="growth-period">
-                    <div class="choice-item" data-value="Спринт (3 місяці)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Спринт (3 місяці)</span>
-                    </div>
-                    <div class="choice-item selected" data-value="Півріччя (6 місяців)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Півріччя (6 місяців)</span>
-                    </div>
-                    <div class="choice-item" data-value="Рік (12 місяців)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Рік (12 місяців)</span>
-                    </div>
-                    <div class="choice-item" data-value="Довгостроково (3-5 років)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Довгостроково (3-5 років)</span>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 12px;">
-                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(2)">Назад</button>
-                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(2)">Далі</button>
-                </div>
-            </div>
-
-            <div class="growth-step" id="growth-step-3" style="display: none;">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Суперсила</h2>
-                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">В чому ви кращі за 90% інших?</p>
-                </div>
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Ваша Зона Геніальності (Навички)</label>
-                <textarea id="growth-skills" class="ios-input" placeholder="Що вам дається легко, а іншим важко? Які у вас топ-навички та мови? (Напр. Автоматизація тестів, English C1, перемовини)" style="margin-bottom: 24px; font-size: 16px; padding: 20px; height: 140px; resize: none;"></textarea>
-                
-                <div style="display: flex; gap: 12px;">
-                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(3)">Назад</button>
-                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(3)">Далі</button>
-                </div>
-            </div>
-
-            <div class="growth-step" id="growth-step-4" style="display: none;">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
-                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Вектор та Ринок</h2>
-                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Куди саме ми б'ємо?</p>
-                </div>
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Головний фокус зростання (можна декілька)</label>
-                
-                <div class="choice-group" id="growth-vector">
-                    <div class="choice-item" data-value="Вертикальний (ріст ЗП на поточній роботі)" onclick="toggleChoice(this, true)">
-                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                        <span>Вертикальний (ріст ЗП на роботі)</span>
-                    </div>
-                    <div class="choice-item" data-value="Горизонтальний (нова компанія / сфера)" onclick="toggleChoice(this, true)">
-                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                        <span>Горизонтальний (нова компанія / сфера)</span>
-                    </div>
-                    <div class="choice-item" data-value="Автономний (фріланс / консалтинг)" onclick="toggleChoice(this, true)">
-                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                        <span>Автономний (фріланс / консалтинг)</span>
-                    </div>
-                    <div class="choice-item" data-value="Бізнес (своє агентство / стартап)" onclick="toggleChoice(this, true)">
-                        <div class="check-indicator"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                        <span>Бізнес (своє агентство / стартап)</span>
-                    </div>
-                </div>
-                
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Цільовий ринок</label>
-                <div class="choice-group" id="growth-market" style="margin-bottom: 32px;">
-                    <div class="choice-item" data-value="Локальний (Свій регіон)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Локальний (Свій регіон)</span>
-                    </div>
-                    <div class="choice-item" data-value="Глобальний (США, Європа, Remote)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Глобальний (США, Європа, Remote)</span>
-                    </div>
-                    <div class="choice-item selected" data-value="Де більше платять" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Там, де більше платять</span>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 12px;">
-                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(4)">Назад</button>
-                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(4)">Далі</button>
-                </div>
-            </div>
-
-            <div class="growth-step" id="growth-step-5" style="display: none;">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#66d4cf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Ресурси</h2>
-                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Скільки пального в баку?</p>
-                </div>
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Вільний час на тиждень для розвитку</label>
-                <div class="choice-group" id="growth-time">
-                    <div class="choice-item" data-value="0-2 години (Мінімум часу)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>0-2 години (Дуже зайнятий)</span>
-                    </div>
-                    <div class="choice-item selected" data-value="3-5 годин (Готовий виділяти вечори)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>3-5 годин (Готовий виділяти вечори)</span>
-                    </div>
-                    <div class="choice-item" data-value="10+ годин (Готовий багато працювати)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>10+ годин (Готовий пахати)</span>
-                    </div>
-                </div>
-
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Готовність інвестувати гроші в себе</label>
-                <div class="choice-group" id="growth-investment" style="margin-bottom: 32px;">
-                    <div class="choice-item" data-value="Тільки безкоштовні шляхи" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Тільки безкоштовні шляхи (бюджету немає)</span>
-                    </div>
-                    <div class="choice-item selected" data-value="Готовий вкладати до 10% доходу" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Готовий вкладати до 10% доходу (курси)</span>
-                    </div>
-                    <div class="choice-item" data-value="Готовий агресивно інвестувати гроші" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Готовий агресивно купувати швидкість</span>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 12px;">
-                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(5)">Назад</button>
-                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(5)">Далі</button>
-                </div>
-            </div>
-
-            <div class="growth-step" id="growth-step-6" style="display: none;">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sys-blue)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Оточення</h2>
-                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">З ким ви спілкуєтесь?</p>
-                </div>
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Оцініть своє професійне оточення</label>
-                
-                <div class="choice-group" id="growth-environment" style="margin-bottom: 32px;">
-                    <div class="choice-item" data-value="Я 'найрозумніший у кімнаті' (немає за ким тягнутися)" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span style="line-height: 1.4;">Я "найрозумніший у кімнаті" (немає за ким тягнутися)</span>
-                    </div>
-                    <div class="choice-item selected" data-value="Є кілька людей мого рівня" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span>Є кілька людей мого рівня</span>
-                    </div>
-                    <div class="choice-item" data-value="Маю доступ до людей, що заробляють в 3-5 разів більше" onclick="toggleChoice(this, false)">
-                        <div class="radio-indicator"></div><span style="line-height: 1.4;">Доступ до людей, що заробляють в 3-5 разів більше</span>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 12px;">
-                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(6)">Назад</button>
-                    <button class="btn-init-primary" style="margin: 0; flex: 1; height: 60px; font-size: 18px;" onclick="nextGrowthStep(6)">Далі</button>
-                </div>
-            </div>
-
-            <div class="growth-step" id="growth-step-7" style="display: none;">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sys-red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    <h2 style="font-size: 24px; margin-bottom: 8px; letter-spacing: -0.5px;">Головний саботаж</h2>
-                    <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Від якої дискомфортної дії ви тікаєте?</p>
-                </div>
-                <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Що вам заважає прямо зараз?</label>
-                <textarea id="growth-barrier" class="ios-input" placeholder="Напр. Боюсь попросити підвищення, не вмію себе продавати, вигорання, страх перед Upwork..." style="margin-bottom: 32px; font-size: 16px; padding: 20px; height: 140px; resize: none;"></textarea>
-                
-                <div style="display: flex; gap: 12px;">
-                    <button class="btn-init-secondary" style="margin: 0; width: 30%; height: 60px;" onclick="prevGrowthStep(7)">Назад</button>
-                    <button class="btn-init-primary btn-green" style="margin: 0; flex: 1; height: 60px; font-size: 17px;" onclick="saveGrowthProfile()">Зберегти та Згенерувати 🚀</button>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-<div id="changelog-modal" class="auth-glass-overlay" style="z-index: 10000; background: rgba(0,0,0,0.7) !important; -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px);" onclick="closeChangelogModal(event)">
-    <div class="auth-card" style="max-width: 500px; max-height: 85vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
-        <div class="auth-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; text-align: left;">
-            <div>
-                <h2 class="auth-title" style="font-size: 24px; margin-bottom: 4px;">Що нового? 🚀</h2>
-                <p class="auth-subtitle">Останні оновлення сервісу</p>
-            </div>
-            <button class="btn-close-modal" style="margin: 0; align-self: flex-start; border: 1px solid rgba(255,255,255,0.1);" onclick="closeChangelogModal()">✕</button>
-        </div>
-        
-        <div id="changelog-list" style="overflow-y: auto; padding-right: 8px; flex: 1; margin-bottom: 16px;"></div>
-        
-        <button class="btn-init-primary" onclick="closeChangelogModal()">Зрозуміло</button>
-    </div>
-</div>
-
-<div id="auth-overlay" class="auth-glass-overlay">
-    <div class="auth-stats-badge" id="auth-stats-badge" style="display: none;">
-        <div class="pulse-dot" style="display: inline-block;"></div>
-        Створено профілів: <span id="auth-stats-count" style="margin-left: 6px; font-weight: 700; color: white;">0</span>
-    </div>
-
-    <div class="auth-hero">
-        <h1 class="auth-hero-title">Аналіз та стратегія вашого капіталу</h1>
-        <p class="auth-hero-subtitle">Все в одному рішенні</p>
-        
-<div style="font-size: 14px; color: var(--sys-green); background: rgba(46, 160, 67, 0.1); border: 1px solid rgba(46, 160, 67, 0.2); padding: 14px 20px; border-radius: 20px; max-width: 380px; margin: 0 auto 24px auto; line-height: 1.5; font-weight: 500;">
-            Проєкт на 100% безкоштовний. Створений на чистому ентузіазмі з надією, що він принесе вам реальну користь
-        </div>
-
-        <a href="guide.html" target="_blank" class="auth-hero-guide">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            <span>Інструкція користувача</span>
-        </a>
-
-        <div style="margin-top: 16px;">
-            <button class="auth-hero-changelog" onclick="openChangelogModal()">
-                <span class="pulse-dot" style="margin-right: 8px; width: 6px; height: 6px; box-shadow: 0 0 6px var(--sys-green); display: inline-block;"></span>
-                🔥 Оновлення
-            </button>
-        </div>
-    </div>
-
-    <div class="auth-card">
-        <div class="auth-header">
-            <div class="auth-icon">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            </div>
-            <h2 class="auth-title">Вхід у систему</h2>
-            <p class="auth-subtitle">Введіть email для отримання коду</p>
-        </div>
-        
-        <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px;">
-            <input type="email" id="login-email" class="ios-input" placeholder="Ваш Email" autocomplete="email">
-            <div id="login-error" style="color: var(--sys-red); font-size: 14px; text-align: center; display: none; font-weight: 600;"></div>
-        </div>
-        
-        <button class="btn-init-primary" id="btn-login-send" onclick="sendAuthOtp(false)">Отримати код</button>
-        <button class="btn-init-secondary" style="margin-top: 12px;" onclick="showCreateProfileFromAuth()">
-            Створити новий профіль
-        </button>
-    </div>
-    <div class="auth-footer-security">
-        <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
-        </svg>
-        За безпеку даних відповідає Cloudflare
-    </div>
-
-    <a href="https://send.monobank.ua/jar/j1zt56TSC" target="_blank" class="floating-donate-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-        <span>Підтримати розвиток</span>
-    </a>
-</div>
-
-<div id="create-profile-overlay" class="auth-glass-overlay">
-    <div class="auth-card">
-        <div class="auth-header">
-            <div class="auth-icon">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
-            </div>
-            <h2 class="auth-title">Новий профіль</h2>
-            <p class="auth-subtitle">Почніть керувати бюджетом</p>
-        </div>
-        
-        <div class="type-selector">
-            <button id="btn-type-personal" class="type-btn active" onclick="selectProfileType('personal')">Для себе</button>
-            <button id="btn-type-business" class="type-btn" onclick="selectProfileType('business')">Для бізнесу</button>
-        </div>
-        <input type="hidden" id="new-user-type" value="personal">
-
-        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
-            <input type="text" id="new-user-name" class="ios-input" placeholder="Ім'я / Назва">
-            <input type="text" id="new-user-surname" class="ios-input" placeholder="Прізвище / Сфера">
-            <input type="email" id="new-user-email" class="ios-input" placeholder="Email (для входу)">
-        </div>
-        
-        <div id="create-error" style="color: white; font-size: 14px; margin-bottom: 20px; text-align: center; display: none; font-weight: 700; background: linear-gradient(135deg, #ff453a, #d70015); padding: 14px; border-radius: 14px; box-shadow: 0 4px 12px rgba(255,69,58,0.3);"></div>
-
-        <button class="btn-init-primary" id="btn-create-send" style="height: 60px; font-size: 18px;" onclick="sendAuthOtp(true)">Отримати код</button>
-        <button class="btn-init-secondary" style="background: transparent;" onclick="hideCreateProfile()">Скасувати</button>
-    </div>
-    <div class="auth-footer-security">
-        <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
-        </svg>
-        За безпеку даних відповідає Cloudflare
-    </div>
-</div>
-
-<div id="otp-overlay" class="auth-glass-overlay">
-    <div class="auth-card">
-        <div class="auth-header">
-            <div class="auth-icon">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            </div>
-            <h2 class="auth-title">Введіть код</h2>
-            <p class="auth-subtitle" id="otp-subtitle">Код відправлено на пошту</p>
-        </div>
-        
-        <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px;">
-            <input type="text" id="otp-input" class="ios-input otp-input" placeholder="000000" maxlength="6" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-            <div id="otp-error" style="color: var(--sys-red); font-size: 14px; text-align: center; display: none; font-weight: 600;"></div>
-        </div>
-        
-        <button class="btn-init-primary" id="btn-otp-verify" onclick="verifyAuthOtp()">Підтвердити</button>
-        <button class="btn-init-secondary" id="btn-otp-resend" style="margin-top: 12px; display: none;" onclick="resendOtp()">Відправити повторно</button>
-        <button class="btn-init-secondary" style="margin-top: 12px; background: transparent;" onclick="cancelOtp()">Скасувати</button>
-    </div>
-    <div class="auth-footer-security">
-        <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
-        </svg>
-        За безпеку даних відповідає Cloudflare
-    </div>
-</div>
-
-<div id="account-select-overlay" class="auth-glass-overlay">
-    <div class="auth-card">
-        <div class="auth-header">
-            <div class="auth-icon">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            </div>
-            <h2 class="auth-title">Виберіть профіль</h2>
-            <p class="auth-subtitle">На цю пошту знайдено кілька акаунтів</p>
-        </div>
-        
-        <div id="account-select-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px;"></div>
-        
-        <button class="btn-init-secondary" style="background: transparent;" onclick="cancelAccountSelect()">Скасувати</button>
-    </div>
-    <div class="auth-footer-security">
-        <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
-        </svg>
-        За безпеку даних відповідає Cloudflare
-    </div>
-</div>
-<div id="schedule-modal" class="modal-overlay" onclick="closeScheduleModal(event)">
-    <div class="modal-content" style="max-width: 900px; width: 95%; padding: 24px;" onclick="event.stopPropagation()">
-        <div class="modal-header" style="margin-bottom: 16px;">
-            <h3 style="margin: 0;">Графік платежів</h3>
-            <button class="btn-close-modal" onclick="closeScheduleModal()">✕</button>
-        </div>
-        
-        <div class="schedule-matrix-wrapper" id="schedule-matrix-container">
-            </div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 16px; margin-top: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="font-weight: 700; color: var(--text-secondary); font-size: 15px;">Всього залишилося розпланувати:</div>
-            <div style="text-align: right;">
-                <span id="schedule-global-remaining" class="tabular" style="font-weight: 800; font-size: 18px; color: var(--text-primary);">0.00 ₴</span>
-                <span style="font-size: 12px; color: var(--text-tertiary); margin-left: 8px;">(в еквіваленті)</span>
-            </div>
-        </div>
-
-        <div style="margin-top: 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.4;">
-            <strong>Підказка:</strong> Ви можете змінювати порядок боргів, перетягуючи їх за іконку ≡ зліва.<br>
-            Зелені суми — це вже зафіксовані (оплачені) витрати у відповідних місяцях.
-        </div>
-    </div>
-</div>
-
-<script>
-    function loadAuthStats() { /* /api/stats removed */ }
+function loadAuthStats() { /* /api/stats removed */ }
 
 
     function renderChangelog() {
@@ -2431,28 +107,15 @@
     }
 
     // ==========================================
-    // 2. УТИЛИТЫ И БАЗОВЫЕ ФУНКЦИИ
+    // 2. УТИЛІТИ ТА БАЗОВІ ФУНКЦІЇ
     // ==========================================
-    function formatMoney(amount) {
-        return Number(amount || 0).toLocaleString('uk-UA', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-    }
-
-    function formatNumberShort(num) {
-        if (num === 0) return '0.00';
-        if (num >= 1000000) return formatMoney(num / 1000000) + ' млн';
-        if (num >= 1000) return formatMoney(num / 1000) + ' тис.';
-        return formatMoney(num);
-    }
 
     window.addEventListener('click', function() {
         document.querySelectorAll('.custom-dropdown').forEach(el => el.classList.remove('open'));
     });
 
     // ==========================================
-    // 3. ИНИЦИАЛИЗАЦИЯ
+    // 3. ІНІЦІАЛІЗАЦІЯ
     // ==========================================
     async function init() {
         fetchExchangeRate();
@@ -2529,7 +192,7 @@
     }
 
     // ==========================================
-    // 4. АВТОРИЗАЦИЯ И API
+    // 4. АВТОРИЗАЦІЯ ТА API
     // ==========================================
     function startOtpCountdown(btnId, seconds) {
         const btn = document.getElementById(btnId);
@@ -7118,6 +4781,209 @@ function generatePayrollSparklineHTML(currentTotal) {
             fallbackCopy(prompt);
         }
     }
-</script>    
-</body>
-</html>
+
+// Inline HTML handlers (onclick/onload) need window globals in ES modules.
+Object.assign(window, {
+  addCategory,
+  addIncome,
+  addInvoice,
+  addSubItem,
+  applyMonthData,
+  applyUIForAccountType,
+  buildBucketDropdownHtml,
+  buildDropdownOptionsHtml,
+  buildJarTypeDropdownHtml,
+  calc502030,
+  calcYearsToCapital,
+  cancelAccountSelect,
+  cancelOtp,
+  changeYear,
+  checkGrowthPromptButtonState,
+  clearCurrentMonth,
+  closeAiExportModal,
+  closeAnalyticsModal,
+  closeChangelogModal,
+  closeConfirmModal,
+  closeDebtsModal,
+  closeEmployeeModal,
+  closeEnvelopesModal,
+  closeGrowthModal,
+  closeInvoicesModal,
+  closeModal,
+  closeNewSupplierModal,
+  closePayDebtModal,
+  closePayrollModal,
+  closeProfileSwitcher,
+  closeScheduleModal,
+  closeTransferModal,
+  confirmAddSupplier,
+  convertCurrency,
+  copyAccountToClipboard,
+  createNewDebt,
+  createNewEnvelope,
+  deleteCategory,
+  deleteDebt,
+  deleteEmployee,
+  deleteEnvelope,
+  deleteIncome,
+  deleteInvoice,
+  deleteProfile,
+  deleteSubItem,
+  enqueueSave,
+  escapeAttr,
+  escapeHtml,
+  executeConfirm,
+  executeDebtPayment,
+  executeTransfer,
+  fetchAvailableProfiles,
+  fetchExchangeRate,
+  filterSuppliers,
+  flushSaveToServer,
+  formatMoney,
+  formatNumberShort,
+  formatYearsLabel,
+  fpProgressBar,
+  generateAiDataForMonth,
+  generateAiFinancialPlanSection,
+  generateAndCopyAiPrompt,
+  generateAndCopyGrowthPrompt,
+  generateIncomeSparklineHTML,
+  generateInvoicesSparklineHTML,
+  generatePayrollSparklineHTML,
+  generateProfitSparklineHTML,
+  generateScheduleMonths,
+  generateSparklineHTML,
+  get502030Actuals,
+  get502030ActualsFromExpenses,
+  getCategoryBudgetBucket,
+  getCategoryTotal,
+  getChoiceValues,
+  getCushionBalanceUah,
+  getFinancialPlan,
+  getHistoricalCogs,
+  getHistoricalDebtBalance,
+  getHistoricalIncome,
+  getHistoricalPayroll,
+  getHistoricalProfit,
+  getInvestmentJarsBalanceUah,
+  getJarType,
+  getJarTypeOptions,
+  getLastInitializedData,
+  getMonthIncomeUah,
+  getTop3SubItems,
+  handleScheduleDragEnd,
+  handleScheduleDragLeave,
+  handleScheduleDragOver,
+  handleScheduleDragStart,
+  handleScheduleDrop,
+  hardDeleteDebt,
+  hideCreateProfile,
+  init,
+  initChart,
+  initNewJarTypeDropdown,
+  initializeMonth,
+  isDebtActiveInCurrentMonth,
+  jsId,
+  loadAuthStats,
+  loadDataFromServer,
+  logout,
+  newId,
+  nextGrowthStep,
+  openAiExportModal,
+  openAnalyticsModal,
+  openChangelogModal,
+  openDebtsModal,
+  openEmployeeModal,
+  openEnvelopesModal,
+  openGrowthModal,
+  openInvoicesModal,
+  openModal,
+  openNewSupplierModal,
+  openPayrollModal,
+  openScheduleModal,
+  openTransferModal,
+  payDebt,
+  performLogin,
+  prevGrowthStep,
+  renderAnalyticsChart,
+  renderCalendar,
+  renderChangelog,
+  renderDebts,
+  renderEnvelopes,
+  renderExpenses,
+  renderFinancialPlanBlock,
+  renderIncomes,
+  renderInvoices,
+  renderModalItems,
+  renderPayroll,
+  renderScheduleModal,
+  renderSuppliersDropdown,
+  renderSuppliersTurnover,
+  resendOtp,
+  saveData,
+  saveDataToServer,
+  saveEmployee,
+  saveFinancialPlan,
+  saveGlobalData,
+  saveGrowthProfile,
+  scheduleSaveToServer,
+  selectAiExportType,
+  selectCOGSType,
+  selectCategoryBucket,
+  selectCurrency,
+  selectDebtCurrency,
+  selectInvoicePayment,
+  selectJarTypeDropdown,
+  selectMonth,
+  selectNewJarType,
+  selectProfileType,
+  selectSupplier,
+  selectTransferJar,
+  sendAuthOtp,
+  setCategoryBudgetBucket,
+  setChoiceValues,
+  setJarType,
+  showAccountSelect,
+  showAuthScreen,
+  showConfirm,
+  showCreateProfile,
+  showCreateProfileFromAuth,
+  showError,
+  showGrowthStep,
+  startOtpCountdown,
+  switchInvoiceTab,
+  switchProfile,
+  syncGlobalDebtBalance,
+  toggleChoice,
+  toggleEmployeePaid,
+  toggleFinancialPlanSettings,
+  togglePaidStatus,
+  toggleProfileSwitcher,
+  toggleRule502030Details,
+  toggleSchedulePaid,
+  toggleSupplierDropdown,
+  uahToUsd,
+  updateAll,
+  updateBusinessHours,
+  updateCOGS,
+  updateCategoryName,
+  updateChart,
+  updateDebtsDisplay,
+  updateFinancialPlanField,
+  updateGlobalScheduleRemaining,
+  updateIncome,
+  updateMainJarBalance,
+  updateProfileSwitcherUI,
+  updateSavingsDisplay,
+  updateScheduleAmount,
+  updateSubItemAmount,
+  updateSubItemName,
+  updateTopSubItemBadges,
+  usdToUah,
+  verifyAuthOtp
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+});
+
