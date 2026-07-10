@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MySkrynia</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com; connect-src 'self' https://api.myskrynia.com.ua https://bank.gov.ua; font-src 'self' data:;">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%232c2c2e%22/><text y=%2265%22 x=%2220%22 font-size=%2260%22>💎</text></svg>">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         /* Заборона ланцюгового скролу (scroll bleed) для внутрішніх скролів */
@@ -1341,6 +1343,7 @@
     let tempAuthData = null; 
     let otpTimer = null;
     let saveTimeout = null;
+    let saveQueue = Promise.resolve();
     let availableProfiles = [];
 
     function escapeHtml(str) {
@@ -1360,6 +1363,13 @@
             .replace(/\r/g, '\\r')
             .replace(/</g, '\\u003c')
             .replace(/>/g, '\\u003e');
+    }
+    function newId() {
+        return crypto.randomUUID();
+    }
+
+    function jsId(id) {
+        return "'" + escapeAttr(String(id)) + "'";
     }
 </script>
 
@@ -2386,34 +2396,8 @@
 </div>
 
 <script>
-    async function loadAuthStats() {
-        try {
-            const response = await fetch(`${API_URL}/api/stats`);
-            const data = await response.json();
-            
-            if (data.success && data.total > 0) {
-                const badge = document.getElementById('auth-stats-badge');
-                const counterElement = document.getElementById('auth-stats-count');
-                badge.style.display = 'flex'; 
-                
-                let startValue = 0;
-                const endValue = data.total;
-                const duration = 1500; 
-                const stepTime = Math.abs(Math.floor(duration / endValue)); 
-                
-                const timer = setInterval(() => {
-                    startValue += 1;
-                    counterElement.innerText = startValue;
-                    if (startValue >= endValue) {
-                        clearInterval(timer);
-                        counterElement.innerText = endValue;
-                    }
-                }, stepTime > 0 ? stepTime : 10);
-            }
-        } catch (e) {
-            console.error("Помилка завантаження статистики", e);
-        }
-    }
+    function loadAuthStats() { /* /api/stats removed */ }
+
 
     function renderChangelog() {
         const list = document.getElementById('changelog-list');
@@ -2575,7 +2559,6 @@
         document.getElementById('login-email').value = '';
         document.getElementById('login-error').style.display = 'none';
         
-        loadAuthStats(); 
     }
 
     function showCreateProfile() {
@@ -3024,7 +3007,7 @@ if (!globalData.debts) globalData.debts = {};
             if (globalData.jars[userId].length === 0) {
                 const isBiz = currentUser.account_type === 'business';
                 globalData.jars[userId] = [{
-                    id: Date.now(), name: isBiz ? "Основний фонд" : "Мої заощадження", goal: 0, balance: 0, isMain: true
+                    id: newId(), name: isBiz ? "Основний фонд" : "Мої заощадження", goal: 0, balance: 0, isMain: true
                 }];
             }
 
@@ -3117,6 +3100,13 @@ async function flushSaveToServer(year, month) {
         }
     }
 
+    function enqueueSave(year, month) {
+        saveQueue = saveQueue
+            .then(() => flushSaveToServer(year, month))
+            .catch((e) => console.error("Помилка черги збереження:", e));
+        return saveQueue;
+    }
+
     function scheduleSaveToServer() {
         if (!currentUser) return;
 
@@ -3125,9 +3115,9 @@ async function flushSaveToServer(year, month) {
 
         if (saveTimeout) clearTimeout(saveTimeout);
 
-        saveTimeout = setTimeout(async () => {
+        saveTimeout = setTimeout(() => {
             saveTimeout = null;
-            await flushSaveToServer(year, month);
+            enqueueSave(year, month);
         }, 1000);
     }
 
@@ -3145,7 +3135,7 @@ async function flushSaveToServer(year, month) {
                 clearTimeout(saveTimeout);
                 saveTimeout = null;
             }
-            await flushSaveToServer(currentYear, currentMonth);
+            await enqueueSave(currentYear, currentMonth);
         } else {
             scheduleSaveToServer();
         }
@@ -3273,7 +3263,7 @@ function logout() {
                 
                 appData[currentYear][currentMonth] = {
                     initialized: true,
-                    incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: Date.now(), name: "Основний", amount: prev.data.usd || 0, currency: "USD" }])),
+                    incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: newId(), name: "Основний", amount: prev.data.usd || 0, currency: "USD" }])),
                     expenses: copiedExpenses,
                     cogs: JSON.parse(JSON.stringify(prev.data.cogs || {type:'percent', value:0})),
                     payroll: copiedPayroll // <-- ДОДАНО СЮДИ
@@ -3282,7 +3272,7 @@ function logout() {
         } else {
             appData[currentYear][currentMonth] = {
                 initialized: true,
-                incomes: [{id: Date.now(), name: "Основний", amount: 0, currency: "UAH"}],
+                incomes: [{id: newId(), name: "Основний", amount: 0, currency: "UAH"}],
                 expenses: JSON.parse(JSON.stringify(defaultCategories)),
                 cogs: {type: 'percent', value: 0},
                 payroll: [] // Додали масив для чистого місяця
@@ -3362,7 +3352,7 @@ function logout() {
             document.getElementById('main-dashboard').classList.remove('blurred');
             document.getElementById('init-overlay').classList.remove('active');
             
-            if (!data.incomes) data.incomes = [{ id: Date.now(), name: "Основний", amount: data.usd || 0, currency: "USD" }];
+            if (!data.incomes) data.incomes = [{ id: newId(), name: "Основний", amount: data.usd || 0, currency: "USD" }];
 
             expenses = data.expenses || [];
 
@@ -3451,7 +3441,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             <div class="custom-dropdown ${cls}" onclick="event.stopPropagation(); this.classList.toggle('open')">
                 <div class="custom-dropdown-selected">${escapeHtml(selectedLabel)}</div>
                 <div class="custom-dropdown-options">
-                    ${buildDropdownOptionsHtml(getJarTypeOptions(), selectedValue, (val) => `selectJarTypeDropdown(event, ${jarId}, '${val}')`)}
+                    ${buildDropdownOptionsHtml(getJarTypeOptions(), selectedValue, (val) => `selectJarTypeDropdown(event, ${jsId(jarId)}, '${val}')`)}
                 </div>
             </div>
         `;
@@ -3468,7 +3458,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             <div class="custom-dropdown compact-xs" onclick="event.stopPropagation(); this.classList.toggle('open')">
                 <div class="custom-dropdown-selected">${escapeHtml(BUDGET_BUCKET_LABELS[selectedValue] || BUDGET_BUCKET_LABELS.needs)}</div>
                 <div class="custom-dropdown-options">
-                    ${buildDropdownOptionsHtml(items, selectedValue, (val) => `selectCategoryBucket(event, ${categoryId}, '${val}')`)}
+                    ${buildDropdownOptionsHtml(items, selectedValue, (val) => `selectCategoryBucket(event, ${jsId(categoryId)}, '${val}')`)}
                 </div>
             </div>
         `;
@@ -3827,17 +3817,17 @@ if (isBiz) {
                 div.style = "padding: 16px; margin-bottom: 16px; flex-direction: column; align-items: stretch; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);";
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%;">
-                        <input type="text" class="input-name" value="${escapeHtml(inc.name)}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Назва рахунку (напр. ФОП)" style="flex: 1; height: 48px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0 16px; font-size: 16px; font-weight: 600; color: white; outline: none; transition: 0.3s;" onfocus="this.style.backgroundColor='rgba(0,0,0,0.3)'; this.style.borderColor='var(--sys-blue)';">
+                        <input type="text" class="input-name" value="${escapeHtml(inc.name)}" oninput="updateIncome(${jsId(inc.id)}, 'name', this.value)" placeholder="Назва рахунку (напр. ФОП)" style="flex: 1; height: 48px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0 16px; font-size: 16px; font-weight: 600; color: white; outline: none; transition: 0.3s;" onfocus="this.style.backgroundColor='rgba(0,0,0,0.3)'; this.style.borderColor='var(--sys-blue)';">
                         
                         <div style="display: flex; gap: 8px; flex-shrink: 0;">
                             <div class="custom-dropdown" style="width: 85px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
                                 <div class="custom-dropdown-selected" style="height: 48px; padding: 0 28px 0 12px; border-radius: 14px; font-size: 14px;">${inc.currency}</div>
                                 <div class="custom-dropdown-options" style="min-width: 85px;">
-                                    <div class="custom-dropdown-option" onclick="selectCurrency(event, ${inc.id}, 'UAH'); this.closest('.custom-dropdown').classList.remove('open');">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
-                                    <div class="custom-dropdown-option" onclick="selectCurrency(event, ${inc.id}, 'USD'); this.closest('.custom-dropdown').classList.remove('open');">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
+                                    <div class="custom-dropdown-option" onclick="selectCurrency(event, ${jsId(inc.id)}, 'UAH'); this.closest('.custom-dropdown').classList.remove('open');">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
+                                    <div class="custom-dropdown-option" onclick="selectCurrency(event, ${jsId(inc.id)}, 'USD'); this.closest('.custom-dropdown').classList.remove('open');">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
                                 </div>
                             </div>
-                            <button class="btn-delete" onclick="deleteIncome(${inc.id})" style="width: 48px; height: 48px; border-radius: 14px;">
+                            <button class="btn-delete" onclick="deleteIncome(${jsId(inc.id)})" style="width: 48px; height: 48px; border-radius: 14px;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                         </div>
@@ -3849,11 +3839,11 @@ if (isBiz) {
                                 <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Обіг</div>
                                 <div id="inc-percent-${inc.id}" style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 6px;">0.0%</div>
                             </div>
-                            <input type="number" class="tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${inc.id}, 'amount', this.value)" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
+                            <input type="number" class="tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${jsId(inc.id)}, 'amount', this.value)" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
                         </div>
                         <div style="flex: 1; background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.05)); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(10, 132, 255, 0.2); transition: 0.3s;" onfocusin="this.style.borderColor='var(--sys-blue)'; this.style.backgroundColor='rgba(10, 132, 255, 0.15)';" onfocusout="this.style.borderColor='rgba(10, 132, 255, 0.2)'; this.style.background='linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.05))';">
                             <div style="font-size: 12px; color: var(--sys-blue); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Факт. залишок</div>
-                            <input type="number" class="tabular" value="${inc.actual_balance || ''}" placeholder="0" oninput="updateIncome(${inc.id}, 'actual_balance', this.value)" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: var(--sys-blue); padding: 0;">
+                            <input type="number" class="tabular" value="${inc.actual_balance || ''}" placeholder="0" oninput="updateIncome(${jsId(inc.id)}, 'actual_balance', this.value)" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: var(--sys-blue); padding: 0;">
                         </div>
                     </div>
                 `;
@@ -3861,17 +3851,17 @@ if (isBiz) {
                 // СТАРЫЙ ДИЗАЙН ДЛЯ ФИЗЛИЦ (Компактная строка)
                 div.style = "padding: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;";
                 div.innerHTML = `
-                    <input type="text" class="input-name" value="${escapeHtml(inc.name)}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Назва" style="flex: 1; min-width: 100px;">
-                    <input type="number" class="input-name tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${inc.id}, 'amount', this.value)" style="text-align: right; margin: 0 8px; width: 100px;">
+                    <input type="text" class="input-name" value="${escapeHtml(inc.name)}" oninput="updateIncome(${jsId(inc.id)}, 'name', this.value)" placeholder="Назва" style="flex: 1; min-width: 100px;">
+                    <input type="number" class="input-name tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${jsId(inc.id)}, 'amount', this.value)" style="text-align: right; margin: 0 8px; width: 100px;">
                     
                     <div class="custom-dropdown" style="width: 90px; flex-shrink: 0;" onclick="event.stopPropagation(); this.classList.toggle('open')">
                         <div class="custom-dropdown-selected" style="height: 48px; padding: 0 30px 0 12px; border-radius: 14px; font-size: 14px;">${inc.currency}</div>
                         <div class="custom-dropdown-options" style="min-width: 90px;">
-                            <div class="custom-dropdown-option" onclick="selectCurrency(event, ${inc.id}, 'UAH'); this.closest('.custom-dropdown').classList.remove('open');">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
-                            <div class="custom-dropdown-option" onclick="selectCurrency(event, ${inc.id}, 'USD'); this.closest('.custom-dropdown').classList.remove('open');">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
+                            <div class="custom-dropdown-option" onclick="selectCurrency(event, ${jsId(inc.id)}, 'UAH'); this.closest('.custom-dropdown').classList.remove('open');">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
+                            <div class="custom-dropdown-option" onclick="selectCurrency(event, ${jsId(inc.id)}, 'USD'); this.closest('.custom-dropdown').classList.remove('open');">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
                         </div>
                     </div>
-                    <button class="btn-delete" onclick="deleteIncome(${inc.id})" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px;">
+                    <button class="btn-delete" onclick="deleteIncome(${jsId(inc.id)})" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 `;
@@ -3882,7 +3872,7 @@ if (isBiz) {
 
  function addIncome() {
         if(!appData[currentYear][currentMonth].incomes) appData[currentYear][currentMonth].incomes = [];
-        appData[currentYear][currentMonth].incomes.push({id: Date.now(), name: 'Новий', amount: 0, actual_balance: 0, currency: 'UAH'});
+        appData[currentYear][currentMonth].incomes.push({id: newId(), name: 'Новий', amount: 0, actual_balance: 0, currency: 'UAH'});
         saveData();
         renderIncomes();
         convertCurrency();
@@ -4460,11 +4450,11 @@ function getHistoricalIncome(year, month) {
             const div = document.createElement('div');
             div.className = `expense-card-pro ${rankClass} ${paidCardClass}`;
             div.innerHTML = `
-                <div class="expense-pro-main" onclick="openModal(${exp.id})" style="cursor: pointer; position: relative;">
+                <div class="expense-pro-main" onclick="openModal(${jsId(exp.id)})" style="cursor: pointer; position: relative;">
                     <div class="expense-pro-header">
                         <div class="expense-pro-title-group">
                             ${badgeHtml}
-                            <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" placeholder="Назва категорії" oninput="updateCategoryName(${exp.id}, this.value)" onclick="event.stopPropagation()" style="${isSavingsClass}">
+                            <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" placeholder="Назва категорії" oninput="updateCategoryName(${jsId(exp.id)}, this.value)" onclick="event.stopPropagation()" style="${isSavingsClass}">
                             ${bucketSelectHtml}
                         </div>
                         <div class="expense-pro-trend">
@@ -4486,8 +4476,8 @@ function getHistoricalIncome(year, month) {
                 </div>
                 
                 <div class="expense-pro-actions">
-                    <button class="btn-pro-action btn-pro-add" onclick="openModal(${exp.id})" title="Додати статті">+</button>
-                    <button class="btn-pro-action btn-pro-del" onclick="deleteCategory(${exp.id})" title="Видалити категорію">
+                    <button class="btn-pro-action btn-pro-add" onclick="openModal(${jsId(exp.id)})" title="Додати статті">+</button>
+                    <button class="btn-pro-action btn-pro-del" onclick="deleteCategory(${jsId(exp.id)})" title="Видалити категорію">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                     </button>
                 </div>
@@ -4502,7 +4492,7 @@ function getHistoricalIncome(year, month) {
     }
 
     function addCategory() {
-        expenses.push({ id: Date.now(), name: "", items: [] });
+        expenses.push({ id: newId(), name: "", items: [] });
         renderExpenses(); saveData(); updateAll();
     }
 
@@ -4542,7 +4532,7 @@ function getHistoricalIncome(year, month) {
             const badgeHtml = badgeText ? `<div class="badge-wrapper" style="display:flex; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge ${badgeClass}">${badgeText}</span></div>` : `<div class="badge-wrapper" style="display:none; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge"></span></div>`;
             const isChecked = item.isPaid ? 'checked' : '';
             const paidClass = item.isPaid ? 'paid-amount' : '';
-            const checkboxHtml = `<div class="check-container ${isChecked}" onclick="togglePaidStatus(${item.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
+            const checkboxHtml = `<div class="check-container ${isChecked}" onclick="togglePaidStatus(${jsId(item.id)})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
 
             const div = document.createElement('div');
             div.className = `sub-item ${rankClass}`;
@@ -4550,9 +4540,9 @@ function getHistoricalIncome(year, month) {
                 ${badgeHtml}
                 <div class="sub-item-row">
                     ${checkboxHtml}
-                    <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" placeholder="Назва статті" oninput="updateSubItemName(${item.id}, this.value)">
-                    <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${item.id}, this.value)">
-                    <button class="btn-sub-delete" onclick="deleteSubItem(${item.id})"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                    <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" placeholder="Назва статті" oninput="updateSubItemName(${jsId(item.id)}, this.value)">
+                    <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${jsId(item.id)}, this.value)">
+                    <button class="btn-sub-delete" onclick="deleteSubItem(${jsId(item.id)})"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
             `;
             list.appendChild(div);
@@ -4585,7 +4575,7 @@ function getHistoricalIncome(year, month) {
     }
 
     function addSubItem() {
-        expenses.find(e => e.id === activeCategoryId).items.push({ id: Date.now(), name: "", amount: null, isPaid: false });
+        expenses.find(e => e.id === activeCategoryId).items.push({ id: newId(), name: "", amount: null, isPaid: false });
         renderModalItems();
     }
 
@@ -4932,11 +4922,11 @@ function renderEnvelopes() {
             const isPersonal = currentUser && currentUser.account_type !== 'business';
             
             const balanceDisplay = jar.isMain 
-                ? `<div style="display: flex; align-items: center; gap: 6px;"><input type="number" value="${jar.balance}" onchange="updateMainJarBalance(${jar.id}, this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--sys-green); font-size: 16px; font-weight: 700; width: 110px; padding: 6px 10px; outline: none; transition: 0.3s; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" onfocus="this.style.background='rgba(255,255,255,0.1)'" onblur="this.style.background='rgba(255,255,255,0.05)'"> <span>₴</span></div>`
+                ? `<div style="display: flex; align-items: center; gap: 6px;"><input type="number" value="${jar.balance}" onchange="updateMainJarBalance(${jsId(jar.id)}, this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--sys-green); font-size: 16px; font-weight: 700; width: 110px; padding: 6px 10px; outline: none; transition: 0.3s; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" onfocus="this.style.background='rgba(255,255,255,0.1)'" onblur="this.style.background='rgba(255,255,255,0.05)'"> <span>₴</span></div>`
                 : `<span style="color: var(--sys-green);">${formatMoney(jar.balance)} ₴</span>`;
             
             // Кнопка видалення у стилі карток боргів (хрестик у квадраті)
-            const deleteBtn = jar.isMain ? '' : `<button onclick="deleteEnvelope(${jar.id})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; border-color: transparent;" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-tertiary)'; border-color: rgba(255,255,255,0.1);">✕</button>`;
+            const deleteBtn = jar.isMain ? '' : `<button onclick="deleteEnvelope(${jsId(jar.id)})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; border-color: transparent;" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-tertiary)'; border-color: rgba(255,255,255,0.1);">✕</button>`;
             
             // Бейджик для основного рахунку
             const mainBadge = jar.isMain ? `<span style="font-size: 11px; background: rgba(10, 132, 255, 0.15); padding: 2px 6px; border-radius: 6px; color: var(--sys-blue); flex-shrink: 0;">Основний</span>` : '';
@@ -4978,11 +4968,11 @@ function renderEnvelopes() {
         const jarType = document.getElementById('new-jar-type-value')?.value || 'regular';
         if(!name) return;
         if(!globalData.jars[currentUser.id]) globalData.jars[currentUser.id] = [];
-        const newId = Date.now();
-        globalData.jars[currentUser.id].push({ id: newId, name, goal, balance: 0, isMain: false });
+        const jarNewId = newId();
+        globalData.jars[currentUser.id].push({ id: jarNewId, name, goal, balance: 0, isMain: false });
         if (jarType !== 'regular') {
             const fp = getFinancialPlan();
-            fp.jarTypes[String(newId)] = jarType;
+            fp.jarTypes[String(jarNewId)] = jarType;
             saveFinancialPlan();
         }
         document.getElementById('new-jar-name').value = '';
@@ -5033,7 +5023,7 @@ function renderEnvelopes() {
             userJars.forEach((jar, index) => {
                 const text = `${jar.name} (зараз ${formatMoney(jar.balance)} ₴)`;
                 if (index === 0) { firstJarId = jar.id; firstJarName = text; }
-                optionsContainer.innerHTML += `<div class="custom-dropdown-option" onclick="selectTransferJar(event, ${jar.id}, '${escapeAttr(text)}')">${escapeHtml(text)}</div>`;
+                optionsContainer.innerHTML += `<div class="custom-dropdown-option" onclick="selectTransferJar(event, ${jsId(jar.id)}, '${escapeAttr(text)}')">${escapeHtml(text)}</div>`;
             });
             selectTransferJar(null, firstJarId, firstJarName);
         }
@@ -5057,10 +5047,10 @@ function renderEnvelopes() {
         if (!val || val <= 0 || !jarId) return;
 
         let savingsCat = expenses.find(e => e.isSavings);
-        if (!savingsCat) { savingsCat = { id: Date.now(), name: "Заощадження", isSavings: true, items: [] }; expenses.push(savingsCat); }
+        if (!savingsCat) { savingsCat = { id: newId(), name: "Заощадження", isSavings: true, items: [] }; expenses.push(savingsCat); }
         
         const jar = globalData.jars[currentUser.id].find(j => j.id == jarId);
-        if(jar) { jar.balance += val; savingsCat.items.push({ id: Date.now(), name: "У конверт: " + jar.name, amount: val, envelopeId: jarId }); }
+        if(jar) { jar.balance += val; savingsCat.items.push({ id: newId(), name: "У конверт: " + jar.name, amount: val, envelopeId: jarId }); }
         
         if (appData[currentYear] && appData[currentYear][currentMonth]) {
             appData[currentYear][currentMonth].expenses = expenses;
@@ -5146,7 +5136,7 @@ function renderEnvelopes() {
         if (!globalData.debts[currentUser.id]) globalData.debts[currentUser.id] = [];
 
         globalData.debts[currentUser.id].push({
-            id: Date.now(),
+            id: newId(),
             user_id: currentUser.id,
             name: name,
             total_amount: amount,
@@ -5194,7 +5184,7 @@ function renderEnvelopes() {
             const isPaidOff = historicalRemaining <= 0;
             const payBtnHtml = isPaidOff 
                 ? `<div style="color: var(--sys-green); font-weight: 700; font-size: 13px; padding: 8px 0;">✓ Виплачено</div>`
-                : `<button onclick="payDebt(${debt.id})" style="background-color: rgba(255, 69, 58, 0.1); border: 1px solid rgba(255, 69, 58, 0.2); padding: 8px 16px; border-radius: 12px; color: #ff453a; font-weight: 700; font-size: 13px; cursor: pointer; transition: background-color 0.2s ease; flex-shrink: 0;" onmouseover="this.style.backgroundColor='rgba(255, 69, 58, 0.2)'" onmouseout="this.style.backgroundColor='rgba(255, 69, 58, 0.1)'">Оплатити</button>`;
+                : `<button onclick="payDebt(${jsId(debt.id)})" style="background-color: rgba(255, 69, 58, 0.1); border: 1px solid rgba(255, 69, 58, 0.2); padding: 8px 16px; border-radius: 12px; color: #ff453a; font-weight: 700; font-size: 13px; cursor: pointer; transition: background-color 0.2s ease; flex-shrink: 0;" onmouseover="this.style.backgroundColor='rgba(255, 69, 58, 0.2)'" onmouseout="this.style.backgroundColor='rgba(255, 69, 58, 0.1)'">Оплатити</button>`;
 
             list.innerHTML += `
             <div style="background: var(--item-bg); border: 1px solid rgba(255, 69, 58, 0.2); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
@@ -5202,7 +5192,7 @@ function renderEnvelopes() {
                     <div style="font-weight: 700; font-size: 16px; color: #ff453a; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
                         <span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(debt.name)}</span><span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${escapeHtml(debt.currency)}</span>${interestTag}
                     </div>
-                    <button onclick="deleteDebt(${debt.id})" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; this.style.borderColor='transparent';" onmouseout="this.style.background='var(--btn-secondary-bg)'; this.style.color='var(--text-tertiary)'; this.style.borderColor='var(--glass-border)';">✕</button>
+                    <button onclick="deleteDebt(${jsId(debt.id)})" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; this.style.borderColor='transparent';" onmouseout="this.style.background='var(--btn-secondary-bg)'; this.style.color='var(--text-tertiary)'; this.style.borderColor='var(--glass-border)';">✕</button>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                     <div style="overflow: hidden; padding-right: 8px;">
@@ -5223,7 +5213,7 @@ function renderEnvelopes() {
                 const statusText = isAutoArchived ? '✓ Виплачено' : 'Скасовано'; const statusColor = isAutoArchived ? 'var(--sys-green)' : 'var(--text-secondary)'; const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
                 let deleteBtnHtml = '';
                 if (historicalRemaining === debt.total_amount) {
-                    deleteBtnHtml = `<button onclick="hardDeleteDebt(${debt.id})" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-secondary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; this.style.color='#ffffff'; this.style.borderColor='transparent';" onmouseout="this.style.background='var(--btn-secondary-bg)'; this.style.color='var(--text-secondary)'; this.style.borderColor='var(--glass-border)';">✕</button>`;
+                    deleteBtnHtml = `<button onclick="hardDeleteDebt(${jsId(debt.id)})" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-secondary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; this.style.color='#ffffff'; this.style.borderColor='transparent';" onmouseout="this.style.background='var(--btn-secondary-bg)'; this.style.color='var(--text-secondary)'; this.style.borderColor='var(--glass-border)';">✕</button>`;
                 }
                 list.innerHTML += `
                 <div style="background: var(--item-bg); border: 1px solid var(--glass-border); border-radius: 16px; opacity: 0.7; padding: 12px 16px;">
@@ -5329,12 +5319,12 @@ function renderEnvelopes() {
 
         let debtCat = expenses.find(e => e.name === "Погашення боргів");
         if (!debtCat) {
-            debtCat = { id: Date.now(), name: "Погашення боргів", items: [] };
+            debtCat = { id: newId(), name: "Погашення боргів", items: [] };
             expenses.push(debtCat);
         }
 
         debtCat.items.push({
-            id: Date.now(),
+            id: newId(),
             name: `Платіж: ${debt.name}`,
             amount: amountInUah,          
             isPaid: true,
@@ -5760,10 +5750,10 @@ function updateGlobalScheduleRemaining() {
             globalUnplannedUah += (debt.currency === 'USD' ? dynamicRemaining * currentExchangeRate : dynamicRemaining);
 
             html += `<tr class="schedule-row" draggable="true" data-id="${debt.id}" 
-                        ondragstart="handleScheduleDragStart(event, ${debt.id})" 
+                        ondragstart="handleScheduleDragStart(event, ${jsId(debt.id)})" 
                         ondragover="handleScheduleDragOver(event)" 
                         ondragleave="handleScheduleDragLeave(event)" 
-                        ondrop="handleScheduleDrop(event, ${debt.id})"
+                        ondrop="handleScheduleDrop(event, ${jsId(debt.id)})"
                         ondragend="handleScheduleDragEnd(event)">`;
             
             html += `<td class="calendar-debt-name-col">
@@ -5799,9 +5789,9 @@ function updateGlobalScheduleRemaining() {
                             <div class="schedule-input-group">
                                 <input type="checkbox" class="schedule-checkbox" ${checkedAttr} 
                                        title="Відмітити як оплачене"
-                                       onchange="toggleSchedulePaid(${debt.id}, '${m.key}', this.checked)">
+                                       onchange="toggleSchedulePaid(${jsId(debt.id)}, '${m.key}', this.checked)">
                                 <input type="number" class="${inputClass}" value="${planVal}" placeholder="0" 
-                                       oninput="updateScheduleAmount(${debt.id}, '${m.key}', this.value)">
+                                       oninput="updateScheduleAmount(${jsId(debt.id)}, '${m.key}', this.value)">
                             </div>
                          </td>`;
             });
@@ -6027,12 +6017,12 @@ function handleScheduleDragStart(e, id) {
             if (!globalData.suppliers) globalData.suppliers = {};
             if (!globalData.suppliers[currentUser.id]) globalData.suppliers[currentUser.id] = [];
             
-            const newId = Date.now().toString();
+            const createdId = newId();
             const cleanName = name.trim();
-            globalData.suppliers[currentUser.id].push({ id: newId, name: cleanName });
+            globalData.suppliers[currentUser.id].push({ id: createdId, name: cleanName });
             saveGlobalData(); 
             renderSuppliersDropdown();
-            selectSupplier(null, newId, cleanName);
+            selectSupplier(null, createdId, cleanName);
             closeNewSupplierModal();
         }
     }
@@ -6147,7 +6137,7 @@ function addInvoice() {
         if (!appData[currentYear][currentMonth].invoices) appData[currentYear][currentMonth].invoices = [];
         
         appData[currentYear][currentMonth].invoices.push({
-            id: Date.now().toString(),
+            id: newId(),
             supplier_id: supplierIdVal,
             amount: amount,
             date: date,
@@ -6513,7 +6503,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             const emp = appData[currentYear][currentMonth].payroll.find(e => e.id === id);
             if (emp) Object.assign(emp, data);
         } else {
-            data.id = Date.now().toString();
+            data.id = newId();
             data.is_paid = false;
             if (!appData[currentYear][currentMonth].payroll) appData[currentYear][currentMonth].payroll = [];
             appData[currentYear][currentMonth].payroll.push(data);
