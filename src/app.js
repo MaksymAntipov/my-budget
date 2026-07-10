@@ -3014,13 +3014,20 @@ function renderEnvelopes() {
     // ==========================================
     // 11. ГРАФИКИ И ДИНАМИКА
     // ==========================================
-    google.charts.load('current', {'packages':['sankey']});
     let googleChartsLoaded = false;
-    
-    google.charts.setOnLoadCallback(() => {
-        googleChartsLoaded = true;
-        if (appData && Object.keys(appData).length > 0) updateChart();
-    });
+
+    function bootGoogleCharts() {
+        if (typeof google === 'undefined' || !google.charts) {
+            console.error('Google Charts loader is unavailable (CSP or network)');
+            return;
+        }
+        google.charts.load('current', { packages: ['sankey'] });
+        google.charts.setOnLoadCallback(() => {
+            googleChartsLoaded = true;
+            if (appData && Object.keys(appData).length > 0) updateChart();
+        });
+    }
+    bootGoogleCharts();
 
     window.addEventListener('resize', () => {
         if (googleChartsLoaded && document.getElementById('sankey_basic').innerHTML !== '') updateChart();
