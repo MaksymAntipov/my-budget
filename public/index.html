@@ -1353,7 +1353,13 @@
     }
 
     function escapeAttr(str) {
-        return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return String(str)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/</g, '\\u003c')
+            .replace(/>/g, '\\u003e');
     }
 </script>
 
@@ -2484,6 +2490,43 @@
 
         document.addEventListener('click', closeProfileSwitcher);
 
+        window.addEventListener('beforeunload', () => {
+            if (currentUser && saveTimeout) {
+                clearTimeout(saveTimeout);
+                saveTimeout = null;
+                // keepalive best-effort flush for debounced edits
+                const year = currentYear;
+                const month = currentMonth;
+                const currentMonthData = appData[year]?.[month] || {};
+                const jars = globalData.jars[currentUser.id] || [];
+                const token = localStorage.getItem('budget_auth_token');
+                if (!token) return;
+                const payload = {
+                    userId: currentUser.id,
+                    year, month,
+                    incomes: currentMonthData.incomes || [],
+                    expenses: currentMonthData.expenses || expenses || [],
+                    cogs: currentMonthData.cogs || { type: 'percent', value: 0 },
+                    payroll: currentMonthData.payroll || [],
+                    jars: jars.length > 0 ? jars : undefined,
+                    debts: globalData.debts[currentUser.id] || [],
+                    suppliers: globalData.suppliers[currentUser.id] || [],
+                    invoices: currentMonthData.invoices || []
+                };
+                try {
+                    fetch(`${API_URL}/api/data`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(payload),
+                        keepalive: true
+                    });
+                } catch (e) {}
+            }
+        });
+
         const savedUserId = localStorage.getItem('budget_saved_user_id');
         const savedUserInfo = localStorage.getItem('budget_saved_user_info');
         const savedToken = localStorage.getItem('budget_auth_token');
@@ -2595,12 +2638,12 @@
             const data = await response.json();
             
             if (!response.ok) {
-                if (response.status === 429 && data.error.includes('через')) {
+                if (response.status === 429 && (data.retryAfter || (data.error && data.error.includes('через')))) {
                     tempAuthData = payload;
                     document.getElementById('auth-overlay').classList.remove('active');
                     document.getElementById('create-profile-overlay').classList.remove('active');
                     
-                    const seconds = parseInt(data.error.match(/\d+/)[0]) || 300;
+                    const seconds = Number(data.retryAfter) || parseInt((data.error.match(/\d+/) || [])[0], 10) || 300;
                     document.getElementById('otp-subtitle').innerText = `Код вже був відправлений на ${payload.email}. Він ще діє.`;
                     document.getElementById('otp-input').value = '';
                     document.getElementById('otp-error').style.display = 'none';
@@ -3033,6 +3076,7 @@ async function flushSaveToServer(year, month) {
         if (!currentUser) return;
 
         const currentMonthData = appData[year]?.[month] || {};
+        const jars = globalData.jars[currentUser.id] || [];
         const payload = {
             userId: currentUser.id,
             year, month,
@@ -3040,7 +3084,8 @@ async function flushSaveToServer(year, month) {
             expenses: currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []) || [],
             cogs: currentMonthData.cogs || {type: 'percent', value: 0},
             payroll: currentMonthData.payroll || [],
-            jars: globalData.jars[currentUser.id] || [],
+            // Never send empty jars — backend skips wipe, and UI always keeps a main jar.
+            jars: jars.length > 0 ? jars : undefined,
             debts: globalData.debts[currentUser.id] || [],
             suppliers: globalData.suppliers[currentUser.id] || [],
             invoices: currentMonthData.invoices || []
@@ -3782,7 +3827,7 @@ if (isBiz) {
                 div.style = "padding: 16px; margin-bottom: 16px; flex-direction: column; align-items: stretch; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);";
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%;">
-                        <input type="text" class="input-name" value="${inc.name}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Назва рахунку (напр. ФОП)" style="flex: 1; height: 48px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0 16px; font-size: 16px; font-weight: 600; color: white; outline: none; transition: 0.3s;" onfocus="this.style.backgroundColor='rgba(0,0,0,0.3)'; this.style.borderColor='var(--sys-blue)';">
+                        <input type="text" class="input-name" value="${escapeHtml(inc.name)}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Назва рахунку (напр. ФОП)" style="flex: 1; height: 48px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0 16px; font-size: 16px; font-weight: 600; color: white; outline: none; transition: 0.3s;" onfocus="this.style.backgroundColor='rgba(0,0,0,0.3)'; this.style.borderColor='var(--sys-blue)';">
                         
                         <div style="display: flex; gap: 8px; flex-shrink: 0;">
                             <div class="custom-dropdown" style="width: 85px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
@@ -3816,7 +3861,7 @@ if (isBiz) {
                 // СТАРЫЙ ДИЗАЙН ДЛЯ ФИЗЛИЦ (Компактная строка)
                 div.style = "padding: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;";
                 div.innerHTML = `
-                    <input type="text" class="input-name" value="${inc.name}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Назва" style="flex: 1; min-width: 100px;">
+                    <input type="text" class="input-name" value="${escapeHtml(inc.name)}" oninput="updateIncome(${inc.id}, 'name', this.value)" placeholder="Назва" style="flex: 1; min-width: 100px;">
                     <input type="number" class="input-name tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${inc.id}, 'amount', this.value)" style="text-align: right; margin: 0 8px; width: 100px;">
                     
                     <div class="custom-dropdown" style="width: 90px; flex-shrink: 0;" onclick="event.stopPropagation(); this.classList.toggle('open')">
@@ -4397,7 +4442,7 @@ function getHistoricalIncome(year, month) {
             
             // 2. Повертаємо тултип з підкатегоріями
             let tooltipHtml = exp.items.length > 0 
-                ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${i.name || 'Без назви'}</span><span class="preview-item-amount">${formatMoney(parseFloat(i.amount)||0)} ₴${i.isPaid ? '<span style="color: var(--sys-green); margin-left:4px;">✓</span>' : ''}</span></div>`).join('')
+                ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${escapeHtml(i.name || 'Без назви')}</span><span class="preview-item-amount">${formatMoney(parseFloat(i.amount)||0)} ₴${i.isPaid ? '<span style="color: var(--sys-green); margin-left:4px;">✓</span>' : ''}</span></div>`).join('')
                 : '<div style="opacity:0.7;">Немає доданих статей</div>';
             
             let rankClass = '', badgeHtml = '';
@@ -4419,7 +4464,7 @@ function getHistoricalIncome(year, month) {
                     <div class="expense-pro-header">
                         <div class="expense-pro-title-group">
                             ${badgeHtml}
-                            <input class="expense-pro-input" type="text" value="${exp.name}" placeholder="Назва категорії" oninput="updateCategoryName(${exp.id}, this.value)" onclick="event.stopPropagation()" style="${isSavingsClass}">
+                            <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" placeholder="Назва категорії" oninput="updateCategoryName(${exp.id}, this.value)" onclick="event.stopPropagation()" style="${isSavingsClass}">
                             ${bucketSelectHtml}
                         </div>
                         <div class="expense-pro-trend">
@@ -4505,7 +4550,7 @@ function getHistoricalIncome(year, month) {
                 ${badgeHtml}
                 <div class="sub-item-row">
                     ${checkboxHtml}
-                    <input type="text" class="sub-item-name" value="${item.name}" placeholder="Назва статті" oninput="updateSubItemName(${item.id}, this.value)">
+                    <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" placeholder="Назва статті" oninput="updateSubItemName(${item.id}, this.value)">
                     <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${item.id}, this.value)">
                     <button class="btn-sub-delete" onclick="deleteSubItem(${item.id})"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
@@ -4546,7 +4591,7 @@ function getHistoricalIncome(year, month) {
 
     function updateSubItemName(subId, val) {
         const item = expenses.find(e => e.id === activeCategoryId).items.find(i => i.id === subId);
-        if (item) item.name = val;
+        if (item) { item.name = val; saveData(); }
     }
 
     function deleteCategory(id) {
@@ -4608,6 +4653,7 @@ function getHistoricalIncome(year, month) {
             }
             document.getElementById('modal-category-total').innerText = formatMoney(getCategoryTotal(category));
             updateTopSubItemBadges(category);
+            saveData();
         }
     }
 
@@ -5154,7 +5200,7 @@ function renderEnvelopes() {
             <div style="background: var(--item-bg); border: 1px solid rgba(255, 69, 58, 0.2); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                     <div style="font-weight: 700; font-size: 16px; color: #ff453a; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
-                        <span style="overflow: hidden; text-overflow: ellipsis;">${debt.name}</span><span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${debt.currency}</span>${interestTag}
+                        <span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(debt.name)}</span><span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${escapeHtml(debt.currency)}</span>${interestTag}
                     </div>
                     <button onclick="deleteDebt(${debt.id})" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; this.style.borderColor='transparent';" onmouseout="this.style.background='var(--btn-secondary-bg)'; this.style.color='var(--text-tertiary)'; this.style.borderColor='var(--glass-border)';">✕</button>
                 </div>
@@ -5183,7 +5229,7 @@ function renderEnvelopes() {
                 <div style="background: var(--item-bg); border: 1px solid var(--glass-border); border-radius: 16px; opacity: 0.7; padding: 12px 16px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="width: 100%; overflow: hidden;">
-                            <div style="color: var(--text-secondary); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span style="overflow: hidden; text-overflow: ellipsis;">${debt.name}</span> <span style="font-size: 11px; background: var(--btn-secondary-bg); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${debt.currency}</span></div>
+                            <div style="color: var(--text-secondary); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(debt.name)}</span> <span style="font-size: 11px; background: var(--btn-secondary-bg); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${escapeHtml(debt.currency)}</span></div>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; gap: 10px;"><div style="color: ${statusColor}; font-size: 13px; font-weight: 700; white-space: nowrap;">${statusText}</div><div style="font-size: 13px; color: var(--text-tertiary); font-weight: 500; white-space: nowrap;">Сума: ${formatMoney(debt.total_amount)} ${currencySymbol}</div></div>
                         </div>
                         ${deleteBtnHtml}
@@ -5723,8 +5769,8 @@ function updateGlobalScheduleRemaining() {
             html += `<td class="calendar-debt-name-col">
                         <div style="display: flex; align-items: center; margin-bottom: 6px;">
                             <span class="drag-handle" title="Перетягніть, щоб змінити порядок">≡</span>
-                            <span style="font-weight: 700; color: var(--sys-red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${debt.name}</span>
-                            <span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; margin-left: 6px; flex-shrink: 0;">${debt.currency}</span>
+                            <span style="font-weight: 700; color: var(--sys-red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(debt.name)}</span>
+                            <span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; margin-left: 6px; flex-shrink: 0;">${escapeHtml(debt.currency)}</span>
                         </div>
                         <div style="font-size: 12px; color: var(--text-secondary); padding-left: 20px;">
                             Залишок плану: <span style="font-weight: 700; color: ${dynamicRemaining < 0 ? 'var(--sys-red)' : 'var(--text-primary)'};">${formatMoney(dynamicRemaining)} ${currencySymbol}</span>
@@ -6005,8 +6051,8 @@ function renderSuppliersDropdown() {
         let html = `<input type="text" class="dropdown-search-input" placeholder="🔍 Пошук постачальника..." onclick="event.stopPropagation()" oninput="filterSuppliers(this.value)">`;
 
         suppliers.forEach(s => {
-            const safeName = s.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            html += `<div class="custom-dropdown-option supplier-item" onclick="selectSupplier(event, '${s.id}', '${safeName}')">${s.name}</div>`;
+            const safeName = escapeAttr(s.name);
+            html += `<div class="custom-dropdown-option supplier-item" onclick="selectSupplier(event, '${escapeAttr(String(s.id))}', '${safeName}')">${escapeHtml(s.name)}</div>`;
         });
         
         container.innerHTML = html;
@@ -6154,7 +6200,7 @@ function addInvoice() {
             // Накладные внутри даты
             invs.forEach(inv => {
                 const sup = suppliers.find(s => s.id == inv.supplier_id);
-                const supName = sup ? sup.name : 'Видалений постачальник';
+                const supName = escapeHtml(sup ? sup.name : 'Видалений постачальник');
                 const isCash = inv.payment_method === 'cash';
                 const payColor = isCash ? '#ff9f0a' : 'var(--sys-blue)';
                 const payText = isCash ? 'Готівка' : 'Безготівка';
@@ -6168,7 +6214,7 @@ function addInvoice() {
                         <div style="text-align: right; margin-right: 12px; flex-shrink: 0;">
                             <div class="tabular" style="font-weight: 800; font-size: 16px; color: var(--text-primary);">${formatMoney(inv.amount)} ₴</div>
                         </div>
-                        <button class="btn-delete" style="width: 32px; height: 32px; border-radius: 10px; background: rgba(255,69,58,0.1); color: var(--sys-red); border-color: rgba(255,69,58,0.2); padding: 0;" onclick="deleteInvoice('${inv.id}')">✕</button>
+                        <button class="btn-delete" style="width: 32px; height: 32px; border-radius: 10px; background: rgba(255,69,58,0.1); color: var(--sys-red); border-color: rgba(255,69,58,0.2); padding: 0;" onclick="deleteInvoice('${escapeAttr(String(inv.id))}')">✕</button>
                     </div>
                 `;
             });
@@ -6232,7 +6278,7 @@ function deleteInvoice(id) {
         
         sortedStats.forEach(([supId, data]) => {
             const sup = suppliers.find(s => s.id == supId);
-            const supName = sup ? sup.name : 'Невідомий постачальник';
+            const supName = escapeHtml(sup ? sup.name : 'Невідомий постачальник');
             const percent = ((data.total / total) * 100).toFixed(1);
             
             list.innerHTML += `
@@ -6361,9 +6407,9 @@ function generatePayrollSparklineHTML(currentTotal) {
             const penaltyTag = penalty > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.15); color: #ff453a; padding: 2px 6px; border-radius: 6px;">Штраф -${formatMoney(penalty)}</span>` : '';
 
             const accountHtml = emp.account ? `
-                <div style="font-size: 12px; font-weight: 600; color: var(--sys-blue); background: rgba(10, 132, 255, 0.1); padding: 6px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; max-width: 100%; box-sizing: border-box;" onclick="copyAccountToClipboard(event, '${emp.account}')" title="Натисніть, щоб скопіювати">
+                <div style="font-size: 12px; font-weight: 600; color: var(--sys-blue); background: rgba(10, 132, 255, 0.1); padding: 6px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; max-width: 100%; box-sizing: border-box;" onclick="copyAccountToClipboard(event, '${escapeAttr(emp.account)}')" title="Натисніть, щоб скопіювати">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    <span class="acc-text" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${emp.account}</span>
+                    <span class="acc-text" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(emp.account)}</span>
                 </div>
             ` : '';
 
@@ -6371,7 +6417,7 @@ function generatePayrollSparklineHTML(currentTotal) {
                 <div style="display: flex; justify-content: space-between; align-items: stretch; padding: 16px; border-radius: 16px; border: 1px solid transparent; ${paidClass} transition: 0.2s; min-height: 100px;">
                     <div style="flex: 1; min-width: 0; padding-right: 16px; display: flex; flex-direction: column; justify-content: center;">
                         <div style="font-weight: 700; color: white; font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${emp.name || 'Без імені'}</span>
+                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(emp.name || 'Без імені')}</span>
                         </div>
                         <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">${hours} год × ${rate} ₴</div>
                         <div style="display: flex; gap: 4px; flex-wrap: wrap;">${bonusTag}${penaltyTag}</div>
@@ -6385,11 +6431,11 @@ function generatePayrollSparklineHTML(currentTotal) {
                         </div>
                         
                         <div style="display: flex; gap: 8px; flex-direction: column; justify-content: center;">
-                            <button class="btn-init-secondary" style="margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-primary);" onclick="openEmployeeModal('${emp.id}')" title="Редагувати">
+                            <button class="btn-init-secondary" style="margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-primary);" onclick="openEmployeeModal('${escapeAttr(String(emp.id))}')" title="Редагувати">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
                             
-                            <div class="schedule-input-group" style="margin: 0; width: 44px; height: 44px; background: ${emp.is_paid ? 'rgba(46, 160, 67, 0.15)' : 'rgba(255,255,255,0.05)'}; border-radius: 12px; border: 1px solid ${emp.is_paid ? 'rgba(46,160,67,0.3)' : 'rgba(255,255,255,0.1)'}; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; box-sizing: border-box;" onclick="event.stopPropagation(); toggleEmployeePaid('${emp.id}')" title="${emp.is_paid ? 'Скасувати оплату' : 'Відмітити як оплачено'}">
+                            <div class="schedule-input-group" style="margin: 0; width: 44px; height: 44px; background: ${emp.is_paid ? 'rgba(46, 160, 67, 0.15)' : 'rgba(255,255,255,0.05)'}; border-radius: 12px; border: 1px solid ${emp.is_paid ? 'rgba(46,160,67,0.3)' : 'rgba(255,255,255,0.1)'}; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; box-sizing: border-box;" onclick="event.stopPropagation(); toggleEmployeePaid('${escapeAttr(String(emp.id))}')" title="${emp.is_paid ? 'Скасувати оплату' : 'Відмітити як оплачено'}">
                                 ${emp.is_paid 
                                     ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' 
                                     : '<div style="width: 16px; height: 16px; border: 2px solid var(--text-secondary); border-radius: 4px; opacity: 0.5;"></div>'}
