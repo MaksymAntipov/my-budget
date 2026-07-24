@@ -136,6 +136,10 @@
             <a href="#expenses" class="nav-link">Витрати та закупівлі</a>
             <a href="#summary" class="nav-link">Зведення та аналітика</a>
             <a href="#tools" class="nav-link">Борги та накопичення</a>
+            <a href="#rule-502030" class="nav-link">50/30/20</a>
+            <a href="#envelope-types" class="nav-link">Типи конвертів</a>
+            <a href="#growth-strategy" class="nav-link">Стратегія росту</a>
+            <a href="#ai-export" class="nav-link">AI-експорт</a>
         </div>
     </aside>
 
@@ -488,6 +492,76 @@
                     <li><strong>Мультивалютні борги:</strong> Ви бачите всі свої зобов'язання в одному місці. Сума платежу автоматично конвертується в гривню у бюджеті витрат.</li>
                     <li><strong>Матриця планування:</strong> Впишіть суми у стовпчики майбутніх місяців для наочності (цей календар слугує лише як візуальний орієнтир і не переносить суми у фінансовий план автоматично). Drag & Drop (≡) дозволяє змінювати пріоритет.</li>
                     <li><strong>Конверти (Фонди):</strong> Для накопичень на цілі (відпустка) або розподілу прибутку (дивіденди, резерв). Швидке переведення дозволяє переказати вільні кошти у вибраний фонд.</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2 class="section-header">Фінансовий план і розвиток</h2>
+
+        <div id="rule-502030" class="guide-section section-anchor">
+            <div class="info-block" style="padding: 24px; margin: 0;">
+                <div style="font-size: 12px; color: var(--text-tertiary); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Рекомендація 50/30/20</div>
+                <div class="info-row" style="padding-top: 0;"><span style="color: var(--sys-blue); font-weight: 700;">Потреби 50%</span><span class="tabular nowrap">50 000 ₴</span></div>
+                <div class="info-row"><span style="color: #ff9f0a; font-weight: 700;">Бажання 30%</span><span class="tabular nowrap">30 000 ₴</span></div>
+                <div class="info-row" style="border: none; padding-bottom: 0;"><span style="color: var(--sys-green); font-weight: 700;">Збереження 20%</span><span class="tabular nowrap">20 000 ₴</span></div>
+            </div>
+            <div class="explanation">
+                <h3>Правило 50/30/20 <span class="badge-pers">Особисте</span></h3>
+                <ul>
+                    <li><strong>Потреби:</strong> житло, їжа, транспорт, базові платежі та інші витрати, без яких складно жити або працювати.</li>
+                    <li><strong>Бажання:</strong> розваги, кафе, імпульсні покупки, підписки та все, що покращує комфорт, але не є критичним.</li>
+                    <li><strong>Збереження:</strong> поповнення конвертів, інвестиції, подушка безпеки та погашення боргів.</li>
+                    <li><strong>Без категорії:</strong> якщо витрата ще не віднесена до групи, вона не потрапляє у 50/30/20. Оберіть тип у картці категорії.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="envelope-types" class="guide-section section-anchor">
+            <div class="info-block" style="padding: 24px; margin: 0;">
+                <div style="font-size: 18px; font-weight: 700; color: white; margin-bottom: 16px;">Типи конвертів</div>
+                <div class="info-row" style="padding-top: 0;"><span>Звичайний</span><span style="color: var(--text-secondary);">цілі та покупки</span></div>
+                <div class="info-row"><span>Подушка безпеки</span><span style="color: var(--sys-blue);">резерв 6 міс.</span></div>
+                <div class="info-row" style="border: none; padding-bottom: 0;"><span>Інвестиції</span><span style="color: var(--sys-green);">капітал ×25</span></div>
+            </div>
+            <div class="explanation">
+                <h3>Конверти для різних задач</h3>
+                <ul>
+                    <li><strong>Звичайний конверт:</strong> підходить для відпустки, техніки, ремонту або будь-якої конкретної цілі.</li>
+                    <li><strong>Подушка безпеки:</strong> враховується у фінансовому плані як недоторканний резерв на 6 місяців базових потреб.</li>
+                    <li><strong>Інвестиції:</strong> допомагає бачити прогрес до особистого капіталу за правилом ×25.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="growth-strategy" class="guide-section section-anchor">
+            <div class="info-block" style="padding: 24px; margin: 0;">
+                <div style="font-size: 18px; font-weight: 700; color: white; margin-bottom: 16px;">Стратегія росту</div>
+                <div style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; margin-bottom: 18px;">
+                    <div style="width: 70%; height: 100%; background: linear-gradient(90deg, var(--sys-green), #1e702e);"></div>
+                </div>
+                <div style="color: var(--text-secondary); line-height: 1.5; font-weight: 500;">Анкета збирає вашу точку А, цільовий дохід, навички, ринок, час, бюджет на розвиток та головний бар'єр.</div>
+            </div>
+            <div class="explanation">
+                <h3>Як працює стратегія росту</h3>
+                <ul>
+                    <li><strong>Заповніть анкету:</strong> система зберігає відповіді у профілі та використовує їх для персонального промпта.</li>
+                    <li><strong>Поєднання з бюджетом:</strong> у промпт додаються доходи, витрати, борги, накопичення та 50/30/20, щоб порада була прив'язана до реальних цифр.</li>
+                    <li><strong>Оновлюйте регулярно:</strong> коли змінюється ціль, ринок або навички, перезапишіть анкету і згенеруйте новий план дій.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="ai-export" class="guide-section section-anchor">
+            <div class="info-block" style="padding: 24px; margin: 0;">
+                <div style="font-size: 18px; font-weight: 700; color: white; margin-bottom: 16px;">AI-експорт</div>
+                <div class="btn-init-secondary" style="color: #bf5af2; border-color: rgba(191, 90, 242, 0.25); background: rgba(191, 90, 242, 0.1);">Скопіювати промпт для ШІ</div>
+            </div>
+            <div class="explanation">
+                <h3>Експорт для AI-аналітики <span class="badge-both">Спільне</span></h3>
+                <ul>
+                    <li><strong>За місяць:</strong> копіює поточний період з доходами, витратами, закупівлями, зарплатами, боргами та підсумком.</li>
+                    <li><strong>За весь час:</strong> формує довший контекст по всіх заповнених місяцях для стратегічного аналізу.</li>
+                    <li><strong>Стратегія росту:</strong> додає відповіді з анкети та просить AI підготувати roadmap, ризики й задачі на найближчі 48 годин.</li>
                 </ul>
             </div>
         </div>

@@ -3,6 +3,7 @@ import {
   escapeAttr,
   newId,
   jsId,
+  sameId,
   formatMoney,
   formatNumberShort,
 } from './utils.js';
@@ -11,7 +12,16 @@ import { API_URL } from './config.js';
 // ==========================================
     // НОВИНИ / CHANGELOG
     // ==========================================
-    const changelogData = [  
+    const changelogData = [
+        {
+            date: "Липень 2026",
+            version: "v1.2.0",
+            changes: [
+                "Перехід на Vite та посилення клієнтської безпеки.",
+                "Оновлена бізнес-математика: інвойси, закупівлі та зарплатний блок точніше впливають на прибуток.",
+                "Виправлення QA: новий місяць, 50/30/20, борги, мобільні тренди та мережеві помилки."
+            ]
+        },
         {
             date: "30 Березня 2026",
             version: "v1.1.4",
@@ -72,6 +82,36 @@ import { API_URL } from './config.js';
     let saveQueue = Promise.resolve();
     let availableProfiles = [];
 
+    const VIEW_PERIOD_KEY = 'budget_view_period';
+
+    function persistViewedPeriod() {
+        if (!currentUser?.id) return;
+        try {
+            localStorage.setItem(
+                VIEW_PERIOD_KEY,
+                JSON.stringify({ userId: currentUser.id, year: currentYear, month: currentMonth })
+            );
+        } catch (e) {}
+    }
+
+    function restoreViewedPeriod() {
+        if (!currentUser?.id) return false;
+        try {
+            const raw = localStorage.getItem(VIEW_PERIOD_KEY);
+            if (!raw) return false;
+            const saved = JSON.parse(raw);
+            if (!saved || saved.userId !== currentUser.id) return false;
+            const y = Number(saved.year);
+            const m = Number(saved.month);
+            if (!Number.isFinite(y) || !Number.isFinite(m) || m < 0 || m > 11) return false;
+            currentYear = y;
+            currentMonth = m;
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
 function loadAuthStats() { /* /api/stats removed */ }
 
 
@@ -110,9 +150,43 @@ function loadAuthStats() { /* /api/stats removed */ }
     // 2. УТИЛІТИ ТА БАЗОВІ ФУНКЦІЇ
     // ==========================================
 
-    window.addEventListener('click', function() {
-        document.querySelectorAll('.custom-dropdown').forEach(el => el.classList.remove('open'));
+    window.addEventListener('click', function(e) {
+        if (e.target.closest('.custom-dropdown')) return;
+        document.querySelectorAll('.custom-dropdown.open').forEach(el => el.classList.remove('open'));
     });
+
+    function stableHash(str) {
+        return String(str || '').split('').reduce((hash, ch) => ((hash << 5) - hash + ch.charCodeAt(0)) | 0, 0);
+    }
+
+    function getStableAppleColor(user) {
+        const key = user?.id || user?.email || `${user?.name || ''}${user?.surname || ''}`;
+        const idx = Math.abs(stableHash(key)) % appleColors.length;
+        return appleColors[idx];
+    }
+
+    function createDefaultExpenseCategories() {
+        return [
+            { id: newId(), name: "Житло", items: [], budgetBucket: "needs" },
+            { id: newId(), name: "Їжа", items: [], budgetBucket: "needs" },
+            { id: newId(), name: "Транспорт", items: [], budgetBucket: "needs" },
+            { id: newId(), name: "Розваги", items: [], budgetBucket: "wants" },
+            { id: newId(), name: "Інше", items: [], budgetBucket: "wants" }
+        ];
+    }
+
+    function parseLocalDate(dateStr) {
+        if (!dateStr) return null;
+        const parts = String(dateStr).split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    function getMonthlyInterestEstimate(debt, remaining) {
+        const rate = parseFloat(debt?.interest_rate) || 0;
+        const amount = parseFloat(remaining) || 0;
+        return amount > 0 && rate > 0 ? amount * (rate / 100) : 0;
+    }
 
     // ==========================================
     // 3. ІНІЦІАЛІЗАЦІЯ
@@ -137,41 +211,34 @@ function loadAuthStats() { /* /api/stats removed */ }
 
         document.addEventListener('click', closeProfileSwitcher);
 
-        window.addEventListener('beforeunload', () => {
-            if (currentUser && saveTimeout) {
+        function flushSaveKeepalive() {
+            if (!currentUser) return;
+            if (saveTimeout) {
                 clearTimeout(saveTimeout);
                 saveTimeout = null;
-                // keepalive best-effort flush for debounced edits
-                const year = currentYear;
-                const month = currentMonth;
-                const currentMonthData = appData[year]?.[month] || {};
-                const jars = globalData.jars[currentUser.id] || [];
-                const token = localStorage.getItem('budget_auth_token');
-                if (!token) return;
-                const payload = {
-                    userId: currentUser.id,
-                    year, month,
-                    incomes: currentMonthData.incomes || [],
-                    expenses: currentMonthData.expenses || expenses || [],
-                    cogs: currentMonthData.cogs || { type: 'percent', value: 0 },
-                    payroll: currentMonthData.payroll || [],
-                    jars: jars.length > 0 ? jars : undefined,
-                    debts: globalData.debts[currentUser.id] || [],
-                    suppliers: globalData.suppliers[currentUser.id] || [],
-                    invoices: currentMonthData.invoices || []
-                };
-                try {
-                    fetch(`${API_URL}/api/data`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify(payload),
-                        keepalive: true
-                    });
-                } catch (e) {}
             }
+            // Sync expenses into appData before building payload (same as saveData).
+            if (appData[currentYear]?.[currentMonth]?.initialized) {
+                appData[currentYear][currentMonth].expenses = expenses;
+            }
+            const token = localStorage.getItem('budget_auth_token');
+            if (!token) return;
+            try {
+                fetch(`${API_URL}/api/data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(buildSavePayload(currentYear, currentMonth)),
+                    keepalive: true
+                });
+            } catch (e) {}
+        }
+
+        window.addEventListener('beforeunload', flushSaveKeepalive);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') flushSaveKeepalive();
         });
 
         const savedUserId = localStorage.getItem('budget_saved_user_id');
@@ -269,7 +336,7 @@ function loadAuthStats() { /* /api/stats removed */ }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(payload.email)) {
-            return showError(errorDiv, 'Введіть коректный email');
+            return showError(errorDiv, 'Введіть коректний email');
         }
 
         try {
@@ -289,8 +356,10 @@ function loadAuthStats() { /* /api/stats removed */ }
                     document.getElementById('auth-overlay').classList.remove('active');
                     document.getElementById('create-profile-overlay').classList.remove('active');
                     
-                    const seconds = Number(data.retryAfter) || parseInt((data.error.match(/\d+/) || [])[0], 10) || 300;
-                    document.getElementById('otp-subtitle').innerText = `Код вже був відправлений на ${payload.email}. Він ще діє.`;
+                    const seconds = Number(data.retryAfter) || parseInt((data.error.match(/\d+/) || [])[0], 10) || 600;
+                    document.getElementById('otp-subtitle').innerText = isRegister
+                        ? `Код вже був відправлений на ${payload.email}. Він ще діє.`
+                        : `Якщо акаунт з ${payload.email} існує, попередній код ще діє. Перевірте пошту.`;
                     document.getElementById('otp-input').value = '';
                     document.getElementById('otp-error').style.display = 'none';
                     document.getElementById('otp-overlay').classList.add('active');
@@ -307,12 +376,14 @@ function loadAuthStats() { /* /api/stats removed */ }
                 document.getElementById('auth-overlay').classList.remove('active');
                 document.getElementById('create-profile-overlay').classList.remove('active');
                 
-                document.getElementById('otp-subtitle').innerText = `Код відправлено на ${payload.email}`;
+                document.getElementById('otp-subtitle').innerText = isRegister
+                    ? `Код відправлено на ${payload.email}`
+                    : `Якщо акаунт з ${payload.email} існує, код надіслано на пошту. Перевірте вхідні та «Спам».`;
                 document.getElementById('otp-input').value = '';
                 document.getElementById('otp-error').style.display = 'none';
                 document.getElementById('otp-overlay').classList.add('active');
                 
-                startOtpCountdown('btn-otp-resend', 300); 
+                startOtpCountdown('btn-otp-resend', 600); 
                 btn.innerText = 'Отримати код';
                 btn.disabled = false;
             }
@@ -421,6 +492,10 @@ function loadAuthStats() { /* /api/stats removed */ }
 
     function cancelAccountSelect() {
         document.getElementById('account-select-overlay').classList.remove('active');
+        localStorage.removeItem('budget_auth_token');
+        localStorage.removeItem('budget_saved_user_id');
+        localStorage.removeItem('budget_saved_user_info');
+        localStorage.removeItem('budget_available_profiles');
         showAuthScreen();
     }
 
@@ -539,7 +614,7 @@ async function performLogin(user) {
         
         document.getElementById('current-user-name-display').innerText = `${user.name} ${user.surname}`;
         
-        const color = appleColors[Math.floor(Math.random() * appleColors.length)];
+        const color = getStableAppleColor(user);
         document.getElementById('nav-avatar').innerText = user.name.charAt(0).toUpperCase();
         document.getElementById('nav-avatar').style.background = `linear-gradient(135deg, ${color}, #000)`;
         
@@ -606,6 +681,12 @@ async function performLogin(user) {
         const jarTypeWrap = document.getElementById('new-jar-type-wrap');
         if (jarTypeWrap) jarTypeWrap.style.display = isBiz ? 'none' : 'block';
 
+        const growthBtn = document.getElementById('btn-growth-strategy');
+        if (growthBtn) growthBtn.style.display = isBiz ? 'none' : 'flex';
+
+        const aiGrowthBtn = document.getElementById('btn-ai-growth-copy');
+        if (aiGrowthBtn) aiGrowthBtn.style.display = isBiz ? 'none' : '';
+
         // Показуємо cashflow-box для всіх
         const cfRowInvoices = document.getElementById('cf-row-invoices');
         const cfDivInvoices = document.getElementById('cf-divider-invoices');
@@ -647,7 +728,11 @@ async function performLogin(user) {
                 return;
             }
 
-            if (!response.ok) return console.error("Помилка завантаження:", data.error);
+            if (!response.ok) {
+                console.error("Помилка завантаження:", data.error);
+                alert(`Не вдалося завантажити дані: ${data.error || 'невідома помилка'}`);
+                return;
+            }
 
             if (!globalData.jars) globalData.jars = {};
             globalData.jars[userId] = data.jars || [];
@@ -681,12 +766,11 @@ if (!globalData.debts) globalData.debts = {};
                     
                     const parsedIncomes = JSON.parse(row.incomes_json || '[]');
                     const parsedExpenses = JSON.parse(row.expenses_json || '[]');
-                    
-                    const isCleared = parsedIncomes.length === 0 && parsedExpenses.length === 0;
 
                  appData[row.year][row.month] = {
-                        initialized: (row.is_initialized === 1) && !isCleared,
-                        incomes: parsedIncomes,
+                        // Trust DB flag (clear month now persists is_initialized=0).
+                        initialized: Number(row.is_initialized) === 1,
+                        incomes: ensureIncomeIds(parsedIncomes),
                         expenses: parsedExpenses,
                         cogs: JSON.parse(row.cogs_json || '{"type":"percent","value":0}'),
                         payroll: row.payroll_json ? JSON.parse(row.payroll_json) : []
@@ -710,32 +794,28 @@ if (!globalData.debts) globalData.debts = {};
             appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type:'percent', value:0}, payroll: [] };
             }
 
+            // Restore last viewed month/year for this profile (avoid landing on "today"
+            // after editing a copied future/past month and refreshing).
+            restoreViewedPeriod();
+            if (!appData[currentYear]) appData[currentYear] = {};
+            if (!appData[currentYear][currentMonth]) {
+                appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: { type: 'percent', value: 0 }, payroll: [] };
+            }
+
             renderCalendar();
             applyMonthData();
             updateSavingsDisplay();
+            persistViewedPeriod();
         } catch (e) {
             console.error("Помилка з'єднання з сервером під час завантаження даних", e);
+            alert("Не вдалося з'єднатися із сервером. Перевірте інтернет і спробуйте ще раз.");
         }
     }
 
 async function flushSaveToServer(year, month) {
         if (!currentUser) return;
 
-        const currentMonthData = appData[year]?.[month] || {};
-        const jars = globalData.jars[currentUser.id] || [];
-        const payload = {
-            userId: currentUser.id,
-            year, month,
-            incomes: currentMonthData.incomes || [],
-            expenses: currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []) || [],
-            cogs: currentMonthData.cogs || {type: 'percent', value: 0},
-            payroll: currentMonthData.payroll || [],
-            // Never send empty jars — backend skips wipe, and UI always keeps a main jar.
-            jars: jars.length > 0 ? jars : undefined,
-            debts: globalData.debts[currentUser.id] || [],
-            suppliers: globalData.suppliers[currentUser.id] || [],
-            invoices: currentMonthData.invoices || []
-        };
+        const payload = buildSavePayload(year, month);
 
         try {
             const token = localStorage.getItem('budget_auth_token');
@@ -761,6 +841,24 @@ async function flushSaveToServer(year, month) {
         } catch (e) {
             console.error("Помилка збереження на сервер:", e);
         }
+    }
+
+    function buildSavePayload(year, month) {
+        const currentMonthData = appData[year]?.[month] || {};
+        const jars = globalData.jars[currentUser.id] || [];
+        return {
+            userId: currentUser.id,
+            year, month,
+            incomes: currentMonthData.incomes || [],
+            expenses: currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []) || [],
+            cogs: currentMonthData.cogs || { type: 'percent', value: 0 },
+            payroll: currentMonthData.payroll || [],
+            jars: jars.length > 0 ? jars : undefined,
+            debts: globalData.debts[currentUser.id] || [],
+            suppliers: globalData.suppliers[currentUser.id] || [],
+            invoices: currentMonthData.invoices || [],
+            is_initialized: currentMonthData.initialized ? 1 : 0
+        };
     }
 
     function enqueueSave(year, month) {
@@ -818,6 +916,7 @@ function logout() {
         localStorage.removeItem('budget_saved_user_info');
         localStorage.removeItem('budget_auth_token');
         localStorage.removeItem('budget_available_profiles');
+        try { localStorage.removeItem(VIEW_PERIOD_KEY); } catch (e) {}
         
         closeProfileSwitcher();
         
@@ -833,8 +932,8 @@ function logout() {
 
     function deleteProfile() {
         showConfirm(
-            "Видалити акаунт та дані?", 
-            "Всі ваші дані (доходи, витрати, конверти) будуть видалені із сервера назавжди. Цю дію неможливо скасувати. Ви впевнені?", 
+            "Видалити поточний профіль?", 
+            "Буде видалено лише поточний профіль (особистий або бізнес) та його дані. Інші профілі на цю пошту залишаться. Цю дію неможливо скасувати. Ви впевнені?", 
             async () => {
                 try {
                     const token = localStorage.getItem('budget_auth_token');
@@ -877,12 +976,12 @@ function logout() {
         return null;
     }
 
-    function initializeMonth(usePrev) {
+    async function initializeMonth(usePrev) {
         if (!appData[currentYear]) appData[currentYear] = {};
+
+        const prev = usePrev ? getLastInitializedData() : null;
         
-        if (usePrev) {
-            const prev = getLastInitializedData();
-            if (prev) {
+        if (usePrev && prev) {
                 let copiedExpenses = JSON.parse(JSON.stringify(prev.data.expenses || []));
                 
                 copiedExpenses = copiedExpenses.filter(cat => cat.name !== "Погашення боргів" && !cat.isSavings);
@@ -923,32 +1022,60 @@ function logout() {
                     });
                     if (debtsChanged) saveGlobalData();
                 }
+
+                const copiedInvoices = JSON.parse(JSON.stringify(prev.data.invoices || [])).map(inv => ({
+                    ...inv,
+                    id: newId(),
+                    year: currentYear,
+                    month: currentMonth
+                }));
+
+                // Fresh ids so copied month is fully independent from the source month.
+                const copiedIncomes = JSON.parse(JSON.stringify(prev.data.incomes || [{ id: newId(), name: "Основний", amount: prev.data.usd || 0, currency: "USD" }])).map(inc => ({
+                    ...inc,
+                    id: newId()
+                }));
+                copiedExpenses.forEach(cat => {
+                    cat.id = newId();
+                    (cat.items || []).forEach(item => { item.id = newId(); });
+                });
+                copiedPayroll.forEach(emp => { emp.id = newId(); });
                 
                 appData[currentYear][currentMonth] = {
                     initialized: true,
-                    incomes: JSON.parse(JSON.stringify(prev.data.incomes || [{ id: newId(), name: "Основний", amount: prev.data.usd || 0, currency: "USD" }])),
+                    incomes: copiedIncomes,
                     expenses: copiedExpenses,
                     cogs: JSON.parse(JSON.stringify(prev.data.cogs || {type:'percent', value:0})),
-                    payroll: copiedPayroll // <-- ДОДАНО СЮДИ
+                    payroll: copiedPayroll,
+                    invoices: copiedInvoices
                 };
-            }
         } else {
             appData[currentYear][currentMonth] = {
                 initialized: true,
                 incomes: [{id: newId(), name: "Основний", amount: 0, currency: "UAH"}],
-                expenses: JSON.parse(JSON.stringify(defaultCategories)),
+                expenses: createDefaultExpenseCategories(),
                 cogs: {type: 'percent', value: 0},
-                payroll: [] // Додали масив для чистого місяця
+                payroll: [],
+                invoices: []
             };
         }
         
         renderCalendar(); 
-        applyMonthData(); 
+        applyMonthData();
+        persistViewedPeriod();
+        await saveData(true);
     }
 
     function clearCurrentMonth() {
         showConfirm("Очистити місяць", "Ви впевнені, що хочете повністю очистити дані за цей місяць? Дію неможливо скасувати.", () => {
-            appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type:'percent', value:0} };
+            appData[currentYear][currentMonth] = {
+                initialized: false,
+                incomes: [],
+                expenses: [],
+                cogs: { type: 'percent', value: 0 },
+                payroll: [],
+                invoices: []
+            };
             
             const viewDate = currentYear * 100 + currentMonth;
             if (globalData.debts && globalData.debts[currentUser.id]) {
@@ -963,7 +1090,7 @@ function logout() {
                 if (debtsChanged) saveGlobalData();
             }
             
-            saveData();
+            saveData(true);
             renderCalendar(); 
             applyMonthData(); 
         });
@@ -994,6 +1121,7 @@ function logout() {
         currentYear += delta;
         if (!appData[currentYear]) appData[currentYear] = {};
         if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
+        persistViewedPeriod();
         renderCalendar();
         applyMonthData();
     }
@@ -1003,9 +1131,12 @@ function logout() {
         await saveData(true);
         currentMonth = m;
         if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
+        persistViewedPeriod();
         renderCalendar();
         applyMonthData();
-        btnElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        if (btnElement && typeof btnElement.scrollIntoView === 'function') {
+            btnElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
     }
 
     function applyMonthData() {
@@ -1081,7 +1212,8 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
     const BUDGET_BUCKET_LABELS = {
         needs: 'Потреби 50%',
         wants: 'Бажання 30%',
-        savings: 'Збереж. 20%',
+        savings: 'Заощадж. 20%',
+        unassigned: 'Група',
     };
 
     function getJarTypeOptions() {
@@ -1112,16 +1244,24 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
 
     function buildBucketDropdownHtml(categoryId, selectedValue, disabled) {
         if (disabled) {
-            return `<div class="custom-dropdown compact-xs" style="opacity: 0.7; pointer-events: none;">
+            return `<div class="custom-dropdown compact-xs bucket-dropdown is-disabled" aria-disabled="true">
                 <div class="custom-dropdown-selected">${escapeHtml(BUDGET_BUCKET_LABELS[selectedValue] || BUDGET_BUCKET_LABELS.savings)}</div>
             </div>`;
         }
-        const items = Object.entries(BUDGET_BUCKET_LABELS).map(([value, label]) => ({ value, label }));
+        const items = [
+            { value: 'unassigned', label: 'Без групи' },
+            { value: 'needs', label: BUDGET_BUCKET_LABELS.needs },
+            { value: 'wants', label: BUDGET_BUCKET_LABELS.wants },
+            { value: 'savings', label: BUDGET_BUCKET_LABELS.savings },
+        ];
+        const selectedLabel = selectedValue && selectedValue !== 'unassigned'
+            ? (BUDGET_BUCKET_LABELS[selectedValue] || BUDGET_BUCKET_LABELS.unassigned)
+            : 'Група';
         return `
-            <div class="custom-dropdown compact-xs" onclick="event.stopPropagation(); this.classList.toggle('open')">
-                <div class="custom-dropdown-selected">${escapeHtml(BUDGET_BUCKET_LABELS[selectedValue] || BUDGET_BUCKET_LABELS.needs)}</div>
+            <div class="custom-dropdown compact-xs bucket-dropdown" onclick="event.preventDefault(); event.stopPropagation(); this.classList.toggle('open')">
+                <div class="custom-dropdown-selected">${escapeHtml(selectedLabel)}</div>
                 <div class="custom-dropdown-options">
-                    ${buildDropdownOptionsHtml(items, selectedValue, (val) => `selectCategoryBucket(event, ${jsId(categoryId)}, '${val}')`)}
+                    ${buildDropdownOptionsHtml(items, selectedValue || 'unassigned', (val) => `selectCategoryBucket(event, ${jsId(categoryId)}, '${val}')`)}
                 </div>
             </div>
         `;
@@ -1135,25 +1275,25 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
     }
 
     function selectNewJarType(event, value) {
-        event.stopPropagation();
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
         const valueEl = document.getElementById('new-jar-type-value');
         const displayEl = document.getElementById('new-jar-type-display');
         if (valueEl) valueEl.value = value;
         if (displayEl) displayEl.innerText = JAR_TYPE_LABELS[value] || JAR_TYPE_LABELS.regular;
         initNewJarTypeDropdown();
-        event.target.closest('.custom-dropdown')?.classList.remove('open');
+        event?.target?.closest?.('.custom-dropdown')?.classList.remove('open');
     }
 
     function selectJarTypeDropdown(event, jarId, value) {
-        event.stopPropagation();
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
         setJarType(jarId, value);
-        event.target.closest('.custom-dropdown')?.classList.remove('open');
+        event?.target?.closest?.('.custom-dropdown')?.classList.remove('open');
     }
 
     function selectCategoryBucket(event, categoryId, bucket) {
-        event.stopPropagation();
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
         setCategoryBudgetBucket(categoryId, bucket);
-        event.target.closest('.custom-dropdown')?.classList.remove('open');
+        event?.target?.closest?.('.custom-dropdown')?.classList.remove('open');
     }
 
     function calc502030(incomeUah) {
@@ -1197,13 +1337,19 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         currentUser.growthProfile = profile;
         try {
             const token = localStorage.getItem('budget_auth_token');
-            await fetch(`${API_URL}/api/profile`, {
+            const response = await fetch(`${API_URL}/api/profile`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ userId: currentUser.id, growthProfile: profile }),
             });
+            if (!response.ok) {
+                let data = {};
+                try { data = await response.json(); } catch (e) {}
+                alert(`Не вдалося зберегти фінансовий план: ${data.error || 'помилка сервера'}`);
+            }
         } catch (e) {
             console.error('Помилка збереження фінплану', e);
+            alert("Не вдалося зберегти фінансовий план через помилку з'єднання.");
         }
     }
 
@@ -1225,13 +1371,14 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         if (cat.budgetBucket) return cat.budgetBucket;
         if (cat.isSavings) return 'savings';
         if (cat.name === "Погашення боргів") return 'savings';
-        return 'needs';
+        return 'unassigned';
     }
 
     function setCategoryBudgetBucket(categoryId, bucket) {
-        const cat = expenses.find(e => e.id === categoryId);
+        const cat = findExpenseById(categoryId);
         if (!cat) return;
-        cat.budgetBucket = bucket;
+        if (bucket === 'unassigned') delete cat.budgetBucket;
+        else cat.budgetBucket = bucket;
         saveData();
         renderExpenses();
         renderFinancialPlanBlock();
@@ -1242,10 +1389,14 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
     }
 
     function get502030ActualsFromExpenses(expenseList) {
-        const actuals = { needs: 0, wants: 0, savings: 0 };
+        const actuals = { needs: 0, wants: 0, savings: 0, unassigned: 0 };
         (expenseList || []).forEach(exp => {
             const bucket = getCategoryBudgetBucket(exp);
-            actuals[bucket] += getCategoryTotal(exp);
+            if (bucket === 'needs' || bucket === 'wants' || bucket === 'savings') {
+                actuals[bucket] += getCategoryTotal(exp);
+            } else {
+                actuals.unassigned += getCategoryTotal(exp);
+            }
         });
         return actuals;
     }
@@ -1362,6 +1513,9 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
                 <strong>${item.pct}% — ${item.title}:</strong> ${item.desc}
             </div>
         `).join('');
+        const unassignedNoteHtml = actuals.unassigned > 0
+            ? `<div class="rule-502030-detail-item" style="margin-top:8px;"><strong>Без категорії:</strong> ${formatMoney(actuals.unassigned)} ₴ не враховано у 50/30/20. Оберіть для цих витрат потреби, бажання або збереження.</div>`
+            : '';
 
         const monthlyNeedsForCushion = actuals.needs > 0 ? actuals.needs : amounts.needs;
         const cushionBasisLabel = actuals.needs > 0
@@ -1392,6 +1546,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
                 <div class="rule-502030-bar-seg" style="width: 20%; background: var(--sys-green);"></div>
             </div>
             ${rowsHtml}
+            ${unassignedNoteHtml}
             <div id="rule-502030-details" class="rule-502030-details">${detailsHtml}</div>
 
             <div id="fp-settings-panel" class="rule-502030-details">
@@ -1420,7 +1575,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
                 </div>
                 ${fpProgressBar(cushionPct, 'var(--sys-blue)')}
                 <div class="rule-502030-detail-item" style="margin:0;">${cushionBasisLabel}</div>
-                <div class="rule-502030-detail-item" style="margin:0;"><strong>Неприкосновенна:</strong> конверти типу «Подушка безпеки»</div>
+                <div class="rule-502030-detail-item" style="margin:0;"><strong>Недоторканна:</strong> конверти типу «Подушка безпеки»</div>
             </div>
 
             <div class="fp-section">
@@ -1443,23 +1598,67 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
     const render502030Guide = renderFinancialPlanBlock;
 
     async function fetchExchangeRate() {
+        const rateEl = document.getElementById('rate-info');
         try {
             const response = await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json');
             const data = await response.json();
-            if (data && data.length > 0) {
+            if (data && data.length > 0 && data[0].rate) {
                 currentExchangeRate = data[0].rate;
                 const dateStr = data[0].exchangedate || '';
-                document.getElementById('rate-info').innerText = `НБУ: ${formatMoney(currentExchangeRate)} ₴ ${dateStr ? '• ' + dateStr : ''}`;
-                convertCurrency(); 
+                if (rateEl) {
+                    rateEl.style.color = '';
+                    rateEl.innerText = `НБУ: ${formatMoney(currentExchangeRate)} ₴ ${dateStr ? '• ' + dateStr : ''}`;
+                }
+                convertCurrency();
+                return;
             }
+            currentExchangeRate = 0;
+            updateMissingRateBanner();
         } catch (error) {
-            document.getElementById('rate-info').innerText = "Курс недоступний";
+            currentExchangeRate = 0;
+            updateMissingRateBanner();
         }
+    }
+
+    function monthHasUsdIncome() {
+        const incomes = appData[currentYear]?.[currentMonth]?.incomes || [];
+        return incomes.some(inc => inc.currency === 'USD' && (parseFloat(inc.amount) || 0) > 0);
+    }
+
+    function updateMissingRateBanner() {
+        const rateEl = document.getElementById('rate-info');
+        if (!rateEl || currentExchangeRate > 0) return;
+        rateEl.style.color = 'var(--sys-red)';
+        rateEl.innerText = monthHasUsdIncome()
+            ? 'Немає курсу НБУ — доходи в $ = 0 ₴'
+            : 'Курс НБУ недоступний';
     }
 
     function selectCurrency(event, incId, currencyCode) {
         if(event) event.stopPropagation();
         updateIncome(incId, 'currency', currencyCode);
+    }
+
+    function ensureIncomeIds(incomes) {
+        if (!Array.isArray(incomes)) return [];
+        incomes.forEach((inc) => {
+            if (!inc.id && inc.id !== 0) inc.id = newId();
+        });
+        return incomes;
+    }
+
+    function bindIncomeField(el, inc, field) {
+        if (!el) return;
+        el.addEventListener('input', () => {
+            if (field === 'amount' || field === 'actual_balance') {
+                inc[field] = parseFloat(el.value) || 0;
+            } else {
+                inc[field] = el.value;
+            }
+            saveData();
+            convertCurrency();
+            if (field === 'currency') renderIncomes();
+        });
     }
 
 function renderIncomes() {
@@ -1469,9 +1668,11 @@ function renderIncomes() {
         if(!appData[currentYear] || !appData[currentYear][currentMonth] || !appData[currentYear][currentMonth].initialized) return;
 
         const isBiz = currentUser && currentUser.account_type === 'business';
-        const incomes = appData[currentYear][currentMonth].incomes || [];
+        const incomes = ensureIncomeIds(appData[currentYear][currentMonth].incomes || []);
+        appData[currentYear][currentMonth].incomes = incomes;
         
         incomes.forEach(inc => {
+            if (!inc.currency) inc.currency = 'UAH';
             const div = document.createElement('div');
             div.className = 'expense-item'; 
             
@@ -1480,33 +1681,33 @@ if (isBiz) {
                 div.style = "padding: 16px; margin-bottom: 16px; flex-direction: column; align-items: stretch; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);";
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%;">
-                        <input type="text" class="input-name" value="${escapeHtml(inc.name)}" oninput="updateIncome(${jsId(inc.id)}, 'name', this.value)" placeholder="Назва рахунку (напр. ФОП)" style="flex: 1; height: 48px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0 16px; font-size: 16px; font-weight: 600; color: white; outline: none; transition: 0.3s;" onfocus="this.style.backgroundColor='rgba(0,0,0,0.3)'; this.style.borderColor='var(--sys-blue)';">
+                        <input type="text" class="input-name income-name" value="${escapeHtml(inc.name || '')}" placeholder="Назва рахунку (напр. ФОП)" style="flex: 1; height: 48px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0 16px; font-size: 16px; font-weight: 600; color: white; outline: none; transition: 0.3s;">
                         
                         <div style="display: flex; gap: 8px; flex-shrink: 0;">
-                            <div class="custom-dropdown" style="width: 85px;" onclick="event.stopPropagation(); this.classList.toggle('open')">
-                                <div class="custom-dropdown-selected" style="height: 48px; padding: 0 28px 0 12px; border-radius: 14px; font-size: 14px;">${inc.currency}</div>
+                            <div class="custom-dropdown income-currency-dd" style="width: 85px;">
+                                <div class="custom-dropdown-selected" style="height: 48px; padding: 0 28px 0 12px; border-radius: 14px; font-size: 14px;">${escapeHtml(inc.currency)}</div>
                                 <div class="custom-dropdown-options" style="min-width: 85px;">
-                                    <div class="custom-dropdown-option" onclick="selectCurrency(event, ${jsId(inc.id)}, 'UAH'); this.closest('.custom-dropdown').classList.remove('open');">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
-                                    <div class="custom-dropdown-option" onclick="selectCurrency(event, ${jsId(inc.id)}, 'USD'); this.closest('.custom-dropdown').classList.remove('open');">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
+                                    <div class="custom-dropdown-option" data-currency="UAH">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
+                                    <div class="custom-dropdown-option" data-currency="USD">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
                                 </div>
                             </div>
-                            <button class="btn-delete" onclick="deleteIncome(${jsId(inc.id)})" style="width: 48px; height: 48px; border-radius: 14px;">
+                            <button type="button" class="btn-delete income-delete" style="width: 48px; height: 48px; border-radius: 14px;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                         </div>
                     </div>
 
                     <div style="display: flex; gap: 12px; width: 100%;">
-                        <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s;" onfocusin="this.style.borderColor='var(--text-secondary)'; this.style.backgroundColor='rgba(0,0,0,0.5)';" onfocusout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.backgroundColor='rgba(0,0,0,0.3)';">
+                        <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                 <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Обіг</div>
-                                <div id="inc-percent-${inc.id}" style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 6px;">0.0%</div>
+                                <div id="inc-percent-${escapeAttr(String(inc.id))}" style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 6px;">0.0%</div>
                             </div>
-                            <input type="number" class="tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${jsId(inc.id)}, 'amount', this.value)" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
+                            <input type="number" class="tabular income-amount" value="${inc.amount || ''}" placeholder="0" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
                         </div>
-                        <div style="flex: 1; background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.05)); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(10, 132, 255, 0.2); transition: 0.3s;" onfocusin="this.style.borderColor='var(--sys-blue)'; this.style.backgroundColor='rgba(10, 132, 255, 0.15)';" onfocusout="this.style.borderColor='rgba(10, 132, 255, 0.2)'; this.style.background='linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.05))';">
+                        <div style="flex: 1; background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.05)); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(10, 132, 255, 0.2); transition: 0.3s;">
                             <div style="font-size: 12px; color: var(--sys-blue); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Факт. залишок</div>
-                            <input type="number" class="tabular" value="${inc.actual_balance || ''}" placeholder="0" oninput="updateIncome(${jsId(inc.id)}, 'actual_balance', this.value)" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: var(--sys-blue); padding: 0;">
+                            <input type="number" class="tabular income-actual" value="${inc.actual_balance || ''}" placeholder="0" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: var(--sys-blue); padding: 0;">
                         </div>
                     </div>
                 `;
@@ -1514,21 +1715,55 @@ if (isBiz) {
                 // СТАРЫЙ ДИЗАЙН ДЛЯ ФИЗЛИЦ (Компактная строка)
                 div.style = "padding: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;";
                 div.innerHTML = `
-                    <input type="text" class="input-name" value="${escapeHtml(inc.name)}" oninput="updateIncome(${jsId(inc.id)}, 'name', this.value)" placeholder="Назва" style="flex: 1; min-width: 100px;">
-                    <input type="number" class="input-name tabular" value="${inc.amount || ''}" placeholder="0" oninput="updateIncome(${jsId(inc.id)}, 'amount', this.value)" style="text-align: right; margin: 0 8px; width: 100px;">
+                    <input type="text" class="input-name income-name" value="${escapeHtml(inc.name || '')}" placeholder="Назва" style="flex: 1; min-width: 100px;">
+                    <input type="number" class="input-name tabular income-amount" value="${inc.amount || ''}" placeholder="0" style="text-align: right; margin: 0 8px; width: 100px;">
                     
-                    <div class="custom-dropdown" style="width: 90px; flex-shrink: 0;" onclick="event.stopPropagation(); this.classList.toggle('open')">
-                        <div class="custom-dropdown-selected" style="height: 48px; padding: 0 30px 0 12px; border-radius: 14px; font-size: 14px;">${inc.currency}</div>
+                    <div class="custom-dropdown income-currency-dd" style="width: 90px; flex-shrink: 0;">
+                        <div class="custom-dropdown-selected" style="height: 48px; padding: 0 30px 0 12px; border-radius: 14px; font-size: 14px;">${escapeHtml(inc.currency)}</div>
                         <div class="custom-dropdown-options" style="min-width: 90px;">
-                            <div class="custom-dropdown-option" onclick="selectCurrency(event, ${jsId(inc.id)}, 'UAH'); this.closest('.custom-dropdown').classList.remove('open');">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
-                            <div class="custom-dropdown-option" onclick="selectCurrency(event, ${jsId(inc.id)}, 'USD'); this.closest('.custom-dropdown').classList.remove('open');">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
+                            <div class="custom-dropdown-option" data-currency="UAH">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
+                            <div class="custom-dropdown-option" data-currency="USD">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
                         </div>
                     </div>
-                    <button class="btn-delete" onclick="deleteIncome(${jsId(inc.id)})" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px;">
+                    <button type="button" class="btn-delete income-delete" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 `;
             }
+
+            // Bind by object reference — no fragile id lookup via inline handlers.
+            bindIncomeField(div.querySelector('.income-name'), inc, 'name');
+            bindIncomeField(div.querySelector('.income-amount'), inc, 'amount');
+            bindIncomeField(div.querySelector('.income-actual'), inc, 'actual_balance');
+
+            const currencyDd = div.querySelector('.income-currency-dd');
+            if (currencyDd) {
+                currencyDd.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    currencyDd.classList.toggle('open');
+                });
+                currencyDd.querySelectorAll('.custom-dropdown-option').forEach((opt) => {
+                    opt.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const code = opt.getAttribute('data-currency');
+                        if (!code) return;
+                        inc.currency = code;
+                        currencyDd.classList.remove('open');
+                        saveData();
+                        convertCurrency();
+                        renderIncomes();
+                    });
+                });
+            }
+
+            const delBtn = div.querySelector('.income-delete');
+            if (delBtn) {
+                delBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteIncome(inc.id);
+                });
+            }
+
             container.appendChild(div);
         });
     }
@@ -1542,13 +1777,17 @@ if (isBiz) {
     }
 
     function updateIncome(id, field, value) {
-        const inc = appData[currentYear][currentMonth].incomes.find(i => i.id === id);
-        if (inc) {
-            inc[field] = (field === 'amount' || field === 'actual_balance') ? parseFloat(value) || 0 : value;
-            saveData();
-            convertCurrency();
-            if (field === 'currency') renderIncomes(); 
+        const list = ensureIncomeIds(appData[currentYear]?.[currentMonth]?.incomes || []);
+        if (appData[currentYear]?.[currentMonth]) appData[currentYear][currentMonth].incomes = list;
+        const inc = list.find(i => sameId(i.id, id));
+        if (!inc) {
+            console.warn('updateIncome: income not found', id, field, value);
+            return;
         }
+        inc[field] = (field === 'amount' || field === 'actual_balance') ? parseFloat(value) || 0 : value;
+        saveData();
+        convertCurrency();
+        if (field === 'currency') renderIncomes();
     }
 
     function updateBusinessHours(val) {
@@ -1561,14 +1800,17 @@ if (isBiz) {
     }
 
     function deleteIncome(id) {
-        appData[currentYear][currentMonth].incomes = appData[currentYear][currentMonth].incomes.filter(i => i.id !== id);
+        appData[currentYear][currentMonth].incomes = appData[currentYear][currentMonth].incomes.filter(i => !sameId(i.id, id));
         saveData();
         renderIncomes();
         convertCurrency();
     }
 
 function convertCurrency() {
-        if(!appData[currentYear] || !appData[currentYear][currentMonth] || !appData[currentYear][currentMonth].initialized) return;
+        if(!appData[currentYear] || !appData[currentYear][currentMonth] || !appData[currentYear][currentMonth].initialized) {
+            updateMissingRateBanner();
+            return;
+        }
 
         let totalUah = 0;
         let totalUsdEquivalent = 0;
@@ -1585,8 +1827,6 @@ function convertCurrency() {
             }
         });
         
-        saveData(); 
-
         currentIncomeUah = totalUah; 
         window.currentIncomeUsd = totalUsdEquivalent; 
         
@@ -1600,6 +1840,7 @@ function convertCurrency() {
             if (badge) badge.innerText = percent + '%';
         });
 
+        updateMissingRateBanner();
         updateDebtsDisplay();
         updateAll(); 
     }
@@ -1628,52 +1869,68 @@ function convertCurrency() {
         return category.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
     }
 
+    function getPayrollAccruedFromList(payroll) {
+        if (!Array.isArray(payroll)) return 0;
+        return payroll.reduce((sum, emp) => {
+            const rate = parseFloat(emp.rate) || 0;
+            const hours = parseFloat(emp.hours) || 0;
+            const bonus = parseFloat(emp.bonus) || 0;
+            const penalty = parseFloat(emp.penalty) || 0;
+            return sum + (rate * hours) + bonus - penalty;
+        }, 0);
+    }
+
+    function getMonthIncomeUahFromData(data) {
+        if (!data) return 0;
+        if (data.incomes && data.incomes.length > 0) {
+            return data.incomes.reduce((sum, inc) => {
+                const amt = parseFloat(inc.amount) || 0;
+                return sum + (inc.currency === 'USD' ? amt * currentExchangeRate : amt);
+            }, 0);
+        }
+        return (parseFloat(data.usd) || 0) * currentExchangeRate;
+    }
+
+    function getMonthPurchasesUah(data, incomeUah = 0) {
+        if (!data) return 0;
+        if (data.invoices && data.invoices.length > 0) {
+            return data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+        }
+        if (data.cogs) {
+            return data.cogs.type === 'percent'
+                ? incomeUah * ((parseFloat(data.cogs.value) || 0) / 100)
+                : (parseFloat(data.cogs.value) || 0);
+        }
+        return 0;
+    }
+
+    function getMonthExpensesUahFromData(data) {
+        if (!data?.expenses) return 0;
+        return data.expenses.reduce(
+            (sum, exp) => sum + (exp.items || []).reduce((s, item) => s + (parseFloat(item.amount) || 0), 0),
+            0
+        );
+    }
+
+    function getMonthNetProfit(year, month) {
+        if (!appData[year] || !appData[year][month] || !appData[year][month].initialized) return 0;
+        const data = appData[year][month];
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        const income = getMonthIncomeUahFromData(data);
+        const purchases = isBiz ? getMonthPurchasesUah(data, income) : 0;
+        const expensesTotal = getMonthExpensesUahFromData(data);
+        const payroll = isBiz ? getPayrollAccruedFromList(data.payroll) : 0;
+        return income - purchases - expensesTotal - payroll;
+    }
+
     function getHistoricalCogs(year, month) {
         if (!appData[year] || !appData[year][month] || !appData[year][month].initialized) return 0;
         const data = appData[year][month];
-        let cogsAmount = 0;
-        
-        if (data.invoices && data.invoices.length > 0) {
-            cogsAmount = data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
-        } else if (data.cogs) {
-            // Фолбек для старих даних (якщо такі залишилися)
-            let income = data.incomes ? data.incomes.reduce((s, inc) => s + (inc.currency === 'USD' ? inc.amount * currentExchangeRate : inc.amount), 0) : (data.usd || 0) * currentExchangeRate;
-            cogsAmount = data.cogs.type === 'percent' ? income * (data.cogs.value / 100) : (data.cogs.value || 0);
-        }
-        return cogsAmount;
+        return getMonthPurchasesUah(data, getMonthIncomeUahFromData(data));
     }
 
     function getHistoricalProfit(year, month) {
-        if (!appData[year] || !appData[year][month] || !appData[year][month].initialized) return 0;
-        const data = appData[year][month];
-        
-        let income = 0;
-        if (data.incomes && data.incomes.length > 0) {
-            data.incomes.forEach(inc => {
-                income += (inc.currency === 'USD' ? (parseFloat(inc.amount) || 0) * currentExchangeRate : (parseFloat(inc.amount) || 0));
-            });
-        } else {
-            income = (parseFloat(data.usd) || 0) * currentExchangeRate;
-        }
-
-        let cogsAmount = 0;
-        const isBiz = currentUser && currentUser.account_type === 'business';
-        if (isBiz) {
-            if (data.invoices && data.invoices.length > 0) {
-                cogsAmount = data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
-            } else if (data.cogs) {
-                cogsAmount = data.cogs.type === 'percent' ? income * (data.cogs.value / 100) : (parseFloat(data.cogs.value) || 0);
-            }
-        }
-
-        let expTotal = 0;
-        if (data.expenses) {
-            data.expenses.forEach(exp => {
-                expTotal += exp.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-            });
-        }
-
-        return income - cogsAmount - expTotal;
+        return getMonthNetProfit(year, month);
     }
 
     function generateProfitSparklineHTML(currentTotal) {
@@ -1712,7 +1969,7 @@ function convertCurrency() {
                 const diff = Math.abs(((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1);
                 diffText = `+${diff}%`;
             }
-            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+            trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↑ ${diffText}</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -1723,7 +1980,7 @@ function convertCurrency() {
                 const diff = Math.abs(((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1);
                 diffText = `-${diff}%`;
             }
-            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+            trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↓ ${diffText}</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -1799,14 +2056,14 @@ function convertCurrency() {
             colorMain = '#ff453a'; 
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-up" style="margin-bottom:0; cursor:pointer;">
+            trendHtml = `<div class="trend-badge trend-up" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; cursor:pointer;">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#ff453a';
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-down" style="margin-bottom:0; cursor:pointer;">
+            trendHtml = `<div class="trend-badge trend-down" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; cursor:pointer;">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -1892,14 +2149,14 @@ function getHistoricalIncome(year, month) {
             colorMain = '#32d74b'; 
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+            trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#32d74b';
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+            trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -1955,10 +2212,10 @@ function getHistoricalIncome(year, month) {
             } else {
                 let historicalTotal = 0;
                 if (appData[tempY] && appData[tempY][tempM] && appData[tempY][tempM].initialized) {
-                    let pastCat = appData[tempY][tempM].expenses.find(e => e.id === categoryId);
+                    let pastCat = appData[tempY][tempM].expenses.find(e => sameId(e.id, categoryId));
                     
                     // РОЗУМНИЙ ПОШУК (ФІКС ДЛЯ БОРГІВ ТА ЗАОЩАДЖЕНЬ):
-                    const currentCat = expenses.find(e => e.id === categoryId);
+                    const currentCat = findExpenseById(categoryId);
                     
                      if (!pastCat && currentCat) {
                         const isDebtCategory = currentCat.items && currentCat.items.some(item => item.debtId);
@@ -1991,7 +2248,7 @@ function getHistoricalIncome(year, month) {
         let colorMain = '#a1a1a6';
 
         // Перевіряємо, чи це заощадження, щоб інвертувати кольори
-        const currentCatForColor = expenses.find(e => e.id === categoryId);
+        const currentCatForColor = findExpenseById(categoryId);
         const isSavings = currentCatForColor ? currentCatForColor.isSavings : false;
         
         // Рахуємо різницю в грошах для підміни тексту
@@ -2005,13 +2262,13 @@ function getHistoricalIncome(year, month) {
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
             if (isSavings) {
-                trendHtml = `<div class="trend-badge" style="color: #32d74b; background: rgba(50, 215, 75, 0.15);">
+                trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="color: #32d74b; background: rgba(50, 215, 75, 0.15);">
                                 <span class="trend-main-text">↑ +${diff}%</span>
                                 <span class="trend-hover-text">${diffMoneyText}</span>
                              </div>`;
                 colorMain = '#32d74b';
             } else {
-                trendHtml = `<div class="trend-badge trend-up">
+                trendHtml = `<div class="trend-badge trend-up" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();">
                                 <span class="trend-main-text">↑ +${diff}%</span>
                                 <span class="trend-hover-text">${diffMoneyText}</span>
                              </div>`;
@@ -2020,13 +2277,13 @@ function getHistoricalIncome(year, month) {
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
             if (isSavings) {
-                trendHtml = `<div class="trend-badge" style="color: #ff453a; background: rgba(255, 69, 58, 0.15);">
+                trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="color: #ff453a; background: rgba(255, 69, 58, 0.15);">
                                 <span class="trend-main-text">↓ -${diff}%</span>
                                 <span class="trend-hover-text">${diffMoneyText}</span>
                              </div>`;
                 colorMain = '#ff453a';
             } else {
-                trendHtml = `<div class="trend-badge trend-down">
+                trendHtml = `<div class="trend-badge trend-down" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();">
                                 <span class="trend-main-text">↓ -${diff}%</span>
                                 <span class="trend-hover-text">${diffMoneyText}</span>
                              </div>`;
@@ -2113,7 +2370,7 @@ function getHistoricalIncome(year, month) {
             const div = document.createElement('div');
             div.className = `expense-card-pro ${rankClass} ${paidCardClass}`;
             div.innerHTML = `
-                <div class="expense-pro-main" onclick="openModal(${jsId(exp.id)})" style="cursor: pointer; position: relative;">
+                <div class="expense-pro-main" onclick="handleExpenseCardClick(event, ${jsId(exp.id)})" style="cursor: pointer; position: relative;">
                     <div class="expense-pro-header">
                         <div class="expense-pro-title-group">
                             ${badgeHtml}
@@ -2149,9 +2406,22 @@ function getHistoricalIncome(year, month) {
         });
     }
 
+    function findExpenseById(id) {
+        return expenses.find(e => sameId(e.id, id));
+    }
+
+    function findSubItemById(category, subId) {
+        return category?.items?.find(i => sameId(i.id, subId));
+    }
+
     function updateCategoryName(id, val) {
-        const cat = expenses.find(e => e.id === id);
+        const cat = findExpenseById(id);
         if (cat) { cat.name = val; saveData(); updateChart(); renderFinancialPlanBlock(); }
+    }
+
+    function handleExpenseCardClick(event, categoryId) {
+        if (event.target.closest('.custom-dropdown, .expense-pro-input, button, a, input, select, textarea')) return;
+        openModal(categoryId);
     }
 
     function addCategory() {
@@ -2160,8 +2430,9 @@ function getHistoricalIncome(year, month) {
     }
 
     function openModal(categoryId) {
-        activeCategoryId = categoryId;
-        const category = expenses.find(e => e.id === categoryId);
+        const category = findExpenseById(categoryId);
+        if (!category) return;
+        activeCategoryId = category.id;
         document.getElementById('modal-category-name').innerText = category.name || 'Без назви';
         renderModalItems();
         document.getElementById('category-modal').classList.add('active');
@@ -2174,14 +2445,15 @@ function getHistoricalIncome(year, month) {
     }
 
     function getTop3SubItems(category) {
-        let totals = category.items.map(i => parseFloat(i.amount) || 0).filter(t => t > 0);
+        let totals = (category?.items || []).map(i => parseFloat(i.amount) || 0).filter(t => t > 0);
         let unique = [...new Set(totals)].sort((a,b) => b - a);
         return { top1: unique[0] || -1, top2: unique[1] || -1, top3: unique[2] || -1 };
     }
 
     function renderModalItems() {
-        const category = expenses.find(e => e.id === activeCategoryId);
+        const category = findExpenseById(activeCategoryId);
         const list = document.getElementById('modal-subitems-list');
+        if (!category || !list) return;
         list.innerHTML = '';
         const tops = getTop3SubItems(category);
 
@@ -2238,18 +2510,21 @@ function getHistoricalIncome(year, month) {
     }
 
     function addSubItem() {
-        expenses.find(e => e.id === activeCategoryId).items.push({ id: newId(), name: "", amount: null, isPaid: false });
+        const category = findExpenseById(activeCategoryId);
+        if (!category) return;
+        if (!Array.isArray(category.items)) category.items = [];
+        category.items.push({ id: newId(), name: "", amount: null, isPaid: false });
         renderModalItems();
     }
 
     function updateSubItemName(subId, val) {
-        const item = expenses.find(e => e.id === activeCategoryId).items.find(i => i.id === subId);
+        const item = findSubItemById(findExpenseById(activeCategoryId), subId);
         if (item) { item.name = val; saveData(); }
     }
 
     function deleteCategory(id) {
         showConfirm("Видалити категорію", "Видалити цю категорію з усіма витратами?", () => {
-            const category = expenses.find(e => e.id === id);
+            const category = findExpenseById(id);
             let debtsToSync = new Set();
             
             if (category) {
@@ -2262,7 +2537,7 @@ function getHistoricalIncome(year, month) {
                 });
             }
             
-            expenses = expenses.filter(e => e.id !== id);
+            expenses = expenses.filter(e => !sameId(e.id, id));
             
             if (appData[currentYear] && appData[currentYear][currentMonth]) {
                 appData[currentYear][currentMonth].expenses = expenses;
@@ -2280,8 +2555,8 @@ function getHistoricalIncome(year, month) {
     }
 
     function updateSubItemAmount(subId, val) {
-        const category = expenses.find(e => e.id === activeCategoryId);
-        const item = category.items.find(i => i.id === subId);
+        const category = findExpenseById(activeCategoryId);
+        const item = findSubItemById(category, subId);
         if (item) {
             const newVal = parseFloat(val) || 0;
             if (category.isSavings && item.envelopeId) {
@@ -2311,8 +2586,9 @@ function getHistoricalIncome(year, month) {
     }
 
     function deleteSubItem(subId) {
-        const category = expenses.find(e => e.id === activeCategoryId);
-        const item = category.items.find(i => i.id === subId);
+        const category = findExpenseById(activeCategoryId);
+        if (!category) return;
+        const item = findSubItemById(category, subId);
         const debtIdToSync = item && item.debtId ? item.debtId : null;
         
         if (category.isSavings && item && item.envelopeId) {
@@ -2320,7 +2596,7 @@ function getHistoricalIncome(year, month) {
             if (jar) { jar.balance -= (item.amount || 0); updateSavingsDisplay(); }
         }
         
-        category.items = category.items.filter(i => i.id !== subId);
+        category.items = category.items.filter(i => !sameId(i.id, subId));
         
         if (appData[currentYear] && appData[currentYear][currentMonth]) {
             appData[currentYear][currentMonth].expenses = expenses;
@@ -2331,11 +2607,12 @@ function getHistoricalIncome(year, month) {
             updateDebtsDisplay();
         }
         renderModalItems();
+        saveData();
     }
 
     function togglePaidStatus(subId) {
-        const category = expenses.find(e => e.id === activeCategoryId);
-        const item = category.items.find(i => i.id === subId);
+        const category = findExpenseById(activeCategoryId);
+        const item = findSubItemById(category, subId);
         if (item) { 
             item.isPaid = !item.isPaid; 
             
@@ -2650,12 +2927,31 @@ function renderEnvelopes() {
     }
 
     function deleteEnvelope(id) {
-        showConfirm("Видалити конверт?", "Кошти, відкладені цього місяця, повернуться у вільний залишок.", () => {
-            globalData.jars[currentUser.id] = globalData.jars[currentUser.id].filter(j => j.id != id);
+        showConfirm(
+            "Видалити конверт?",
+            "Накопичення з минулих періодів перейдуть в основний конверт. Суми цього місяця повернуться у вільний залишок.",
+            () => {
+            const jars = globalData.jars[currentUser.id] || [];
+            const jar = jars.find(j => j.id == id);
+            if (!jar || jar.isMain) return;
+
+            const savingsCat = expenses.find(e => e.isSavings);
+            const monthItems = savingsCat
+                ? savingsCat.items.filter(item => item.envelopeId == id)
+                : [];
+            const thisMonthAmount = monthItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const jarBalance = parseFloat(jar.balance) || 0;
+            const priorBalance = Math.max(0, jarBalance - thisMonthAmount);
+
+            const mainJar = jars.find(j => j.isMain) || jars.find(j => j.id != id);
+            if (mainJar && priorBalance > 0) {
+                mainJar.balance = (parseFloat(mainJar.balance) || 0) + priorBalance;
+            }
+
+            globalData.jars[currentUser.id] = jars.filter(j => j.id != id);
             const fp = getFinancialPlan();
             delete fp.jarTypes[String(id)];
             saveFinancialPlan();
-            let savingsCat = expenses.find(e => e.isSavings);
             if (savingsCat) {
                 savingsCat.items = savingsCat.items.filter(item => item.envelopeId != id);
                 if (savingsCat.items.length === 0) {
@@ -2666,14 +2962,17 @@ function renderEnvelopes() {
                 appData[currentYear][currentMonth].expenses = expenses;
             }
             renderEnvelopes(); renderExpenses(); updateAll(); updateSavingsDisplay();
-            saveDataToServer(); 
+            saveData(true);
         });
     }
 
     function openTransferModal() {
+        const monthData = appData[currentYear]?.[currentMonth] || {};
+        const isBiz = currentUser && currentUser.account_type === 'business';
         const totalExp = expenses.reduce((sum, exp) => sum + getCategoryTotal(exp), 0);
-        let cogsAmount = currentUser && currentUser.account_type === 'business' ? (appData[currentYear][currentMonth].cogs?.type === 'percent' ? currentIncomeUah * (appData[currentYear][currentMonth].cogs.value / 100) : (appData[currentYear][currentMonth].cogs?.value || 0)) : 0;
-        const remaining = currentIncomeUah - cogsAmount - totalExp;
+        const purchases = isBiz ? getMonthPurchasesUah(monthData, currentIncomeUah) : 0;
+        const payroll = isBiz ? getPayrollAccruedFromList(monthData.payroll) : 0;
+        const remaining = currentIncomeUah - purchases - totalExp - payroll;
         
         const optionsContainer = document.getElementById('transfer-jar-options');
         optionsContainer.innerHTML = '';
@@ -2843,6 +3142,8 @@ function renderEnvelopes() {
             const percent = debt.total_amount > 0 ? Math.min(100, ((debt.total_amount - historicalRemaining) / debt.total_amount) * 100) : 0;
             const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
             const interestTag = debt.interest_rate > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.2); padding: 2px 6px; border-radius: 6px; color: #ff453a; margin-left: 6px; flex-shrink: 0;">${debt.interest_rate}% / міс.</span>` : '';
+            const monthlyInterest = getMonthlyInterestEstimate(debt, historicalRemaining);
+            const interestEstimateTag = monthlyInterest > 0 ? `<span style="font-size: 11px; color: var(--text-secondary); background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; flex-shrink: 0;">≈ ${formatMoney(monthlyInterest)} ${currencySymbol} / міс нарахування</span>` : '';
 
             const isPaidOff = historicalRemaining <= 0;
             const payBtnHtml = isPaidOff 
@@ -2853,7 +3154,7 @@ function renderEnvelopes() {
             <div style="background: var(--item-bg); border: 1px solid rgba(255, 69, 58, 0.2); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                     <div style="font-weight: 700; font-size: 16px; color: #ff453a; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
-                        <span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(debt.name)}</span><span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${escapeHtml(debt.currency)}</span>${interestTag}
+                        <span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(debt.name)}</span><span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${escapeHtml(debt.currency)}</span>${interestTag}${interestEstimateTag}
                     </div>
                     <button onclick="deleteDebt(${jsId(debt.id)})" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; this.style.borderColor='transparent';" onmouseout="this.style.background='var(--btn-secondary-bg)'; this.style.color='var(--text-tertiary)'; this.style.borderColor='var(--glass-border)';">✕</button>
                 </div>
@@ -3078,9 +3379,13 @@ function renderEnvelopes() {
         }
 
 let cogsAmount = 0;
+        let payTotal = 0;
         if (isBiz) {
             const monthInvoices = currentMonthData.invoices || [];
             cogsAmount = monthInvoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+            if (cogsAmount <= 0 && currentMonthData.cogs) {
+                cogsAmount = getMonthPurchasesUah(currentMonthData, totalIncome);
+            }
             if (cogsAmount > 0) {
                 rows.push(['Ваш Бюджет', 'Закупівлі', roundNum(cogsAmount)]);
             }
@@ -3095,15 +3400,12 @@ let cogsAmount = 0;
             }
         });
 
-        if (isBiz && appData[currentYear][currentMonth].payroll) {
-            let payTotal = 0;
-            appData[currentYear][currentMonth].payroll.forEach(emp => {
-                payTotal += (parseFloat(emp.rate)||0)*(parseFloat(emp.hours)||0) + (parseFloat(emp.bonus)||0) - (parseFloat(emp.penalty)||0);
-            });
+        if (isBiz) {
+            payTotal = getPayrollAccruedFromList(currentMonthData.payroll);
             if (payTotal > 0) rows.push(['Ваш Бюджет', 'Зарплати', roundNum(payTotal)]);
         }
 
-        const remaining = totalIncome - cogsAmount - totalExp;
+        const remaining = totalIncome - cogsAmount - totalExp - payTotal;
         if (remaining > 0) {
             rows.push(['Ваш Бюджет', 'Вільний залишок', roundNum(remaining)]);
         } else if (remaining < 0) {
@@ -3155,17 +3457,15 @@ let cogsAmount = 0;
                 const data = appData[year][month];
                 if (data && data.initialized) {
                     labels.push(`${monthNames[month].substring(0,3)} ${year}`);
-                    let income = data.incomes ? data.incomes.reduce((s, inc) => s + (inc.currency === 'USD' ? inc.amount * currentExchangeRate : inc.amount), 0) : (data.usd || 0) * currentExchangeRate;
-                    let cogsAmount = isBiz && data.cogs ? (data.cogs.type === 'percent' ? income * (data.cogs.value / 100) : data.cogs.value) : 0;
-                    
-                    const displayIncome = income - cogsAmount;
-                    incomeData.push(displayIncome);
+                    const income = getMonthIncomeUahFromData(data);
+                    const purchases = isBiz ? getMonthPurchasesUah(data, income) : 0;
+                    const expensesTotal = getMonthExpensesUahFromData(data);
+                    const payroll = isBiz ? getPayrollAccruedFromList(data.payroll) : 0;
 
-                    let expensesTotal = data.expenses ? data.expenses.reduce((sum, exp) => sum + exp.items.reduce((s, item) => s + (parseFloat(item.amount) || 0), 0), 0) : 0;
-                    expenseData.push(expensesTotal);
-                    
-                    const freeMoney = displayIncome - expensesTotal;
-                    freeMoneyData.push(freeMoney);
+                    const displayIncome = income - purchases;
+                    incomeData.push(displayIncome);
+                    expenseData.push(expensesTotal + payroll);
+                    freeMoneyData.push(displayIncome - expensesTotal - payroll);
                 }
             });
         });
@@ -3458,7 +3758,7 @@ function updateGlobalScheduleRemaining() {
                 html += `<td>
                             <div class="schedule-input-group">
                                 <input type="checkbox" class="schedule-checkbox" ${checkedAttr} 
-                                       title="Відмітити як оплачене"
+                                       title="Позначити у плані графіка (не фіксує фактичну оплату)"
                                        onchange="toggleSchedulePaid(${jsId(debt.id)}, '${m.key}', this.checked)">
                                 <input type="number" class="${inputClass}" value="${planVal}" placeholder="0" 
                                        oninput="updateScheduleAmount(${jsId(debt.id)}, '${m.key}', this.value)">
@@ -3835,7 +4135,7 @@ function addInvoice() {
         }
         
         // Сортировка от новых к старым
-        const sorted = [...invoices].sort((a,b) => new Date(b.date) - new Date(a.date));
+        const sorted = [...invoices].sort((a,b) => String(b.date || '').localeCompare(String(a.date || '')));
         
         // Группировка по дате
         const grouped = {};
@@ -3847,8 +4147,8 @@ function addInvoice() {
         // Отрисовка
         for (const [dateStr, invs] of Object.entries(grouped)) {
             // Красивая дата (напр. 30 Березня)
-            const dObj = new Date(dateStr);
-            const formattedDate = `${dObj.getDate()} ${monthNames[dObj.getMonth()]}`;
+            const dObj = parseLocalDate(dateStr);
+            const formattedDate = dObj ? `${dObj.getDate()} ${monthNames[dObj.getMonth()]}` : dateStr;
 
             // Заголовок группы
             list.innerHTML += `
@@ -3980,16 +4280,7 @@ function deleteInvoice(id) {
 
     function getHistoricalPayroll(year, month) {
         if (!appData[year] || !appData[year][month] || !appData[year][month].initialized) return 0;
-        const payroll = appData[year][month].payroll || [];
-        let totalAccrued = 0;
-        payroll.forEach(emp => {
-            const rate = parseFloat(emp.rate) || 0;
-            const hours = parseFloat(emp.hours) || 0;
-            const bonus = parseFloat(emp.bonus) || 0;
-            const penalty = parseFloat(emp.penalty) || 0;
-            totalAccrued += (rate * hours) + bonus - penalty;
-        });
-        return totalAccrued;
+        return getPayrollAccruedFromList(appData[year][month].payroll);
     }
 
 function generatePayrollSparklineHTML(currentTotal) {
@@ -4014,14 +4305,14 @@ function generatePayrollSparklineHTML(currentTotal) {
             colorMain = '#ff453a'; 
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-up" style="cursor: pointer; margin-bottom: 0;" onclick="event.stopPropagation()">
+            trendHtml = `<div class="trend-badge trend-up" style="cursor: pointer; margin-bottom: 0;" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#ff453a';
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-down" style="cursor: pointer; margin-bottom: 0;" onclick="event.stopPropagation()">
+            trendHtml = `<div class="trend-badge trend-down" style="cursor: pointer; margin-bottom: 0;" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -4074,32 +4365,30 @@ function generatePayrollSparklineHTML(currentTotal) {
             ` : '';
 
             container.innerHTML += `
-                <div style="display: flex; justify-content: space-between; align-items: stretch; padding: 16px; border-radius: 16px; border: 1px solid transparent; ${paidClass} transition: 0.2s; min-height: 100px;">
-                    <div style="flex: 1; min-width: 0; padding-right: 16px; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="font-weight: 700; color: white; font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(emp.name || 'Без імені')}</span>
-                        </div>
-                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">${hours} год × ${rate} ₴</div>
-                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">${bonusTag}${penaltyTag}</div>
+                <div class="payroll-emp-card" style="${paidClass}">
+                    <div class="payroll-emp-card__main">
+                        <div class="payroll-emp-card__name">${escapeHtml(emp.name || 'Без імені')}</div>
+                        <div class="payroll-emp-card__meta">${hours} год × ${rate} ₴</div>
+                        <div class="payroll-emp-card__tags">${bonusTag}${penaltyTag}</div>
                         ${accountHtml}
                     </div>
-                    
-                    <div style="display: flex; align-items: center; gap: 16px; flex-shrink: 0;">
-                        <div style="text-align: right; display: flex; flex-direction: column; justify-content: center;">
-                            <div class="tabular" style="font-weight: 800; font-size: 18px; color: white; margin-bottom: 4px;">${formatMoney(accrued)} ₴</div>
-                            <div class="tabular" style="font-size: 12px; color: ${emp.is_paid ? 'var(--sys-green)' : 'var(--sys-red)'}; font-weight: 600;">Залишок: ${formatMoney(remaining)} ₴</div>
+                    <div class="payroll-emp-card__side">
+                        <div class="payroll-emp-card__amounts">
+                            <div class="tabular payroll-emp-card__accrued">${formatMoney(accrued)} ₴</div>
+                            <div class="tabular payroll-emp-card__remain" style="color: ${emp.is_paid ? 'var(--sys-green)' : 'var(--sys-red)'};">Залишок: ${formatMoney(remaining)} ₴</div>
                         </div>
-                        
-                        <div style="display: flex; gap: 8px; flex-direction: column; justify-content: center;">
-                            <button class="btn-init-secondary" style="margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-primary);" onclick="openEmployeeModal('${escapeAttr(String(emp.id))}')" title="Редагувати">
+                        <div class="payroll-emp-card__actions">
+                            <button type="button" class="payroll-emp-btn" onclick="openEmployeeModal('${escapeAttr(String(emp.id))}')" title="Редагувати">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
-                            
-                            <div class="schedule-input-group" style="margin: 0; width: 44px; height: 44px; background: ${emp.is_paid ? 'rgba(46, 160, 67, 0.15)' : 'rgba(255,255,255,0.05)'}; border-radius: 12px; border: 1px solid ${emp.is_paid ? 'rgba(46,160,67,0.3)' : 'rgba(255,255,255,0.1)'}; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; box-sizing: border-box;" onclick="event.stopPropagation(); toggleEmployeePaid('${escapeAttr(String(emp.id))}')" title="${emp.is_paid ? 'Скасувати оплату' : 'Відмітити як оплачено'}">
-                                ${emp.is_paid 
-                                    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' 
-                                    : '<div style="width: 16px; height: 16px; border: 2px solid var(--text-secondary); border-radius: 4px; opacity: 0.5;"></div>'}
-                            </div>
+                            <button type="button" class="payroll-emp-btn payroll-emp-btn--del" onclick="deleteEmployee('${escapeAttr(String(emp.id))}', event)" title="Видалити">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                            <button type="button" class="payroll-emp-btn payroll-emp-btn--paid ${emp.is_paid ? 'is-paid' : ''}" onclick="event.stopPropagation(); toggleEmployeePaid('${escapeAttr(String(emp.id))}')" title="${emp.is_paid ? 'Скасувати оплату' : 'Відмітити як оплачено'}">
+                                ${emp.is_paid
+                                    ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+                                    : '<span class="payroll-emp-btn__box"></span>'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -4183,12 +4472,13 @@ function generatePayrollSparklineHTML(currentTotal) {
         closeEmployeeModal();
     }
 
-    function deleteEmployee(id) {
-        event.stopPropagation();
+    function deleteEmployee(id, evt) {
+        if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
         showConfirm("Видалити співробітника?", "Ви впевнені, що хочете видалити цей запис з розрахунків?", () => {
-            appData[currentYear][currentMonth].payroll = appData[currentYear][currentMonth].payroll.filter(e => e.id !== id);
+            appData[currentYear][currentMonth].payroll = appData[currentYear][currentMonth].payroll.filter(e => e.id != id);
             saveDataToServer();
             renderPayroll();
+            updateAll();
         });
     }
 
@@ -4610,6 +4900,7 @@ function generatePayrollSparklineHTML(currentTotal) {
     }
 
     function openGrowthModal() {
+        if (currentUser && currentUser.account_type === 'business') return;
         document.getElementById('growth-modal').classList.add('active');
         currentGrowthStep = 1;
         showGrowthStep(currentGrowthStep);
@@ -4664,12 +4955,22 @@ function generatePayrollSparklineHTML(currentTotal) {
         
         try {
             const token = localStorage.getItem('budget_auth_token');
-            await fetch(`${API_URL}/api/profile`, { 
+            const response = await fetch(`${API_URL}/api/profile`, { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
                 body: JSON.stringify({ userId: currentUser.id, growthProfile: profile }) 
             });
-        } catch (e) { console.error("Помилка збереження профілю", e); }
+            if (!response.ok) {
+                let data = {};
+                try { data = await response.json(); } catch (e) {}
+                alert(`Не вдалося зберегти стратегію росту: ${data.error || 'помилка сервера'}`);
+                return;
+            }
+        } catch (e) {
+            console.error("Помилка збереження профілю", e);
+            alert("Не вдалося зберегти стратегію росту через помилку з'єднання.");
+            return;
+        }
         
         closeGrowthModal();
         openAiExportModal();
@@ -4904,6 +5205,7 @@ Object.assign(window, {
   openEnvelopesModal,
   openGrowthModal,
   openInvoicesModal,
+  handleExpenseCardClick,
   openModal,
   openNewSupplierModal,
   openPayrollModal,

@@ -8,8 +8,11 @@ export function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+/** Escape for JS string literals inside double-quoted HTML attributes (onclick="... 'value' ..."). */
 export function escapeAttr(str) {
     return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
         .replace(/\\/g, '\\\\')
         .replace(/'/g, "\\'")
         .replace(/\n/g, '\\n')
@@ -24,6 +27,11 @@ export function newId() {
 
 export function jsId(id) {
     return "'" + escapeAttr(String(id)) + "'";
+}
+
+/** Loose id equality for legacy numeric ids vs string ids from the DOM. */
+export function sameId(a, b) {
+    return String(a) === String(b);
 }
 
 export function formatMoney(amount) {

@@ -478,28 +478,61 @@
             border-radius: 16px;
             line-height: 1.2;
         }
-        .custom-dropdown.compact-xs { width: 100%; margin-top: 8px; }
+        .custom-dropdown.compact-xs {
+            width: auto;
+            max-width: 100%;
+            margin-top: 6px;
+            align-self: flex-start;
+            z-index: 5;
+        }
         .custom-dropdown.compact-xs .custom-dropdown-selected {
-            height: 36px;
-            font-size: 12px;
+            height: 28px;
+            font-size: 11px;
             font-weight: 600;
-            padding: 0 32px 0 12px;
-            border-radius: 12px;
+            padding: 0 26px 0 10px;
+            border-radius: 9px;
             color: var(--text-secondary);
             line-height: 1.2;
+            width: auto;
+            min-width: 0;
+            max-width: 148px;
         }
-        .custom-dropdown.compact .custom-dropdown-options,
-        .custom-dropdown.compact-xs .custom-dropdown-options {
+        .custom-dropdown.compact-xs .custom-dropdown-selected::after {
+            right: 10px;
+            padding: 3px;
+        }
+        .custom-dropdown.compact .custom-dropdown-options {
             border-radius: 16px;
             max-height: 240px;
         }
-        .custom-dropdown.compact .custom-dropdown-option,
-        .custom-dropdown.compact-xs .custom-dropdown-option {
+        .custom-dropdown.compact-xs .custom-dropdown-options {
+            border-radius: 12px;
+            max-height: 220px;
+            min-width: 148px;
+            width: max-content;
+            left: 0;
+            right: auto;
+        }
+        .custom-dropdown.compact .custom-dropdown-option {
             padding: 14px 16px;
             font-size: 14px;
             font-weight: 600;
             justify-content: flex-start;
             gap: 10px;
+        }
+        .custom-dropdown.compact-xs .custom-dropdown-option {
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            justify-content: flex-start;
+            gap: 8px;
+        }
+        .bucket-dropdown.is-disabled {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .bucket-dropdown.open {
+            z-index: 30;
         }
         .custom-dropdown-option.selected {
             background: rgba(10, 132, 255, 0.12);
@@ -1066,6 +1099,10 @@
             border-color: rgba(255,255,255,0.15);
             z-index: 10;
         }
+        /* Open bucket/currency dropdown must sit above the next card's rank badge */
+        .expense-card-pro:has(.custom-dropdown.open) {
+            z-index: 100;
+        }
 
         /* СТИЛЬ ДЛЯ ОПЛАЧЕНОЇ КАРТКИ */
         .expense-card-pro.paid-card {
@@ -1135,10 +1172,14 @@
             margin-bottom: 4px;
         }
 
-        /* Перемикання тексту відсотки/сума при наведенні */
+        /* Перемикання тексту відсотки/сума при наведенні або тапі */
         .trend-badge .trend-hover-text { display: none; }
-        .trend-badge:hover .trend-main-text { display: none; }
-        .trend-badge:hover .trend-hover-text { display: inline; }
+        @media (hover: hover) and (pointer: fine) {
+            .trend-badge:hover .trend-main-text { display: none; }
+            .trend-badge:hover .trend-hover-text { display: inline; }
+        }
+        .trend-badge.is-expanded .trend-main-text { display: none; }
+        .trend-badge.is-expanded .trend-hover-text { display: inline; }
 
         .trend-up { color: #ff453a; background: rgba(255, 69, 58, 0.15); }
         .trend-down { color: #32d74b; background: rgba(50, 215, 75, 0.15); }
@@ -1160,6 +1201,8 @@
             margin-top: 4px;
             position: relative;
             padding-bottom: 6px; /* Добавили отступ снизу */
+            pointer-events: none;
+            z-index: 0;
         }
         
         .sparkline-labels {
@@ -1198,6 +1241,131 @@
         .btn-pro-add:hover { background: var(--sys-blue); transform: scale(1.1); }
         .btn-pro-del { background: rgba(255, 69, 58, 0.1); color: #ff453a; }
         .btn-pro-del:hover { background: #ff453a; color: white; transform: scale(1.1); }
+
+        #payroll-list {
+            min-width: 0;
+            overflow-x: hidden;
+        }
+        .payroll-emp-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid transparent;
+            transition: 0.2s;
+        }
+        .payroll-emp-card__main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .payroll-emp-card__name {
+            font-weight: 700;
+            color: white;
+            font-size: 16px;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .payroll-emp-card__meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .payroll-emp-card__tags {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .payroll-emp-card__side {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            min-width: 0;
+        }
+        .payroll-emp-card__amounts {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .payroll-emp-card__accrued {
+            font-weight: 800;
+            font-size: 17px;
+            color: white;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+        .payroll-emp-card__remain {
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .payroll-emp-card__actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .payroll-emp-btn {
+            margin: 0;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            cursor: pointer;
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: 0.2s;
+        }
+        .payroll-emp-btn:hover { background: rgba(255,255,255,0.1); }
+        .payroll-emp-btn--del {
+            color: var(--sys-red);
+            background: rgba(255,69,58,0.1);
+            border-color: rgba(255,69,58,0.25);
+        }
+        .payroll-emp-btn--paid.is-paid {
+            background: rgba(46, 160, 67, 0.15);
+            border-color: rgba(46,160,67,0.3);
+        }
+        .payroll-emp-btn__box {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--text-secondary);
+            border-radius: 4px;
+            opacity: 0.5;
+            display: block;
+        }
+        @media (max-width: 560px) {
+            .payroll-emp-card {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .payroll-emp-card__side {
+                width: 100%;
+                justify-content: space-between;
+                padding-top: 10px;
+                border-top: 1px solid rgba(255,255,255,0.06);
+            }
+            .payroll-emp-card__amounts { text-align: left; }
+            .payroll-emp-card__actions { flex-direction: row; }
+        }
         
         /* Тултип з'являється при наведенні на весь блок картки */
         .expense-pro-main:hover .preview-tooltip {
