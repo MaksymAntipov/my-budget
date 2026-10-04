@@ -59,6 +59,7 @@
             text-decoration: none;
             font-weight: 600;
         }
+        .auth-hero-guide[hidden] { display: none; }
         .auth-hero-guide:hover {
             background: rgba(10, 132, 255, 0.2);
             transform: translateY(-2px);
