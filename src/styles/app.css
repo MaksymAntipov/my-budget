@@ -1248,8 +1248,10 @@
         .sub-item-row { display: flex; gap: 12px; align-items: center; width: 100%; }
         .sub-item input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 14px 16px; height: 50px; border-radius: 14px; font-size: 16px; font-weight: 500; outline: none; transition: 0.3s; min-width: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); color: white;}
         .sub-item input:focus { background: rgba(0,0,0,0.3); border-color: var(--sys-blue); box-shadow: 0 4px 16px rgba(10,132,255,0.15); }
-        .sub-item-name { flex: 1.5; }
-        .sub-item-amount { flex: 1; text-align: right; font-variant-numeric: tabular-nums; }
+        .modal-content.modal-wide { max-width: 680px; }
+        /* The name takes the free space; the amount keeps a fixed column. */
+        .sub-item-name { flex: 1 1 auto; min-width: 0; }
+        .sub-item-amount { flex: 0 0 140px; min-width: 0; text-align: right; font-variant-numeric: tabular-nums; }
         .btn-sub-delete { background: rgba(255,255,255,0.05); color: var(--text-tertiary); width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0;}
         .btn-sub-delete:hover { background: linear-gradient(135deg, rgba(255, 69, 58, 0.15), rgba(255, 69, 58, 0.25)); color: var(--sys-red); border-color: transparent;}
         
@@ -3232,7 +3234,8 @@
         #mono-pick-submit:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
 
         /* Rules screen */
-        .mr-rules { max-width: 560px; }
+        .mr-rules { max-width: 640px; }
+        .mr-picker { max-width: 560px; }
         .mr-rules-body { gap: 8px; }
         .mr-section-hint { margin: 0 0 4px; color: var(--text-tertiary); font-size: 13px; line-height: 1.4; }
         .mr-group {

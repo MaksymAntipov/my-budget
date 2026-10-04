@@ -3289,7 +3289,7 @@ function getHistoricalIncome(year, month) {
                 ${mono ? `<div class="sub-item-meta"><span class="mono-mark mono-mark-sm" aria-hidden="true">m</span><span>${escapeHtml(monoMeta || 'Монобанк')}</span></div>` : ''}
                 <div class="sub-item-row">
                     ${checkboxHtml}
-                    <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" placeholder="Назва статті" data-input-action="updateSubItemName" data-args="${escapeAttr(JSON.stringify([item.id]))}">
+                    <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" title="${escapeHtml(item.name || '')}" placeholder="Назва статті" data-input-action="updateSubItemName" data-args="${escapeAttr(JSON.stringify([item.id]))}">
                     <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" data-input-action="updateSubItemAmount" data-args="${escapeAttr(JSON.stringify([item.id]))}">
                     ${moveHtml}
                     <button class="btn-sub-delete" data-action="deleteSubItem" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
