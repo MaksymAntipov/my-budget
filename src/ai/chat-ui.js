@@ -13,7 +13,7 @@ import {
   providerLabel,
   saveLlmSettings,
 } from './settings.js';
-import { clearAiHistory, loadAiHistory, saveAiHistory } from './history.js';
+import { clearAiHistory, clearAllAiHistory, loadAiHistory, saveAiHistory } from './history.js';
 import { isWideLookQuestion, parseFocusFromQuestion } from './focus.js';
 import { formatAiMarkdown, splitSuggestions } from './markdown.js';
 import {
@@ -359,8 +359,18 @@ export function resetAiChat() {
   clear();
 }
 
-export function unloadAiChat() {
-  persistAiChatNow();
+/** @param {{ forget?: boolean }} [opts] forget: logout — drop the LLM key and every saved chat. */
+export function unloadAiChat({ forget = false } = {}) {
+  if (forget) {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
+    clearAllAiHistory();
+    clearLlmSettings();
+  } else {
+    persistAiChatNow();
+  }
   if (busy) abortCtrl?.abort();
   busy = false;
   abortCtrl = null;

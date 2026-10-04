@@ -126,3 +126,15 @@ export function clearAiHistory(userId) {
     /* ignore */
   }
 }
+
+/** Removes every profile's saved chat (it embeds the financial context prompt). */
+export function clearAllAiHistory() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(PREFIX)) localStorage.removeItem(key);
+    }
+  } catch {
+    /* ignore */
+  }
+}

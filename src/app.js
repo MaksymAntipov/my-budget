@@ -1368,7 +1368,7 @@ function logout() {
             }).catch(() => {});
         } catch (e) {}
 
-        try { unloadAiChat(); } catch (e) {}
+        try { unloadAiChat({ forget: true }); } catch (e) {}
 
         currentUser = null;
         dataLoadedFor = null;
