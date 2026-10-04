@@ -11,6 +11,20 @@ import {
   countWeekdaysInMonth,
 } from './utils.js';
 import { API_URL } from './config.js';
+import {
+  IGNORED_TARGET,
+  categoryKey,
+  dropEmptySystemCategories,
+  ensureCategoryKeys,
+  isLegacyMonoCategory,
+  isMonoItem,
+  isOwnCategory,
+  isUnassigned,
+  placeOperation,
+  removeCardOperations,
+  summarizeOperations,
+  txKey,
+} from './mono/routing.js';
 import { apiFetch } from './api.js';
 import { syncFamilyTreeNavVisibility, openFamilyTree, closeFamilyTree } from './family-tree/index.js';
 import {
@@ -1107,6 +1121,9 @@ if (!globalData.debts) globalData.debts = {};
                     
                     const parsedIncomes = JSON.parse(row.incomes_json || '[]');
                     const parsedExpenses = JSON.parse(row.expenses_json || '[]');
+                    let monoIgnored = [];
+                    try { monoIgnored = JSON.parse(row.mono_ignored_json || '[]'); } catch (e) {}
+                    ensureCategoryKeys(parsedExpenses, newId);
 
                  appData[row.year][row.month] = {
                         // Trust DB flag (clear month now persists is_initialized=0).
@@ -1114,6 +1131,7 @@ if (!globalData.debts) globalData.debts = {};
                         initialized: Number(row.is_initialized) === 1,
                         incomes: ensureIncomeIds(parsedIncomes),
                         expenses: parsedExpenses,
+                        monoIgnored: Array.isArray(monoIgnored) ? monoIgnored : [],
                         cogs: JSON.parse(row.cogs_json || '{"type":"percent","value":0}'),
                         payroll: row.payroll_json ? JSON.parse(row.payroll_json) : []
                     };
@@ -1290,6 +1308,8 @@ async function flushSaveToServer(year, month) {
 
     function buildSavePayload(year, month) {
         const currentMonthData = appData[year]?.[month] || {};
+        // Rules point at category keys; every own category needs one before the server sees it.
+        ensureCategoryKeys(currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []), newId);
         const jars = globalData.jars[currentUser.id] || [];
         const debtsLoaded = Array.isArray(globalData.debts[currentUser.id]);
         const suppliersLoaded = Array.isArray(globalData.suppliers[currentUser.id]);
@@ -1462,7 +1482,9 @@ function logout() {
         if (usePrev && prev) {
                 let copiedExpenses = JSON.parse(JSON.stringify(prev.data.expenses || []));
                 
-                copiedExpenses = copiedExpenses.filter(cat => cat.name !== "Погашення боргів" && !cat.isSavings);
+                copiedExpenses = copiedExpenses.filter(cat => cat.name !== "Погашення боргів" && !cat.isSavings && isOwnCategory(cat));
+                // Bank operations belong to the month they happened in; categories and limits carry over.
+                copiedExpenses.forEach(cat => { cat.items = (cat.items || []).filter(item => !isMonoItem(item)); });
                 
                 copiedExpenses.forEach(cat => {
                     cat.items.forEach(item => item.isPaid = false);
@@ -3040,11 +3062,15 @@ function getHistoricalIncome(year, month) {
             displayIncome = currentIncomeUah - cogsAmount;
         }
         
-        let totals = expenses.map(e => getCategoryTotal(e)).filter(t => t > 0);
+        let totals = expenses.filter(e => !isUnassigned(e)).map(e => getCategoryTotal(e)).filter(t => t > 0);
         let uniqueTotals = [...new Set(totals)].sort((a,b) => b - a);
         let top1 = uniqueTotals[0] || -1, top2 = uniqueTotals[1] || -1, top3 = uniqueTotals[2] || -1;
 
         expenses.forEach(exp => {
+            if (isUnassigned(exp)) {
+                list.appendChild(renderUnassignedCard(exp));
+                return;
+            }
             const totalAmount = getCategoryTotal(exp);
             const sparkData = generateSparklineHTML(exp.id, totalAmount);
             
@@ -3128,6 +3154,31 @@ function getHistoricalIncome(year, month) {
         });
     }
 
+    /** «Нерозподілене»: Monobank purchases no rule placed yet — the inbox to sort out. */
+    function renderUnassignedCard(category) {
+        const count = (category.items || []).length;
+        const total = getCategoryTotal(category);
+        const div = document.createElement('div');
+        div.className = 'expense-card-pro mr-inbox';
+        div.dataset.categoryId = String(category.id);
+        div.innerHTML = `
+            <div class="mr-inbox-main" data-action="openModal" data-args="${escapeAttr(JSON.stringify([category.id]))}">
+                <div class="mr-inbox-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                </div>
+                <div class="mr-inbox-info">
+                    <div class="mr-inbox-title">Нерозподілене <span class="mr-inbox-count">${count}</span></div>
+                    <div class="mr-inbox-hint">${count} ${pluralUk(count, 'покупка', 'покупки', 'покупок')} з Монобанку без категорії</div>
+                </div>
+                <div class="mr-inbox-amount tabular">${formatMoney(total)} ₴</div>
+            </div>
+            <div class="mr-inbox-actions">
+                <button type="button" class="mr-inbox-btn is-primary" data-action="openModal" data-args="${escapeAttr(JSON.stringify([category.id]))}">Розподілити</button>
+                <button type="button" class="mr-inbox-btn" data-action="openMonoRules">Правила</button>
+            </div>`;
+        return div;
+    }
+
     function findExpenseById(id) {
         return expenses.find(e => sameId(e.id, id));
     }
@@ -3174,7 +3225,7 @@ function getHistoricalIncome(year, month) {
     }
 
     function addCategory() {
-        expenses.push({ id: newId(), name: "", items: [], isEssential: false });
+        expenses.push({ id: newId(), key: newId(), name: "", items: [], isEssential: false });
         renderExpenses(); saveData(); updateAll();
     }
 
@@ -3183,6 +3234,11 @@ function getHistoricalIncome(year, month) {
         if (!category) return;
         activeCategoryId = category.id;
         document.getElementById('modal-category-name').innerText = category.name || 'Без назви';
+        const inbox = isUnassigned(category);
+        const hint = document.getElementById('modal-category-hint');
+        if (hint) hint.hidden = !inbox;
+        const addItem = document.getElementById('modal-add-subitem');
+        if (addItem) addItem.hidden = inbox;
         renderModalItems();
         document.getElementById('category-modal').classList.add('active');
     }
@@ -3194,6 +3250,8 @@ function getHistoricalIncome(year, month) {
     }
 
     function getTop3SubItems(category) {
+        // The inbox is a to-do list, not a ranking.
+        if (isUnassigned(category)) return { top1: -1, top2: -1, top3: -1 };
         let totals = (category?.items || []).map(i => parseFloat(i.amount) || 0).filter(t => t > 0);
         let unique = [...new Set(totals)].sort((a,b) => b - a);
         return { top1: unique[0] || -1, top2: unique[1] || -1, top3: unique[2] || -1 };
@@ -3218,14 +3276,22 @@ function getHistoricalIncome(year, month) {
             const paidClass = item.isPaid ? 'paid-amount' : '';
             const checkboxHtml = `<div class="check-container ${isChecked}" data-action="togglePaidStatus" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
 
+            const mono = isMonoItem(item);
+            const monoMeta = mono ? [monoOperationDate(item), item.mccGroup, item.mcc ? `MCC ${item.mcc}` : ''].filter(Boolean).join(' · ') : '';
+            const moveHtml = mono
+                ? `<button type="button" class="btn-sub-move" data-action="openMonoMove" data-args="${escapeAttr(JSON.stringify([item.id]))}" title="Перенести в іншу категорію" aria-label="Перенести в іншу категорію"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></button>`
+                : '';
+
             const div = document.createElement('div');
-            div.className = `sub-item ${rankClass}`;
+            div.className = `sub-item ${rankClass}${mono ? ' is-mono' : ''}`;
             div.innerHTML = `
                 ${badgeHtml}
+                ${mono ? `<div class="sub-item-meta"><span class="mono-mark mono-mark-sm" aria-hidden="true">m</span><span>${escapeHtml(monoMeta || 'Монобанк')}</span></div>` : ''}
                 <div class="sub-item-row">
                     ${checkboxHtml}
                     <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" placeholder="Назва статті" data-input-action="updateSubItemName" data-args="${escapeAttr(JSON.stringify([item.id]))}">
                     <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" data-input-action="updateSubItemAmount" data-args="${escapeAttr(JSON.stringify([item.id]))}">
+                    ${moveHtml}
                     <button class="btn-sub-delete" data-action="deleteSubItem" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
             `;
@@ -7414,6 +7480,8 @@ function generatePayrollSparklineHTML(currentTotal) {
         btn.textContent = label;
         btn.disabled = monobankBusy || Boolean(monoQueue);
         if (manage) manage.hidden = !connected;
+        const rules = document.getElementById('btn-mono-rules');
+        if (rules) rules.hidden = !connected;
     }
 
     function syncMonobankModal() {
@@ -7481,46 +7549,530 @@ function generatePayrollSparklineHTML(currentTotal) {
         document.getElementById('monobank-modal')?.classList.remove('active');
     }
 
+    /** A Monobank operation as stored in a month: the server's routing fields stay for later re-routing. */
+    function monoOperationItem(source, accountId) {
+        return {
+            id: source.monoId || source.id || newId(),
+            name: source.name || 'Операція',
+            amount: Number(source.amount) || 0,
+            isPaid: true,
+            monoId: source.monoId || source.id,
+            accountId: accountId || source.accountId || '',
+            time: source.time,
+            mcc: source.mcc ?? null,
+            mccGroup: source.mccGroup || '',
+        };
+    }
+
+    /** Re-renders the month after Monobank operations changed (unless the user is typing in it). */
+    function refreshMonthAfterMono(year, monthIndex, category) {
+        if (year !== currentYear || monthIndex !== currentMonth) return;
+        expenses = appData[year][monthIndex].expenses;
+        const modalOpen = document.getElementById('category-modal')?.classList.contains('active');
+        const editing = modalOpen || document.getElementById('expenses-list')?.contains(document.activeElement);
+        if (!editing) {
+            renderExpenses();
+            updateAll();
+        } else if (category) {
+            syncCategoryLimitState(category);
+        }
+    }
+
+    /** A fresh statement for one card replaces that card's operations, each in its routed category. */
     function mergeMonobankCard(year, monthIndex, accountId, incoming) {
         if (!appData[year]) appData[year] = {};
         if (!appData[year][monthIndex]) appData[year][monthIndex] = { initialized: true, incomes: [], expenses: [] };
         const bucket = appData[year][monthIndex];
         const list = bucket.expenses || [];
-        const manual = list.filter((cat) => cat?.source !== 'monobank');
-        const legacyAccountId = monobankLink?.accountId || accountId;
-        const dropItem = (item) => item?.accountId === accountId || (!item?.accountId && accountId === legacyAccountId);
-        const byName = new Map();
-        list.filter((cat) => cat?.source === 'monobank').forEach((cat) => {
-            const items = (cat.items || []).filter((item) => !dropItem(item));
-            if (items.length) byName.set(cat.name, { ...cat, items });
+        removeCardOperations(list, accountId, monobankLink?.accountId || accountId);
+        (incoming || []).forEach((operation) => {
+            placeOperation(list, monoOperationItem(operation, accountId), operation.target, newId);
         });
-        (incoming || []).forEach((cat) => {
-            const items = (cat.items || []).map((item) => ({
-                id: item.monoId || item.id || newId(),
-                name: item.name || 'Операція',
-                amount: Number(item.amount) || 0,
-                isPaid: true,
-                monoId: item.monoId || item.id,
-                accountId,
-                time: item.time,
-            }));
-            if (!items.length) return;
-            const old = byName.get(cat.name);
-            if (old) old.items = [...old.items, ...items];
-            else byName.set(cat.name, {
-                id: cat.id || newId(),
-                name: cat.name,
-                source: 'monobank',
-                isEssential: false,
-                items,
-            });
-        });
-        bucket.expenses = [...manual, ...byName.values()];
+        bucket.expenses = dropEmptySystemCategories(list);
         if (year === currentYear && monthIndex === currentMonth) {
             expenses = bucket.expenses;
             renderExpenses();
             updateAll();
         }
+    }
+
+    // ==========================================
+    // MONOBANK → ВЛАСНІ КАТЕГОРІЇ: перенесення операцій і правила
+    // ==========================================
+    let monoRules = [];
+    let monoRulesPending = [];
+    let monoRulesLoading = false;
+    let monoPicker = null;
+    const monoRuleCodesOpen = new Set();
+
+    const MONO_PICK_NONE = '__none__';
+    const MONO_PICK_INHERIT = '__inherit__';
+    const MONO_PICK_NEW = '__new__';
+
+    function ownCategoriesOfMonth() {
+        return (expenses || []).filter(isOwnCategory);
+    }
+
+    function categoryNameByKey(key) {
+        if (key === IGNORED_TARGET) return 'Не враховувати';
+        const own = ownCategoriesOfMonth().find((category) => categoryKey(category) === key);
+        if (own) return own.name || 'Без назви';
+        for (const year of Object.keys(appData)) {
+            for (const month of Object.keys(appData[year] || {})) {
+                const found = (appData[year][month]?.expenses || []).find((category) => isOwnCategory(category) && categoryKey(category) === key);
+                if (found) return found.name || 'Без назви';
+            }
+        }
+        return 'Категорія видалена';
+    }
+
+    function monoOperationDate(item) {
+        const time = Number(item?.time);
+        if (!time) return '';
+        return new Date(time * 1000).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+    }
+
+    function pluralUk(n, one, few, many) {
+        const mod10 = n % 10;
+        const mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return one;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+        return many;
+    }
+
+    /** Rules re-route months on the server, so local edits must reach it first. */
+    async function flushSavesBeforeMonoRules() {
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+            saveTimeout = null;
+            saveTimeoutTarget = null;
+        }
+        if (appData[currentYear]?.[currentMonth]?.initialized) {
+            appData[currentYear][currentMonth].expenses = expenses;
+        }
+        for (const key of [...pendingSaves.keys()]) {
+            const [year, month] = key.split('-').map(Number);
+            enqueueSave(year, month);
+        }
+        await saveQueue;
+        return pendingSaves.size === 0;
+    }
+
+    function applyMonoRulesResponse(data) {
+        if (Array.isArray(data.rules)) monoRules = data.rules;
+        if (Array.isArray(data.pending)) monoRulesPending = data.pending;
+        if (typeof data.dataVersion === 'number') dataVersion = Math.max(dataVersion, data.dataVersion);
+        let currentChanged = false;
+        (data.months || []).forEach(({ year, month, expenses: monthExpenses, ignored }) => {
+            const bucket = appData[year]?.[month];
+            if (!bucket || !Array.isArray(monthExpenses)) return;
+            ensureCategoryKeys(monthExpenses, newId);
+            bucket.expenses = monthExpenses;
+            if (Array.isArray(ignored)) bucket.monoIgnored = ignored;
+            if (year === currentYear && month === currentMonth) {
+                expenses = monthExpenses;
+                currentChanged = true;
+            }
+        });
+        if (!currentChanged) return;
+        renderExpenses();
+        updateAll();
+        if (document.getElementById('category-modal')?.classList.contains('active')) {
+            // The open category may have emptied («Нерозподілене» disappears when sorted out).
+            if (findExpenseById(activeCategoryId)) renderModalItems();
+            else document.getElementById('category-modal').classList.remove('active');
+        }
+    }
+
+    async function postMonoRules(change) {
+        if (!currentUser) return null;
+        if (!(await flushSavesBeforeMonoRules())) {
+            showSaveStatus('Спершу мають зберегтися поточні зміни. Спробуйте ще раз за мить.', { tone: 'error', canRetry: true });
+            return null;
+        }
+        let response;
+        let data = {};
+        try {
+            response = await apiFetch('/api/monobank/rules', {
+                method: 'POST',
+                body: JSON.stringify({ userId: currentUser.id, clientId: saveClientId, baseVersion: dataVersion, ...change }),
+            });
+            data = await response.json().catch(() => ({}));
+        } catch (e) {
+            showSaveStatus("Немає з'єднання із сервером. Зміну не збережено.", { tone: 'error', autoHideMs: 6000 });
+            return null;
+        }
+        if (response.status === 401) {
+            logout();
+            return null;
+        }
+        if (response.status === 409 && data.code === 'stale_data') {
+            await reloadAfterConflict();
+            return null;
+        }
+        if (!response.ok) {
+            showSaveStatus(data.error || 'Не вдалося зберегти правило', { tone: 'error', autoHideMs: 6000 });
+            return null;
+        }
+        applyMonoRulesResponse(data);
+        return data;
+    }
+
+    function currentMonthReroute() {
+        return appData[currentYear]?.[currentMonth]?.initialized ? [{ year: currentYear, month: currentMonth }] : [];
+    }
+
+    function pendingSummary(pending) {
+        const count = pending.reduce((sum, month) => sum + month.count, 0);
+        return { count, months: pending.length };
+    }
+
+    // ---------- Picker: where an operation, a type or a code goes ----------
+
+    function openMonoMove(itemId) {
+        const category = findExpenseById(activeCategoryId);
+        const item = findSubItemById(category, itemId);
+        if (!category || !item || !isMonoItem(item)) return;
+        monoPicker = {
+            mode: 'move',
+            item,
+            current: isUnassigned(category) || isLegacyMonoCategory(category) ? null : categoryKey(category),
+            selected: null,
+        };
+        showMonoPicker();
+    }
+
+    function openMonoRulePicker(kind, match) {
+        const rule = monoRules.find((entry) => entry.kind === kind && entry.match === match);
+        const empty = kind === 'mcc' ? MONO_PICK_INHERIT : MONO_PICK_NONE;
+        monoPicker = { mode: 'rule', kind, match, label: rule?.label || match, current: rule?.target || empty, selected: rule?.target || empty };
+        showMonoPicker();
+    }
+
+    function showMonoPicker() {
+        const newInput = document.getElementById('mono-pick-new-name');
+        if (newInput) newInput.value = '';
+        document.getElementById('mono-pick-error').textContent = '';
+        renderMonoPicker();
+        document.getElementById('mono-pick-modal')?.classList.add('active');
+    }
+
+    function closeMonoPicker(event) {
+        if (event && event.target?.id !== 'mono-pick-modal' && !event.target?.closest?.('.btn-close-modal')) return;
+        document.getElementById('mono-pick-modal')?.classList.remove('active');
+        monoPicker = null;
+    }
+
+    function monoGroupTargetName(group) {
+        const rule = monoRules.find((entry) => entry.kind === 'group' && entry.match === group);
+        return rule ? categoryNameByKey(rule.target) : 'Нерозподілене';
+    }
+
+    function monoPickerOptions() {
+        const picker = monoPicker;
+        const options = [];
+        if (picker.mode === 'rule' && picker.kind === 'mcc') {
+            const group = monoRulesSummary().find((row) => row.codes.some((code) => String(code.mcc) === picker.match))?.group;
+            options.push({ value: MONO_PICK_INHERIT, name: 'Як увесь тип', meta: group ? `зараз «${monoGroupTargetName(group)}»` : '', tone: 'muted' });
+        } else if (picker.mode === 'rule') {
+            options.push({ value: MONO_PICK_NONE, name: 'Без правила', meta: 'у «Нерозподілене»', tone: 'muted' });
+        }
+        ownCategoriesOfMonth().forEach((category) => {
+            const key = categoryKey(category);
+            options.push({
+                value: key,
+                name: category.name || 'Без назви',
+                meta: key === picker.current ? (picker.mode === 'move' ? 'зараз тут' : 'зараз') : '',
+            });
+        });
+        options.push({ value: MONO_PICK_NEW, name: 'Нова категорія', tone: 'new' });
+        options.push({ value: IGNORED_TARGET, name: 'Не враховувати', meta: 'не впливає на суми й ліміти', tone: 'muted' });
+        return options;
+    }
+
+    function renderMonoPicker() {
+        const picker = monoPicker;
+        if (!picker) return;
+        const title = document.getElementById('mono-pick-title');
+        const subtitle = document.getElementById('mono-pick-subtitle');
+        const context = document.getElementById('mono-pick-context');
+        const remember = document.getElementById('mono-pick-remember');
+        const submit = document.getElementById('mono-pick-submit');
+
+        if (picker.mode === 'move') {
+            const item = picker.item;
+            const meta = [monoOperationDate(item), item.mccGroup, item.mcc ? `MCC ${item.mcc}` : ''].filter(Boolean).join(' · ');
+            title.textContent = 'Перенести операцію';
+            subtitle.textContent = 'Оберіть категорію для цієї покупки';
+            context.innerHTML = `
+                <div class="mr-op">
+                    <span class="mono-mark" aria-hidden="true">m</span>
+                    <div class="mr-op-info">
+                        <div class="mr-op-name">${escapeHtml(item.name || 'Операція')}</div>
+                        <div class="mr-op-meta">${escapeHtml(meta)}</div>
+                    </div>
+                    <div class="mr-op-amount tabular">−${formatMoney(parseFloat(item.amount) || 0)} ₴</div>
+                </div>`;
+            const merchant = String(item.name || '').trim();
+            remember.hidden = !merchant;
+            document.getElementById('mono-pick-remember-title').textContent = `Запам'ятати для «${merchant}»`;
+            document.getElementById('mono-pick-remember-hint').textContent = 'Усі покупки цього продавця підуть сюди — і нові, і вже наявні';
+            submit.textContent = 'Перенести';
+        } else {
+            const kindTitle = { group: 'Тип покупок', mcc: `Код MCC ${picker.match}`, merchant: 'Продавець' }[picker.kind] || 'Правило';
+            title.textContent = picker.kind === 'group' ? `«${picker.match}»` : kindTitle;
+            subtitle.textContent = picker.kind === 'group' ? 'Куди йдуть покупки цього типу' : picker.kind === 'mcc' ? 'Куди йдуть покупки з цим кодом' : `Куди йдуть покупки «${picker.label}»`;
+            const code = picker.kind === 'mcc'
+                ? monoRulesSummary().flatMap((row) => row.codes).find((entry) => String(entry.mcc) === picker.match)
+                : null;
+            context.innerHTML = code?.merchants?.length
+                ? `<div class="mr-context">Наприклад: ${escapeHtml(code.merchants.join(', '))}</div>`
+                : '';
+            remember.hidden = true;
+            submit.textContent = 'Зберегти';
+        }
+
+        const list = document.getElementById('mono-pick-list');
+        list.innerHTML = monoPickerOptions().map((option) => {
+            const selected = picker.selected === option.value;
+            return `
+                <button type="button" class="mr-option${option.tone ? ` is-${option.tone}` : ''}${selected ? ' is-selected' : ''}" role="radio" aria-checked="${selected}"
+                    data-action="pickMonoTarget" data-args="${escapeAttr(JSON.stringify([option.value]))}">
+                    <span class="mr-option-radio" aria-hidden="true">${option.tone === 'new' ? '+' : ''}</span>
+                    <span class="mr-option-name">${escapeHtml(option.name)}</span>
+                    ${option.meta ? `<span class="mr-option-meta">${escapeHtml(option.meta)}</span>` : ''}
+                </button>`;
+        }).join('');
+        const newRow = document.getElementById('mono-pick-new');
+        newRow.hidden = picker.selected !== MONO_PICK_NEW;
+        submit.disabled = !picker.selected || (picker.mode === 'rule' && picker.selected === picker.current);
+    }
+
+    function pickMonoTarget(value) {
+        if (!monoPicker) return;
+        monoPicker.selected = value;
+        document.getElementById('mono-pick-error').textContent = '';
+        renderMonoPicker();
+        if (value === MONO_PICK_NEW) document.getElementById('mono-pick-new-name')?.focus();
+    }
+
+    function createCategoryForMono(name) {
+        const category = { id: newId(), key: newId(), name, items: [], isEssential: false };
+        expenses.push(category);
+        renderExpenses();
+        updateAll();
+        saveData();
+        return category;
+    }
+
+    async function submitMonoPicker() {
+        const picker = monoPicker;
+        if (!picker?.selected) return;
+        const submit = document.getElementById('mono-pick-submit');
+        const error = document.getElementById('mono-pick-error');
+        let target = picker.selected;
+        if (target === MONO_PICK_NEW) {
+            const name = document.getElementById('mono-pick-new-name')?.value.trim() || '';
+            if (!name) {
+                error.textContent = 'Вкажіть назву нової категорії';
+                document.getElementById('mono-pick-new-name')?.focus();
+                return;
+            }
+            target = categoryKey(createCategoryForMono(name));
+        }
+
+        let change;
+        let remembered = '';
+        if (picker.mode === 'move') {
+            const merchant = String(picker.item.name || '').trim();
+            const remember = Boolean(merchant) && document.getElementById('mono-pick-remember-input')?.checked;
+            remembered = remember ? merchant : '';
+            change = remember
+                ? { set: [{ kind: 'merchant', match: merchant, target, label: merchant }], remove: [{ kind: 'tx', match: txKey(picker.item) }] }
+                : { set: [{ kind: 'tx', match: txKey(picker.item), target }] };
+        } else if (target === MONO_PICK_NONE || target === MONO_PICK_INHERIT) {
+            change = { remove: [{ kind: picker.kind, match: picker.match }] };
+        } else {
+            change = { set: [{ kind: picker.kind, match: picker.match, target, label: picker.kind === 'merchant' ? picker.label : null }] };
+        }
+        change.reroute = currentMonthReroute();
+
+        submit.disabled = true;
+        submit.classList.add('is-busy');
+        const data = await postMonoRules(change);
+        submit.classList.remove('is-busy');
+        if (!data) {
+            submit.disabled = false;
+            return;
+        }
+        const mode = picker.mode;
+        document.getElementById('mono-pick-modal')?.classList.remove('active');
+        monoPicker = null;
+
+        const placeName = target === MONO_PICK_NONE ? 'Нерозподілене' : target === MONO_PICK_INHERIT ? '' : categoryNameByKey(target);
+        if (mode === 'move') {
+            const where = target === IGNORED_TARGET ? 'Операцію більше не враховано' : `Перенесено в «${placeName}»`;
+            showSaveStatus(remembered ? `${where} · запам'ятали «${remembered}»` : where, { tone: 'info', autoHideMs: 4000 });
+        } else {
+            showSaveStatus('Правило збережено', { tone: 'info', autoHideMs: 2500 });
+        }
+        if (document.getElementById('mono-rules-modal')?.classList.contains('active')) renderMonoRules();
+
+        // A remembered merchant also lives in earlier months: offer to move those too.
+        if (mode === 'move' && remembered && monoRulesPending.length) {
+            const { count, months } = pendingSummary(monoRulesPending);
+            showConfirm(
+                'Минулі місяці',
+                `Ще ${count} ${pluralUk(count, 'операція', 'операції', 'операцій')} у ${months} ${pluralUk(months, 'минулому місяці', 'минулих місяцях', 'минулих місяцях')} розкладуться по-новому. Перенести їх теж?`,
+                () => applyMonoRulesToPast()
+            );
+        }
+    }
+
+    // ---------- Rules screen: MCC types and codes → own categories ----------
+
+    function monoRulesSummary() {
+        const months = [];
+        Object.keys(appData).forEach((year) => {
+            Object.keys(appData[year] || {}).forEach((month) => {
+                const bucket = appData[year][month];
+                if (bucket?.initialized) months.push({ expenses: bucket.expenses, ignored: bucket.monoIgnored });
+            });
+        });
+        return summarizeOperations(months);
+    }
+
+    async function openMonoRules() {
+        if (!currentUser) return;
+        document.getElementById('mono-rules-modal')?.classList.add('active');
+        monoRulesLoading = true;
+        renderMonoRules();
+        try {
+            const response = await apiFetch(`/api/monobank/rules?userId=${encodeURIComponent(currentUser.id)}`);
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) {
+                monoRules = Array.isArray(data.rules) ? data.rules : [];
+                monoRulesPending = Array.isArray(data.pending) ? data.pending : [];
+            }
+        } catch (e) {
+            /* rendered from what we have */
+        }
+        monoRulesLoading = false;
+        renderMonoRules();
+    }
+
+    function closeMonoRules(event) {
+        if (event && event.target?.id !== 'mono-rules-modal' && !event.target?.closest?.('.btn-close-modal, .btn-modal-done')) return;
+        document.getElementById('mono-rules-modal')?.classList.remove('active');
+    }
+
+    function toggleMonoRuleCodes(group) {
+        if (monoRuleCodesOpen.has(group)) monoRuleCodesOpen.delete(group);
+        else monoRuleCodesOpen.add(group);
+        renderMonoRules();
+    }
+
+    function monoRuleChip(kind, match, rule, emptyLabel, emptyTone) {
+        const tone = rule ? (rule.target === IGNORED_TARGET ? 'is-ignored' : '') : emptyTone;
+        const label = rule ? categoryNameByKey(rule.target) : emptyLabel;
+        return `
+            <button type="button" class="mr-chip ${tone}" data-action="openMonoRulePicker" data-args="${escapeAttr(JSON.stringify([kind, match]))}">
+                <span>${escapeHtml(label)}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>`;
+    }
+
+    function renderMonoRules() {
+        const body = document.getElementById('mono-rules-body');
+        if (!body) return;
+        const rows = monoRulesSummary();
+        const ruleOf = (kind, match) => monoRules.find((rule) => rule.kind === kind && rule.match === match);
+        const merchants = monoRules.filter((rule) => rule.kind === 'merchant');
+
+        if (monoRulesLoading && !monoRules.length) {
+            body.innerHTML = '<div class="mr-empty">Завантаження правил…</div>';
+        } else if (!rows.length && !merchants.length) {
+            body.innerHTML = `
+                <div class="mr-empty">
+                    <div class="mr-empty-title">Ще немає покупок з Монобанку</div>
+                    Підтягніть виписку — тут з’являться типи покупок, і ви вирішите, у які категорії вони йдуть.
+                </div>`;
+        } else {
+            // Types that still leave purchases in «Нерозподілене» come first.
+            const needs = (row) => row.unassigned > 0 && !ruleOf('group', row.group);
+            const ordered = [...rows].sort((a, b) => Number(needs(b)) - Number(needs(a)) || b.total - a.total);
+            const groupsHtml = ordered.map((row) => {
+                const open = monoRuleCodesOpen.has(row.group);
+                const codesHtml = row.codes.length > 1 || (row.codes.length === 1 && ruleOf('mcc', String(row.codes[0].mcc)))
+                    ? `
+                        <button type="button" class="mr-codes-toggle${open ? ' is-open' : ''}" aria-expanded="${open}" data-action="toggleMonoRuleCodes" data-args="${escapeAttr(JSON.stringify([row.group]))}">
+                            Окремі коди · ${row.codes.length}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        ${open ? `<div class="mr-codes">${row.codes.map((code) => `
+                            <div class="mr-code-row">
+                                <div class="mr-code-info">
+                                    <span class="mr-code">${code.mcc}</span>
+                                    <span class="mr-code-merchants">${escapeHtml(code.merchants.join(', ') || '—')}</span>
+                                </div>
+                                ${monoRuleChip('mcc', String(code.mcc), ruleOf('mcc', String(code.mcc)), 'Як увесь тип', 'is-inherit')}
+                            </div>`).join('')}</div>` : ''}`
+                    : '';
+                return `
+                    <div class="mr-group${needs(row) ? ' needs-attention' : ''}">
+                        <div class="mr-group-row">
+                            <div class="mr-group-info">
+                                <div class="mr-group-name">${escapeHtml(row.group)}${needs(row) ? `<span class="mr-badge">${row.unassigned} без категорії</span>` : ''}</div>
+                                <div class="mr-group-meta tabular">${row.count} ${pluralUk(row.count, 'покупка', 'покупки', 'покупок')} · ${formatMoney(row.total)} ₴</div>
+                            </div>
+                            ${monoRuleChip('group', row.group, ruleOf('group', row.group), 'Обрати', 'is-empty')}
+                        </div>
+                        ${codesHtml}
+                    </div>`;
+            }).join('');
+            const merchantsHtml = merchants.length
+                ? `
+                    <div class="mr-section-title">Продавці</div>
+                    <p class="mr-section-hint">Правило продавця важливіше за тип покупки.</p>
+                    ${merchants.map((rule) => `
+                        <div class="mr-group mr-merchant">
+                            <div class="mr-group-row">
+                                <div class="mr-group-info"><div class="mr-group-name">${escapeHtml(rule.label || rule.match)}</div></div>
+                                ${monoRuleChip('merchant', rule.match, rule, '', '')}
+                            </div>
+                        </div>`).join('')}`
+                : '';
+            body.innerHTML = `
+                ${rows.length ? `<div class="mr-section-title">Типи покупок</div>
+                <p class="mr-section-hint">Оберіть категорію для кожного типу — нові покупки розкладатимуться самі.</p>` : ''}
+                ${groupsHtml}
+                ${merchantsHtml}`;
+        }
+
+        const pendingBox = document.getElementById('mono-rules-pending');
+        const { count, months } = pendingSummary(monoRulesPending);
+        pendingBox.hidden = count === 0;
+        if (count) {
+            document.getElementById('mono-rules-pending-text').textContent =
+                `${count} ${pluralUk(count, 'операція', 'операції', 'операцій')} у ${months} ${pluralUk(months, 'місяці', 'місяцях', 'місяцях')} ще не розкладені за правилами`;
+        }
+    }
+
+    async function applyMonoRulesToPast() {
+        const months = monoRulesPending.map(({ year, month }) => ({ year, month }));
+        if (!months.length) return;
+        const { count } = pendingSummary(monoRulesPending);
+        const button = document.getElementById('mono-rules-pending-btn');
+        if (button) button.disabled = true;
+        const data = await postMonoRules({ reroute: months });
+        if (button) button.disabled = false;
+        if (!data) return;
+        showSaveStatus(`Розкладено ${count} ${pluralUk(count, 'операцію', 'операції', 'операцій')}`, { tone: 'info', autoHideMs: 3000 });
+        if (document.getElementById('mono-rules-modal')?.classList.contains('active')) renderMonoRules();
     }
 
     function mergeMonobankIncomes(year, monthIndex, accountId, incoming) {
@@ -7631,7 +8183,9 @@ function generatePayrollSparklineHTML(currentTotal) {
         place.className = 'mono-snack-category';
         place.textContent = income
             ? 'У джерела доходу'
-            : (event?.categoryName ? `У категорію «${event.categoryName}»` : '');
+            : event?.unassigned
+                ? 'У «Нерозподілене» — призначте категорію'
+                : (event?.categoryName ? `У категорію «${event.categoryName}»` : '');
         if (place.textContent) body.append(place);
 
         card.append(icon, body);
@@ -7650,44 +8204,16 @@ function generatePayrollSparklineHTML(currentTotal) {
         });
     }
 
+    /** A live webhook operation; returns the category it landed in (null when ignored or known). */
     function appendLocalMonoEvent(year, monthIndex, event) {
-        if (!event?.monoId || !appData[year]?.[monthIndex]) return false;
+        if (!event?.monoId || !appData[year]?.[monthIndex]) return null;
         const bucket = appData[year][monthIndex];
         const list = bucket.expenses || [];
-        const key = `${event.accountId || ''}:${event.monoId}`;
-        const exists = list.some((category) =>
-            (category.items || []).some((item) => `${item.accountId || ''}:${item.monoId || item.id || ''}` === key)
-        );
-        if (exists) return false;
-        const item = {
-            id: event.monoId,
-            monoId: event.monoId,
-            accountId: event.accountId,
-            name: event.name || 'Операція',
-            amount: Number(event.amount) || 0,
-            isPaid: true,
-            time: event.time,
-        };
-        let category = list.find((entry) => entry?.source === 'monobank' && entry.name === event.categoryName);
-        if (!category) {
-            category = { id: newId(), name: event.categoryName || 'Інше', source: 'monobank', isEssential: false, items: [] };
-            list.push(category);
-        }
-        if (!Array.isArray(category.items)) category.items = [];
-        category.items.push(item);
+        const category = placeOperation(list, monoOperationItem(event), event.target, newId);
+        if (!category) return null;
         bucket.expenses = list;
-        if (year === currentYear && monthIndex === currentMonth) {
-            expenses = list;
-            const modalOpen = document.getElementById('category-modal')?.classList.contains('active');
-            const editing = modalOpen || document.getElementById('expenses-list')?.contains(document.activeElement);
-            if (!editing) {
-                renderExpenses();
-                updateAll();
-            } else {
-                syncCategoryLimitState(category);
-            }
-        }
-        return true;
+        refreshMonthAfterMono(year, monthIndex, category);
+        return category;
     }
 
     function appendLocalMonoIncome(year, monthIndex, event) {
@@ -7731,9 +8257,14 @@ function generatePayrollSparklineHTML(currentTotal) {
             const events = Array.isArray(data.events) ? data.events : [];
             if (!events.length) return;
             events.forEach((event) => {
-                if (event.kind === 'income') appendLocalMonoIncome(currentYear, currentMonth, event);
-                else appendLocalMonoEvent(currentYear, currentMonth, event);
-                showMonoSnack(event);
+                if (event.kind === 'income') {
+                    appendLocalMonoIncome(currentYear, currentMonth, event);
+                    showMonoSnack(event);
+                    return;
+                }
+                if (event.target === IGNORED_TARGET) return;
+                const landed = appendLocalMonoEvent(currentYear, currentMonth, event);
+                if (landed) showMonoSnack({ ...event, categoryName: landed.name, unassigned: isUnassigned(landed) });
             });
             if (typeof data.serverTime === 'number' && appData[currentYear]?.[currentMonth]) {
                 appData[currentYear][currentMonth].monoSyncedAt = data.serverTime;
@@ -7811,16 +8342,13 @@ function generatePayrollSparklineHTML(currentTotal) {
             seen.add(key);
             return true;
         };
-        const categories = [];
+        const expenses = [];
         const incomes = [];
         pages.forEach((page) => {
-            page.categories.forEach((cat) => {
-                const items = (cat.items || []).filter(fresh);
-                if (items.length) categories.push({ ...cat, items });
-            });
+            expenses.push(...page.expenses.filter(fresh));
             incomes.push(...page.incomes.filter(fresh));
         });
-        return { categories, incomes };
+        return { expenses, incomes };
     }
 
     async function runMonoQueue(year, monthIndex, accountIds) {
@@ -7875,7 +8403,7 @@ function generatePayrollSparklineHTML(currentTotal) {
                 return;
             }
 
-            monoQueue.pages.push({ categories: data.categories || [], incomes: data.incomes || [] });
+            monoQueue.pages.push({ expenses: data.expenses || [], incomes: data.incomes || [] });
             if (typeof data.nextTo === 'number') {
                 // More of this card's month is left: fetch the next (older) page after Monobank's pause.
                 monoQueue.pageTo = data.nextTo;
@@ -7890,7 +8418,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             monoQueue.pageTo = null;
 
             const pulledId = data.accountId || accountId;
-            mergeMonobankCard(year, monthIndex, pulledId, pages.categories);
+            mergeMonobankCard(year, monthIndex, pulledId, pages.expenses);
             mergeMonobankIncomes(year, monthIndex, pulledId, pages.incomes);
             await persistMonoMonth(year, monthIndex);
             if (!still()) return;
@@ -8309,6 +8837,15 @@ const uiActions = {
   filterInvoicesByAmount,
   flushSaveToServer,
   retryFailedSaves,
+  openMonoMove,
+  openMonoRulePicker,
+  closeMonoPicker,
+  pickMonoTarget,
+  submitMonoPicker,
+  openMonoRules,
+  closeMonoRules,
+  toggleMonoRuleCodes,
+  applyMonoRulesToPast,
   formatMoney,
   formatNumberShort,
   formatYearsLabel,

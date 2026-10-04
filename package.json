@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/utils.test.js src/year-tracks/*.test.js src/growth/*.test.js src/ai/*.test.js src/runway/*.test.js"
+    "test": "node --test src/utils.test.js src/mono/*.test.js src/year-tracks/*.test.js src/growth/*.test.js src/ai/*.test.js src/runway/*.test.js"
   },
   "devDependencies": {
     "vite": "^6.3.5"

@@ -199,6 +199,7 @@
                         <h2>Витрати</h2>
                         <div class="expenses-head-actions">
                             <button type="button" id="btn-telegram" class="btn-monobank-manage" data-action="openTelegramModal">Telegram</button>
+                            <button type="button" id="btn-mono-rules" class="btn-monobank-manage" hidden data-action="openMonoRules">Правила</button>
                             <button type="button" id="btn-monobank-manage" class="btn-monobank-manage" hidden data-action="openMonobankModal">Керувати</button>
                             <button type="button" id="btn-monobank" class="btn-monobank" data-action="onMonobankClick">Підключити Монобанк</button>
                         </div>
@@ -329,8 +330,9 @@
             </div>
             <button class="btn-close-modal" data-action="closeModal">✕</button>
         </div>
+        <p id="modal-category-hint" class="mr-modal-hint" hidden>Натисніть стрілку біля покупки, щоб перенести її у свою категорію. Можна запам’ятати продавця — наступні покупки підуть туди самі.</p>
         <div id="modal-subitems-list" class="modal-items-container"></div>
-        <button class="btn-add" style="margin-top:0; margin-bottom: 24px;" data-action="addSubItem">+ Додати статтю витрат</button>
+        <button id="modal-add-subitem" class="btn-add" style="margin-top:0; margin-bottom: 24px;" data-action="addSubItem">+ Додати статтю витрат</button>
         <button class="btn-modal-done" data-action="closeModal">Готово</button>
     </div>
 </div>
@@ -347,6 +349,10 @@
             <p style="color: var(--text-tertiary); font-size: 13px; line-height: 1.4; margin: 0 0 10px 0;">Можна кілька. Монобанк віддає одну картку на хвилину, рештою сайту в цей час можна користуватися.</p>
             <div id="mono-card-list" class="mono-card-list"></div>
             <p id="mono-cards-error" style="color: var(--sys-red); font-size: 13px; min-height: 0; margin: 8px 0 0 0;"></p>
+            <button type="button" class="mr-open-rules" data-action="openMonoRules">
+                <span><strong>Правила категорій</strong><span>Куди йдуть покупки з Монобанку</span></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
         </div>
         <div id="mono-connect-block">
             <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.45; margin: 0 0 12px 0;">
@@ -357,6 +363,48 @@
             <button type="button" class="btn-init-primary" style="margin: 0;" data-action="connectMonobank">Підключити</button>
         </div>
         <button type="button" id="btn-monobank-disconnect" class="btn-init-secondary" hidden style="margin: 8px 0 0 0;" data-action="disconnectMonobank">Відключити</button>
+    </div>
+</div>
+
+<div id="mono-rules-modal" class="modal-overlay" data-action="closeMonoRules" data-pass-event="1" style="z-index: 1250;">
+    <div class="modal-content mr-rules" data-stop-propagation="1">
+        <div class="modal-header">
+            <div class="modal-title-group">
+                <h3>Правила категорій</h3>
+                <div class="mr-subtitle">Покупки з Монобанку самі потрапляють у ваші категорії</div>
+            </div>
+            <button type="button" class="btn-close-modal" data-action="closeMonoRules">✕</button>
+        </div>
+        <div id="mono-rules-body" class="modal-items-container mr-rules-body"></div>
+        <div id="mono-rules-pending" class="mr-pending" role="status" hidden>
+            <span id="mono-rules-pending-text"></span>
+            <button type="button" id="mono-rules-pending-btn" class="mr-pending-btn" data-action="applyMonoRulesToPast">Розкласти</button>
+        </div>
+        <button type="button" class="btn-modal-done" data-action="closeMonoRules">Готово</button>
+    </div>
+</div>
+
+<div id="mono-pick-modal" class="modal-overlay" data-action="closeMonoPicker" data-pass-event="1" style="z-index: 1300;">
+    <div class="modal-content mr-picker" data-stop-propagation="1">
+        <div class="modal-header">
+            <div class="modal-title-group">
+                <h3 id="mono-pick-title">Перенести операцію</h3>
+                <div id="mono-pick-subtitle" class="mr-subtitle"></div>
+            </div>
+            <button type="button" class="btn-close-modal" data-action="closeMonoPicker">✕</button>
+        </div>
+        <div id="mono-pick-context"></div>
+        <div id="mono-pick-list" class="modal-items-container mr-list" role="radiogroup" aria-labelledby="mono-pick-title"></div>
+        <div id="mono-pick-new" class="mr-new" hidden>
+            <input type="text" id="mono-pick-new-name" class="ios-input" maxlength="60" placeholder="Назва нової категорії" autocomplete="off">
+        </div>
+        <label id="mono-pick-remember" class="mr-switch" hidden>
+            <input type="checkbox" id="mono-pick-remember-input" checked>
+            <span class="mr-switch-track" aria-hidden="true"></span>
+            <span class="mr-switch-text"><strong id="mono-pick-remember-title">Запам'ятати</strong><span id="mono-pick-remember-hint"></span></span>
+        </label>
+        <p id="mono-pick-error" class="mr-error" role="alert"></p>
+        <button type="button" id="mono-pick-submit" class="btn-modal-done" data-action="submitMonoPicker" disabled>Перенести</button>
     </div>
 </div>
 
