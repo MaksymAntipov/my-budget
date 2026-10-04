@@ -6505,15 +6505,85 @@ function generatePayrollSparklineHTML(currentTotal) {
         return { income, consumption, toEnvelopes, debtPaid, free, savingRate };
     }
 
-    /** Data for «Аналіз капіталу»: assets, liabilities, capital flow. No goals, tracks or point B. */
+    /** Initialized months, oldest first. */
+    function initializedMonthsAsc() {
+        const list = [];
+        Object.keys(appData).map(Number).sort((a, b) => a - b).forEach((y) => {
+            Object.keys(appData[y] || {}).map(Number).sort((a, b) => a - b).forEach((m) => {
+                if (appData[y][m]?.initialized) list.push({ y, m });
+            });
+        });
+        return list;
+    }
+
+    /** Business month split: revenue, cost of goods, payroll, other operating costs. */
+    function businessBreakdown(year, month) {
+        const data = appData[year]?.[month];
+        const revenue = getMonthIncomeUah(year, month);
+        let cogs = 0;
+        if (data?.invoices?.length) cogs = data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+        else if (data?.cogs) cogs = data.cogs.type === 'percent' ? revenue * (data.cogs.value / 100) : (parseFloat(data.cogs.value) || 0);
+        const payroll = (data?.payroll || []).reduce((sum, emp) => sum + getEmployeeAccrued(emp), 0);
+        let opex = 0;
+        (data?.expenses || []).forEach((cat) => {
+            if (cat.isSavings || cat.name === DEBT_CATEGORY_NAME) return;
+            (cat.items || []).forEach((item) => { if (!item.debtId) opex += parseFloat(item.amount) || 0; });
+        });
+        return { revenue, cogs, payroll, opex, profit: revenue - cogs - payroll - opex };
+    }
+
+    /**
+     * Months to clear a debt at a steady payment, and the interest still to pay
+     * (monthly rate). null when the payment does not even cover the interest.
+     */
+    function debtPayoffForecast(remaining, monthlyRatePct, payment) {
+        const r = (parseFloat(monthlyRatePct) || 0) / 100;
+        let balance = remaining;
+        let interest = 0;
+        let months = 0;
+        if (!(payment > 0)) return null;
+        while (balance > 0.005 && months < 600) {
+            const due = balance * r;
+            if (payment <= due) return null;
+            interest += due;
+            balance = balance + due - payment;
+            months += 1;
+        }
+        return months < 600 ? { months, interest } : null;
+    }
+
+    const pctOf = (part, whole) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '—');
+    const avgOf = (list) => (list.length ? list.reduce((sum, v) => sum + v, 0) / list.length : 0);
+
+    /**
+     * Data for «Аналіз капіталу». Code computes the metrics (LLMs are poor at arithmetic);
+     * the model only interprets them. No goals, tracks, point B or ×25.
+     */
     function buildCapitalDump(isBiz) {
         const jars = globalData.jars[currentUser.id] || [];
         const debts = (globalData.debts[currentUser.id] || []).filter((d) => !d.is_archived || d.is_archived === 0);
         const fp = getFinancialPlan();
+        const months = initializedMonthsAsc();
+        const flows = months
+            .map(({ y, m }) => ({ y, m, ...capitalFlowForMonth(y, m, isBiz) }))
+            .filter((f) => f.income > 0 || f.consumption > 0 || f.toEnvelopes !== 0 || f.debtPaid > 0);
+        // The running calendar month is incomplete: early in the month rent is simply not paid yet.
+        // Averages and trends use complete months; the running one is shown apart as «so far».
+        const today = new Date();
+        const isRunning = (f) => f.y === today.getFullYear() && f.m === today.getMonth();
+        const complete = flows.filter((f) => !isRunning(f));
+        const base = complete.length ? complete : flows;
+        const recent = base.slice(-3);
+        const current = appData[currentYear]?.[currentMonth];
+        const currentFlow = current?.initialized ? capitalFlowForMonth(currentYear, currentMonth, isBiz) : null;
+        const currentRunning = isRunning({ y: currentYear, m: currentMonth });
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const monthLabel = (f) => `${monthNames[f.m]} ${f.y}`;
 
         let prompt = generateAiFxSection();
         prompt += generateAiNowSection();
 
+        // ---- Assets, liabilities, net capital
         const jarsTotal = jars.reduce((sum, j) => sum + (parseFloat(j.balance) || 0), 0);
         const brokerUsd = isBiz ? 0 : (parseFloat(fp.brokerBalanceUsd) || 0);
         const brokerUah = brokerUsd > 0 && currentExchangeRate > 0 ? brokerUsd * currentExchangeRate : 0;
@@ -6535,52 +6605,173 @@ function generatePayrollSparklineHTML(currentTotal) {
             debtUah += part.uah;
             usdUnconverted += part.usdUnconverted;
             const interest = getMonthlyInterestEstimate(d, remaining);
-            const interestInUah = d.currency === 'USD' ? (currentExchangeRate > 0 ? interest * currentExchangeRate : 0) : interest;
-            interestUah += interestInUah;
+            interestUah += d.currency === 'USD' ? (currentExchangeRate > 0 ? interest * currentExchangeRate : 0) : interest;
             const sign = d.currency === 'USD' ? '$' : '₴';
             const rate = parseFloat(d.interest_rate) || 0;
-            prompt += `- ${d.name}: тіло ${formatMoney(remaining)} ${sign} з ${formatMoney(parseFloat(d.total_amount) || 0)} ${sign}; ставка ${rate}% / міс`;
-            prompt += interest > 0 ? `; відсотки ≈ ${formatMoney(interest)} ${sign}/міс` : '';
-            prompt += d.currency === 'USD' ? ' (борг у доларах)' : '';
-            prompt += `\n`;
+            const yearly = rate > 0 ? (Math.pow(1 + rate / 100, 12) - 1) * 100 : 0;
+            // Average payment over the recent months, in the debt's currency.
+            const paid = recent.reduce((sum, f) => {
+                const monthData = appData[f.y]?.[f.m];
+                (monthData?.expenses || []).forEach((cat) => (cat.items || []).forEach((item) => {
+                    if (String(item.debtId) === String(d.id)) sum += getDebtItemDeduction(item);
+                }));
+                return sum;
+            }, 0);
+            const payment = recent.length ? paid / recent.length : 0;
+            let line = `- ${d.name}: залишок ${formatMoney(remaining)} ${sign} з ${formatMoney(parseFloat(d.total_amount) || 0)} ${sign}`;
+            line += rate > 0 ? `; ставка ${rate}% / міс (≈ ${yearly.toFixed(1)}% річних); відсотки ≈ ${formatMoney(interest)} ${sign}/міс` : '; без відсотків';
+            if (payment > 0) {
+                const forecast = debtPayoffForecast(remaining, rate, payment);
+                line += forecast
+                    ? `; платите в середньому ${formatMoney(payment)} ${sign}/міс → закриєте приблизно за ${forecast.months} міс., ще ≈ ${formatMoney(forecast.interest)} ${sign} відсотків`
+                    : `; платите в середньому ${formatMoney(payment)} ${sign}/міс — це не покриває відсотків, борг не зменшується`;
+            } else {
+                line += `; платежів за останні місяці не було`;
+            }
+            if (d.currency === 'USD') line += ' (борг у доларах)';
+            prompt += `${line}\n`;
         });
-        if (debts.length) prompt += `- Боргів разом: ${formatMoney(debtUah)} ₴${usdUnconverted > 0 ? ` + ${formatMoney(usdUnconverted)} $ без курсу` : ''}; відсотки ≈ ${formatMoney(interestUah)} ₴/міс\n`;
-
+        if (debts.length) {
+            prompt += `- Боргів разом: ${formatMoney(debtUah)} ₴${usdUnconverted > 0 ? ` + ${formatMoney(usdUnconverted)} $ без курсу` : ''}; відсотки ≈ ${formatMoney(interestUah)} ₴/міс\n`;
+        }
         const net = jarsTotal + brokerUah - debtUah;
-        prompt += `\n### ЧИСТИЙ КАПІТАЛ\n`;
-        prompt += `- Активи − борги: ${formatMoney(net)} ₴${usdUnconverted > 0 ? ' (без доларових сум, яких не вдалося перерахувати)' : ''}\n`;
+        prompt += `\n### ЧИСТИЙ КАПІТАЛ\n- Активи − борги: ${formatMoney(net)} ₴${usdUnconverted > 0 ? ' (без доларових сум, яких не вдалося перерахувати)' : ''}\n`;
+
+        // ---- Metrics computed here, so the model does not have to
+        prompt += `\n### МЕТРИКИ (пораховано Скринею — бери як є, не перераховуй)\n`;
+        if (!flows.length) {
+            prompt += `- Даних про доходи й витрати ще немає\n`;
+        } else {
+            const incomeAvg = avgOf(recent.map((f) => f.income));
+            const consumptionAvg = avgOf(recent.map((f) => f.consumption));
+            const freeList = recent.map((f) => f.free);
+            const savedRecent = recent.reduce((sum, f) => sum + f.toEnvelopes + f.debtPaid, 0);
+            const incomeRecent = recent.reduce((sum, f) => sum + f.income, 0);
+            const window = complete.length
+                ? (recent.length === 1 ? 'за 1 повний місяць' : `за останні ${recent.length} повні міс.`)
+                : 'лише за поточний неповний місяць';
+            if (currentFlow && complete.length) {
+                prompt += `- Норма заощаджень цього місяця${currentRunning ? ' (поки що, місяць триває)' : ''}: ${pctOf(currentFlow.toEnvelopes + currentFlow.debtPaid, currentFlow.income)}\n`;
+            }
+            prompt += `- Норма заощаджень ${window}: ${pctOf(savedRecent, incomeRecent)}\n`;
+            prompt += `- Вільний залишок ${window}: у середньому ${formatMoney(avgOf(freeList))} ₴/міс (від ${formatMoney(Math.min(...freeList))} до ${formatMoney(Math.max(...freeList))} ₴)\n`;
+            prompt += `- Середній дохід ${window}: ${formatMoney(incomeAvg)} ₴; середнє споживання: ${formatMoney(consumptionAvg)} ₴\n`;
+            const incomes = base.map((f) => f.income).filter((v) => v > 0);
+            if (incomes.length >= 2) {
+                const spread = ((Math.max(...incomes) - Math.min(...incomes)) / avgOf(incomes)) * 100;
+                prompt += `- Стабільність доходу (${incomes.length} повних міс.): від ${formatMoney(Math.min(...incomes))} до ${formatMoney(Math.max(...incomes))} ₴, розкид ${Math.round(spread)}% від середнього\n`;
+            }
+            if (current?.initialized) {
+                const total = getMonthIncomeUah(currentYear, currentMonth);
+                const usd = (current.incomes || []).reduce((sum, inc) => sum + (inc.currency === 'USD' ? (parseFloat(inc.amount) || 0) * currentExchangeRate : 0), 0);
+                if (usd > 0) prompt += `- Дохід у валюті цього місяця: ${pctOf(usd, total)}\n`;
+            }
+            if (consumptionAvg > 0) {
+                prompt += `- Усіх конвертів вистачить на ${(jarsTotal / consumptionAvg).toFixed(1)} міс. звичного споживання\n`;
+            }
+            if (debts.length && incomeAvg > 0) {
+                prompt += `- Боргове навантаження: платежі ${pctOf(avgOf(recent.map((f) => f.debtPaid)), incomeAvg)} доходу, з них відсотки ≈ ${pctOf(interestUah, incomeAvg)} доходу\n`;
+            }
+            if (!isBiz && incomeAvg > 0) {
+                prompt += `- Норма Скрині: відкладати 20% доходу ≈ ${formatMoney(recommendedSaveUah(incomeAvg))} ₴/міс\n`;
+            }
+        }
 
         if (!isBiz) {
-            const current = appData[currentYear]?.[currentMonth];
-            const essentialMonthly = current?.initialized ? monthlyCushionBaseUah(0, current.expenses) : 0;
+            // Essential spending of complete months: early in a month nothing is paid yet.
+            const essentialList = recent
+                .map((f) => monthlyCushionBaseUah(0, appData[f.y][f.m].expenses))
+                .filter((v) => v > 0);
+            const essentialMonthly = essentialList.length
+                ? avgOf(essentialList)
+                : (current?.initialized ? monthlyCushionBaseUah(0, current.expenses) : 0);
             const cushion = getCushionBalanceUah();
-            prompt += `\n### ПОДУШКА (стійкість)\n`;
+            prompt += `\n### ПОДУШКА\n`;
             prompt += `- У конвертах «Подушка»: ${formatMoney(cushion)} ₴\n`;
             if (essentialMonthly > 0) {
-                prompt += `- Обов'язкові витрати: ${formatMoney(essentialMonthly)} ₴/міс → подушки вистачить на ${(cushion / essentialMonthly).toFixed(1)} міс. (норма Скрині — 6)\n`;
+                prompt += `- Обов'язкові витрати${essentialList.length ? ` (у середньому за ${essentialList.length} повні міс.)` : ''}: ${formatMoney(essentialMonthly)} ₴/міс → подушки вистачить на ${(cushion / essentialMonthly).toFixed(1)} міс. (норма Скрині — 6, тобто ${formatMoney(essentialMonthly * 6)} ₴)\n`;
             } else if (current?.initialized && hasEssentialCategories(current.expenses)) {
                 prompt += `- Обов'язкові категорії позначені, але витрат по них цього місяця ще немає: тривалість подушки в місяцях не рахуй\n`;
             } else {
                 prompt += `- Обов'язкові категорії не позначені: тривалість подушки в місяцях не рахуй і ціль не вигадуй\n`;
             }
+        } else if (flows.length) {
+            const recentBiz = recent.map((f) => businessBreakdown(f.y, f.m)).filter((b) => b.revenue > 0);
+            if (recentBiz.length) {
+                const sum = (key) => recentBiz.reduce((acc, b) => acc + b[key], 0);
+                const revenue = sum('revenue');
+                prompt += `\n### БІЗНЕС-МЕТРИКИ (останні ${recentBiz.length} міс.)\n`;
+                prompt += `- Маржа (прибуток / виручка): ${pctOf(sum('profit'), revenue)}\n`;
+                prompt += `- Собівартість: ${pctOf(sum('cogs'), revenue)} виручки; зарплати: ${pctOf(sum('payroll'), revenue)}; інші операційні витрати: ${pctOf(sum('opex'), revenue)}\n`;
+            }
         }
 
+        // ---- Capital flow per month
         prompt += `\n### РУХ КАПІТАЛУ ПО МІСЯЦЯХ\n`;
-        prompt += `Споживання — звичайні категорії${isBiz ? ' + собівартість і зарплати' : ''}. У конверти — поповнення мінус зняття. Борги — платежі по тілу й відсотках. Вільний залишок = дохід − споживання − конверти − борги. Норма заощаджень = (конверти + борги) / дохід.\n`;
-        const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
-        years.forEach((y) => {
-            Object.keys(appData[y] || {}).map(Number).sort((a, b) => a - b).forEach((m) => {
-                const flow = capitalFlowForMonth(y, m, isBiz);
-                if (!flow || (flow.income === 0 && flow.consumption === 0 && flow.toEnvelopes === 0 && flow.debtPaid === 0)) return;
-                const mark = y === currentYear && m === currentMonth ? ' (поточний)' : '';
-                prompt += `- ${monthNames[m]} ${y}${mark}: дохід ${formatMoney(flow.income)} ₴; споживання ${formatMoney(flow.consumption)} ₴; у конверти ${formatMoney(flow.toEnvelopes)} ₴; борги ${formatMoney(flow.debtPaid)} ₴; вільний залишок ${formatMoney(flow.free)} ₴; норма заощаджень ${flow.savingRate.toFixed(0)}%\n`;
-            });
+        prompt += `Споживання — звичайні категорії${isBiz ? ' + собівартість і зарплати' : ''}. Конверти й платежі по боргах — це рух капіталу, не споживання.\n`;
+        flows.forEach((f) => {
+            const mark = isRunning(f) ? ` (триває: ${today.getDate()}-й день з ${daysInMonth}, суми поки що)` : '';
+            prompt += `- ${monthLabel(f)}${mark}: дохід ${formatMoney(f.income)} ₴; споживання ${formatMoney(f.consumption)} ₴; у конверти ${formatMoney(f.toEnvelopes)} ₴; на борги ${formatMoney(f.debtPaid)} ₴; вільний залишок ${formatMoney(f.free)} ₴\n`;
         });
 
-        if (appData[currentYear]?.[currentMonth]?.initialized) {
-            prompt += `\n### КАТЕГОРІЇ ПОТОЧНОГО МІСЯЦЯ\n`;
-            prompt += `«за 10 років» = місяць × 120 — скільки капіталу забирає потік, якщо так і триватиме.\n`;
-            prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz, { lineItems: false });
+        // ---- Category trends across months (stable category keys join the same category)
+        const trendMonths = base.slice(-6);
+        if (trendMonths.length >= 2) {
+            const series = new Map();
+            trendMonths.forEach((f, idx) => {
+                (appData[f.y][f.m].expenses || []).forEach((cat) => {
+                    if (isUnassigned(cat) || isLedgerCategory(cat)) return;
+                    const total = getCategoryTotal(cat);
+                    if (!(total > 0)) return;
+                    const key = categoryKey(cat);
+                    if (!series.has(key)) series.set(key, { name: cat.name || 'Без назви', values: new Array(trendMonths.length).fill(0) });
+                    const entry = series.get(key);
+                    entry.values[idx] += total;
+                    entry.name = cat.name || entry.name;
+                });
+            });
+            const rows = [...series.values()]
+                .sort((a, b) => b.values[b.values.length - 1] - a.values[a.values.length - 1] || avgOf(b.values) - avgOf(a.values))
+                .slice(0, 12);
+            if (rows.length) {
+                prompt += `\n### ТРЕНДИ КАТЕГОРІЙ (₴/міс: ${trendMonths.map(monthLabel).join(' → ')})\n`;
+                rows.forEach((row) => {
+                    prompt += `- ${row.name}: ${row.values.map((v) => formatMoney(Math.round(v)).replace(/,00$/, '')).join(' → ')}\n`;
+                });
+            }
+        }
+
+        // ---- Current month: spending by category, unsorted bank purchases apart
+        if (current?.initialized) {
+            const income = getMonthIncomeUah(currentYear, currentMonth);
+            prompt += `\n### ПОТОЧНИЙ МІСЯЦЬ — ${monthNames[currentMonth]} ${currentYear}${currentRunning ? ` (триває: ${today.getDate()}-й день з ${daysInMonth}; суми поки що, частину платежів ще не внесено)` : ''}\n`;
+            prompt += `- Дохід: ${formatMoney(income)} ₴\n`;
+            const cats = (current.expenses || [])
+                .filter((cat) => !isUnassigned(cat) && !isLedgerCategory(cat))
+                .map((cat) => ({ cat, total: getCategoryTotal(cat) }))
+                .filter((row) => row.total > 0)
+                .sort((a, b) => b.total - a.total);
+            cats.forEach(({ cat, total }) => {
+                const tag = cat.isEssential ? ' [обов\'язкові]' : '';
+                prompt += `- ${cat.name || 'Без назви'}${tag}: ${formatMoney(total)} ₴ (${pctOf(total, income)} доходу; за 10 років ${formatMoney(total * 120)} ₴)\n`;
+            });
+            const inbox = (current.expenses || []).find(isUnassigned);
+            if (inbox && (inbox.items || []).length) {
+                prompt += `- Не розкладено: ${inbox.items.length} ${pluralUk(inbox.items.length, 'покупка', 'покупки', 'покупок')} Монобанку на ${formatMoney(getCategoryTotal(inbox))} ₴ — це ще не окрема стаття витрат, не ранжуй її\n`;
+            }
+            const prev = flows.filter((f) => !(f.y === currentYear && f.m === currentMonth)).slice(-1)[0];
+            if (prev) {
+                const nowKeys = new Set(cats.map(({ cat }) => categoryKey(cat)));
+                const gone = (appData[prev.y][prev.m].expenses || [])
+                    .filter((cat) => !isUnassigned(cat) && !isLedgerCategory(cat) && getCategoryTotal(cat) > 0 && !nowKeys.has(categoryKey(cat)))
+                    .map((cat) => cat.name)
+                    .filter(Boolean);
+                if (gone.length) {
+                    prompt += currentRunning
+                        ? `- Поки без витрат цього місяця (минулого місяця були): ${gone.join(', ')} — місяць триває, це не означає, що статтю закрито\n`
+                        : `- Закрито / без витрат цього місяця (минулого місяця були): ${gone.join(', ')}\n`;
+                }
+            }
         }
         return prompt;
     }
@@ -6588,16 +6779,17 @@ function generatePayrollSparklineHTML(currentTotal) {
     async function buildAnalyticsPrompt(_type = 'all') {
         const isBiz = currentUser && currentUser.account_type === 'business';
         const profileTypeStr = isBiz ? 'Бізнес' : 'Особистий (фіз. особа)';
-        let prompt = `Виступи в ролі аналітика капіталу. Тип профілю: ${profileTypeStr}.\n`;
-        prompt += `Аналізуй лише капітал і гроші: що в мене є, куди воно тече і наскільки це стійко. НЕ аналізуй цілі, річні треки, точку Б, анкету росту, правило ×25 і цілі конвертів — це окрема «Стратегія росту». Не пиши розділів HELICOPTER VIEW, ТАКТИКА чи НА ПОДУМАТИ.\n`;
-        prompt += `Цифри лише з даних нижче; дохідність, курси й ціни ринку не вигадуй. Суми в гривнях. Конверти й платежі по боргах — це рух капіталу, а не споживання. Подушка = 6 × обов'язкові витрати; без позначених обов'язкових — ціль не вигадуй. Не ріж обов'язкові, поки є необов'язкові.\n\n`;
-        prompt += `СТРУКТУРА ВІДПОВІДІ (саме ці заголовки, в такому порядку):\n`;
-        prompt += `## КАПІТАЛ ЗАРАЗ — активи (конверти за типами${isBiz ? '' : ', брокер'}), зобов'язання (тіло, валюта, ставка, відсотки ₴/міс), чистий капітал; яка частина ліквідна, яка інвестована.\n`;
-        prompt += `## ДИНАМІКА — по місяцях: скільки пішло в конверти і на борги, вільний залишок, норма заощаджень. Капітал росте чи тане і за рахунок чого. Історії балансів немає — висновок роби з руху коштів.\n`;
-        prompt += `## РИЗИКИ — на скільки місяців вистачить подушки; борги, дорожчі за розумну дохідність; валютний ризик (борг у $ при доході в ₴); концентрація; від'ємний вільний залишок.\n`;
-        prompt += `## КУДИ СПРЯМУВАТИ ГРОШІ — порядок для вільного залишку наступного місяця з конкретними сумами (наприклад: дорогий борг → подушка → інвестиції), виходячи з цих цифр, а не з шаблону.\n`;
-        prompt += `## ДЕ КАПІТАЛ ВИТІКАЄ — 1–3 найбільші потоки споживання поточного місяця і скільки капіталу вони забирають за 10 років. Лише великі, не дрібниці. Підміну капіталу (оренда vs житло, таксі vs авто) — лише якщо цифри це тримають.\n`;
-        prompt += `Пиши по суті й по цифрах; таблиці доречні.\n\n`;
+        let prompt = `Виступи як мій фінансовий аналітик. Тип профілю: ${profileTypeStr}.\n`;
+        prompt += `Тема — лише капітал: що в мене є, куди воно тече і наскільки це стійко. Цілі, треки, точку Б, анкету росту, ×25 і цілі конвертів не аналізуй — це «Стратегія росту».\n`;
+        prompt += `Цифри — лише з даних нижче. Блок «МЕТРИКИ» вже пораховано: бери звідти, не перераховуй. Дохідність, курси й ціни ринку не вигадуй.\n`;
+        prompt += `Пиши людською мовою, як аналітик пояснює клієнту: коротко, без таблиць, цифри — прямо в реченнях. Без загальних порад («складіть бюджет», «відмовтеся від кави», «інвестуйте в себе») — лише те, що випливає з моїх цифр.\n\n`;
+        prompt += `СТРУКТУРА (саме ці заголовки, в такому порядку; кожен розділ є, але якщо даних для нього замало — один чесний рядок, без води):\n`;
+        prompt += `## ГОЛОВНЕ — 3 пункти: стан капіталу; куди він рухається; одна головна дія з сумою і терміном.\n`;
+        prompt += `## КАПІТАЛ ЗАРАЗ — що є і що винен, чистий капітал; яка частина ліквідна, яка працює.\n`;
+        prompt += `## ДИНАМІКА — капітал росте чи тане і за рахунок чого (рух по місяцях, норма заощаджень, вільний залишок).\n`;
+        prompt += `## РИЗИКИ — лише реальні з цих цифр: подушка, дорогі борги, нестабільний дохід, валютний ризик, від'ємний залишок.\n`;
+        prompt += `## КУДИ СПРЯМУВАТИ ГРОШІ — не більше 3 дій; у кожної сума, термін і цифра з даних, на яку вона спирається.\n`;
+        prompt += `## ДЕ КАПІТАЛ ВИТІКАЄ — 1–3 найбільші потоки споживання; якщо є тренд у блоці «ТРЕНДИ КАТЕГОРІЙ» — назви його. Підміну капіталу (оренда vs житло, таксі vs авто) — лише якщо цифри це тримають.\n\n`;
 
         await ensureExchangeRateForAi();
         prompt += buildCapitalDump(isBiz);
