@@ -1,0 +1,4 @@
+# Cloudflare Pages: git builds run `npm run build` (set in the dashboard) and publish Vite's output.
+name = "my-budget"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-03-01"
