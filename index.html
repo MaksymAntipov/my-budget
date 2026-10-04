@@ -350,7 +350,7 @@
             <div id="mono-card-list" class="mono-card-list"></div>
             <p id="mono-cards-error" style="color: var(--sys-red); font-size: 13px; min-height: 0; margin: 8px 0 0 0;"></p>
             <button type="button" class="mr-open-rules" data-action="openMonoRules">
-                <span><strong>Правила категорій</strong><span>Куди йдуть покупки з Монобанку</span></span>
+                <span><strong>Правила категорій</strong><span>Який магазин у яку категорію</span></span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </button>
         </div>
@@ -371,10 +371,11 @@
         <div class="modal-header">
             <div class="modal-title-group">
                 <h3>Правила категорій</h3>
-                <div class="mr-subtitle">Покупки з Монобанку самі потрапляють у ваші категорії</div>
+                <div class="mr-subtitle">Оберіть категорію для кожного магазину</div>
             </div>
             <button type="button" class="btn-close-modal" data-action="closeMonoRules">✕</button>
         </div>
+        <input type="search" id="mono-rules-search" class="ios-input mr-search" placeholder="Пошук магазину" autocomplete="off" aria-label="Пошук магазину" data-input-action="filterMonoRules" hidden>
         <div id="mono-rules-body" class="modal-items-container mr-rules-body"></div>
         <div id="mono-rules-pending" class="mr-pending" role="status" hidden>
             <span id="mono-rules-pending-text"></span>

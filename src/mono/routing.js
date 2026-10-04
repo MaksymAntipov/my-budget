@@ -103,63 +103,45 @@ export function removeCardOperations(expenses, accountId, legacyAccountId) {
 }
 
 /**
- * Every MCC group and code seen in the user's Monobank operations (all months, ignored ones
- * included), biggest spend first — the rows of the rules screen.
+ * Every merchant seen in the user's Monobank operations (all months, ignored ones included) —
+ * the rows of the rules screen. `unassigned` counts only operations of the running month that
+ * still wait for a category: earlier months are history and never re-routed.
  */
-export function summarizeOperations(months) {
-    const groups = new Map();
-    const add = (item, fallbackGroup) => {
-        const groupName = String(item.mccGroup || fallbackGroup || 'Інше');
-        const amount = Number(item.amount) || 0;
-        let group = groups.get(groupName);
-        if (!group) {
-            group = { group: groupName, total: 0, count: 0, unassigned: 0, codes: new Map() };
-            groups.set(groupName, group);
-        }
-        group.total += amount;
-        group.count += 1;
-        const mcc = Number.isInteger(Number(item.mcc)) && item.mcc !== null && item.mcc !== '' ? Number(item.mcc) : null;
-        const codeKey = mcc === null ? 'none' : String(mcc);
-        let code = group.codes.get(codeKey);
-        if (!code) {
-            code = { mcc, total: 0, count: 0, merchants: new Map() };
-            group.codes.set(codeKey, code);
-        }
-        code.total += amount;
-        code.count += 1;
-        const merchant = String(item.name || '').trim();
-        if (merchant) code.merchants.set(merchant, (code.merchants.get(merchant) || 0) + amount);
-        return group;
-    };
-    (months || []).forEach(({ expenses, ignored }) => {
+export function summarizeMerchants(months) {
+    const merchants = new Map();
+    (months || []).forEach(({ expenses, ignored, running }) => {
+        const add = (item, waiting) => {
+            const key = normalizeMerchant(item.name);
+            if (!key) return;
+            let merchant = merchants.get(key);
+            if (!merchant) {
+                merchant = { key, names: new Map(), total: 0, count: 0, unassigned: 0 };
+                merchants.set(key, merchant);
+            }
+            const shown = String(item.name).trim();
+            merchant.names.set(shown, (merchant.names.get(shown) || 0) + 1);
+            merchant.total += Number(item.amount) || 0;
+            merchant.count += 1;
+            if (waiting && running) merchant.unassigned += 1;
+        };
         (expenses || []).forEach((category) => {
-            const fallback = isLegacyMonoCategory(category) ? category.name : '';
+            const waiting = isUnassigned(category) || isLegacyMonoCategory(category);
             (category.items || []).forEach((item) => {
-                if (!isMonoItem(item)) return;
-                const group = add(item, fallback);
-                if (isUnassigned(category) || isLegacyMonoCategory(category)) group.unassigned += 1;
+                if (isMonoItem(item)) add(item, waiting);
             });
         });
         (ignored || []).forEach((item) => {
-            if (isMonoItem(item)) add(item, '');
+            if (isMonoItem(item)) add(item, false);
         });
     });
-    const round = (value) => Math.round(value * 100) / 100;
-    return [...groups.values()]
-        .map((group) => ({
-            group: group.group,
-            total: round(group.total),
-            count: group.count,
-            unassigned: group.unassigned,
-            codes: [...group.codes.values()]
-                .filter((code) => code.mcc !== null)
-                .map((code) => ({
-                    mcc: code.mcc,
-                    total: round(code.total),
-                    count: code.count,
-                    merchants: [...code.merchants.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name]) => name),
-                }))
-                .sort((a, b) => b.total - a.total),
+    return [...merchants.values()]
+        .map(({ key, names, total, count, unassigned }) => ({
+            key,
+            // The spelling the bank used most often.
+            name: [...names.entries()].sort((a, b) => b[1] - a[1])[0][0],
+            total: Math.round(total * 100) / 100,
+            count,
+            unassigned,
         }))
-        .sort((a, b) => b.total - a.total);
+        .sort((a, b) => b.unassigned - a.unassigned || b.total - a.total);
 }

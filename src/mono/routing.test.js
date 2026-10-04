@@ -8,7 +8,7 @@ import {
     ensureCategoryKeys,
     placeOperation,
     removeCardOperations,
-    summarizeOperations,
+    summarizeMerchants,
 } from './routing.js';
 
 let seq = 0;
@@ -47,22 +47,29 @@ test('a fresh import replaces only that card, then empty system categories go', 
     assert.deepEqual(dropEmptySystemCategories(month).map((c) => c.id), ['f']);
 });
 
-test('summarizeOperations lists groups and codes by spend, with top merchants', () => {
-    const rows = summarizeOperations([
+test('summarizeMerchants lists stores by spend; only the running month counts as waiting', () => {
+    const rows = summarizeMerchants([
         {
+            running: true,
             expenses: [
-                { system: 'unassigned', items: [op('1', { amount: 300 }), op('2', { name: 'АТБ', amount: 50, mcc: 5499 })] },
-                { name: 'Розваги', source: 'monobank', items: [op('3', { mcc: undefined, mccGroup: undefined, amount: 20 })] },
-                { key: 'food', name: 'Їжа', items: [{ id: 'manual', amount: 999 }] },
+                { system: 'unassigned', items: [op('1', { name: 'АТБ', amount: 50 })] },
+                { key: 'food', name: 'Їжа', items: [op('2', { amount: 300 }), { id: 'manual', name: 'Ринок', amount: 999 }] },
             ],
-            ignored: [op('4', { name: 'Steam', mcc: 5816, mccGroup: 'Підписки', amount: 500 })],
+            ignored: [op('3', { name: 'Steam', amount: 500 })],
+        },
+        {
+            running: false,
+            expenses: [
+                { system: 'unassigned', items: [op('4', { name: 'сільпо ', amount: 100 })] },
+                { name: 'Кафе', source: 'monobank', items: [op('5', { name: 'Кава', amount: 20 })] },
+            ],
         },
     ]);
-    assert.deepEqual(rows.map((r) => [r.group, r.total, r.unassigned]), [
-        ['Підписки', 500, 0],
-        ['Продукти', 350, 2],
-        ['Розваги', 20, 1],
+    assert.deepEqual(rows.map((r) => [r.name, r.total, r.count, r.unassigned]), [
+        ['АТБ', 50, 1, 1],
+        ['Steam', 500, 1, 0],
+        ['Сільпо', 400, 2, 0],
+        ['Кава', 20, 1, 0],
     ]);
-    assert.deepEqual(rows[1].codes.map((c) => [c.mcc, c.merchants]), [[5411, ['Сільпо']], [5499, ['АТБ']]]);
-    assert.deepEqual(rows[2].codes, []); // legacy operations without a code count for the group only
+    assert.equal(rows.find((r) => r.name === 'Сільпо').key, 'сільпо');
 });

@@ -22,7 +22,7 @@ import {
   isUnassigned,
   placeOperation,
   removeCardOperations,
-  summarizeOperations,
+  summarizeMerchants,
   txKey,
 } from './mono/routing.js';
 import { apiFetch } from './api.js';
@@ -3277,7 +3277,7 @@ function getHistoricalIncome(year, month) {
             const checkboxHtml = `<div class="check-container ${isChecked}" data-action="togglePaidStatus" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
 
             const mono = isMonoItem(item);
-            const monoMeta = mono ? [monoOperationDate(item), item.mccGroup, item.mcc ? `MCC ${item.mcc}` : ''].filter(Boolean).join(' · ') : '';
+            const monoMeta = mono ? monoOperationDate(item) : '';
             const moveHtml = mono
                 ? `<button type="button" class="btn-sub-move" data-action="openMonoMove" data-args="${escapeAttr(JSON.stringify([item.id]))}" title="Перенести в іншу категорію" aria-label="Перенести в іншу категорію"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></button>`
                 : '';
@@ -7603,10 +7603,9 @@ function generatePayrollSparklineHTML(currentTotal) {
     let monoRulesPending = [];
     let monoRulesLoading = false;
     let monoPicker = null;
-    const monoRuleCodesOpen = new Set();
+    let monoRulesQuery = '';
 
     const MONO_PICK_NONE = '__none__';
-    const MONO_PICK_INHERIT = '__inherit__';
     const MONO_PICK_NEW = '__new__';
 
     function ownCategoriesOfMonth() {
@@ -7753,10 +7752,11 @@ function generatePayrollSparklineHTML(currentTotal) {
         showMonoPicker();
     }
 
-    function openMonoRulePicker(kind, match) {
-        const rule = monoRules.find((entry) => entry.kind === kind && entry.match === match);
-        const empty = kind === 'mcc' ? MONO_PICK_INHERIT : MONO_PICK_NONE;
-        monoPicker = { mode: 'rule', kind, match, label: rule?.label || match, current: rule?.target || empty, selected: rule?.target || empty };
+    function openMonoRulePicker(match, name) {
+        const rule = monoRules.find((entry) => entry.kind === 'merchant' && entry.match === match);
+        const label = name || rule?.label || match;
+        const current = rule?.target || MONO_PICK_NONE;
+        monoPicker = { mode: 'rule', kind: 'merchant', match, label, current, selected: current };
         showMonoPicker();
     }
 
@@ -7774,19 +7774,11 @@ function generatePayrollSparklineHTML(currentTotal) {
         monoPicker = null;
     }
 
-    function monoGroupTargetName(group) {
-        const rule = monoRules.find((entry) => entry.kind === 'group' && entry.match === group);
-        return rule ? categoryNameByKey(rule.target) : 'Нерозподілене';
-    }
-
     function monoPickerOptions() {
         const picker = monoPicker;
         const options = [];
-        if (picker.mode === 'rule' && picker.kind === 'mcc') {
-            const group = monoRulesSummary().find((row) => row.codes.some((code) => String(code.mcc) === picker.match))?.group;
-            options.push({ value: MONO_PICK_INHERIT, name: 'Як увесь тип', meta: group ? `зараз «${monoGroupTargetName(group)}»` : '', tone: 'muted' });
-        } else if (picker.mode === 'rule') {
-            options.push({ value: MONO_PICK_NONE, name: 'Без правила', meta: 'у «Нерозподілене»', tone: 'muted' });
+        if (picker.mode === 'rule') {
+            options.push({ value: MONO_PICK_NONE, name: 'Без категорії', meta: 'у «Нерозподілене»', tone: 'muted' });
         }
         ownCategoriesOfMonth().forEach((category) => {
             const key = categoryKey(category);
@@ -7812,7 +7804,7 @@ function generatePayrollSparklineHTML(currentTotal) {
 
         if (picker.mode === 'move') {
             const item = picker.item;
-            const meta = [monoOperationDate(item), item.mccGroup, item.mcc ? `MCC ${item.mcc}` : ''].filter(Boolean).join(' · ');
+            const meta = monoOperationDate(item);
             title.textContent = 'Перенести операцію';
             subtitle.textContent = 'Оберіть категорію для цієї покупки';
             context.innerHTML = `
@@ -7832,14 +7824,11 @@ function generatePayrollSparklineHTML(currentTotal) {
                 : 'Цю покупку перенесемо, а нові покупки цього продавця підуть сюди. Інші покупки минулого місяця не зміняться';
             submit.textContent = 'Перенести';
         } else {
-            const kindTitle = { group: 'Тип покупок', mcc: `Код MCC ${picker.match}`, merchant: 'Продавець' }[picker.kind] || 'Правило';
-            title.textContent = picker.kind === 'group' ? `«${picker.match}»` : kindTitle;
-            subtitle.textContent = picker.kind === 'group' ? 'Куди йдуть покупки цього типу' : picker.kind === 'mcc' ? 'Куди йдуть покупки з цим кодом' : `Куди йдуть покупки «${picker.label}»`;
-            const code = picker.kind === 'mcc'
-                ? monoRulesSummary().flatMap((row) => row.codes).find((entry) => String(entry.mcc) === picker.match)
-                : null;
-            context.innerHTML = code?.merchants?.length
-                ? `<div class="mr-context">Наприклад: ${escapeHtml(code.merchants.join(', '))}</div>`
+            title.textContent = `«${picker.label}»`;
+            subtitle.textContent = 'Куди йдуть покупки цього магазину';
+            const seen = monoRulesSummary().find((row) => row.key === picker.match);
+            context.innerHTML = seen
+                ? `<div class="mr-context">${seen.count} ${pluralUk(seen.count, 'покупка', 'покупки', 'покупок')} · ${formatMoney(seen.total)} ₴. Покупки поточного місяця й нові підуть у вибрану категорію.</div>`
                 : '';
             remember.hidden = true;
             submit.textContent = 'Зберегти';
@@ -7903,7 +7892,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             change = remember
                 ? { set: [{ kind: 'merchant', match: merchant, target, label: merchant }], remove: [{ kind: 'tx', match: txKey(picker.item) }] }
                 : { set: [{ kind: 'tx', match: txKey(picker.item), target }] };
-        } else if (target === MONO_PICK_NONE || target === MONO_PICK_INHERIT) {
+        } else if (target === MONO_PICK_NONE) {
             change = { remove: [{ kind: picker.kind, match: picker.match }] };
         } else {
             change = { set: [{ kind: picker.kind, match: picker.match, target, label: picker.kind === 'merchant' ? picker.label : null }] };
@@ -7928,7 +7917,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         document.getElementById('mono-pick-modal')?.classList.remove('active');
         monoPicker = null;
 
-        const placeName = target === MONO_PICK_NONE ? 'Нерозподілене' : target === MONO_PICK_INHERIT ? '' : categoryNameByKey(target);
+        const placeName = target === MONO_PICK_NONE ? 'Нерозподілене' : categoryNameByKey(target);
         if (mode === 'move') {
             const where = target === IGNORED_TARGET ? 'Операцію більше не враховано' : `Перенесено в «${placeName}»`;
             showSaveStatus(remembered ? `${where} · запам'ятали «${remembered}»` : where, { tone: 'info', autoHideMs: 4000 });
@@ -7941,19 +7930,28 @@ function generatePayrollSparklineHTML(currentTotal) {
     // ---------- Rules screen: MCC types and codes → own categories ----------
 
     function monoRulesSummary() {
+        const running = runningMonth();
         const months = [];
         Object.keys(appData).forEach((year) => {
             Object.keys(appData[year] || {}).forEach((month) => {
                 const bucket = appData[year][month];
-                if (bucket?.initialized) months.push({ expenses: bucket.expenses, ignored: bucket.monoIgnored });
+                if (!bucket?.initialized) return;
+                months.push({
+                    expenses: bucket.expenses,
+                    ignored: bucket.monoIgnored,
+                    running: Number(year) === running.year && Number(month) === running.month,
+                });
             });
         });
-        return summarizeOperations(months);
+        return summarizeMerchants(months);
     }
 
     async function openMonoRules() {
         if (!currentUser) return;
         document.getElementById('mono-rules-modal')?.classList.add('active');
+        monoRulesQuery = '';
+        const search = document.getElementById('mono-rules-search');
+        if (search) search.value = '';
         monoRulesLoading = true;
         renderMonoRules();
         try {
@@ -7979,17 +7977,16 @@ function generatePayrollSparklineHTML(currentTotal) {
         document.getElementById('mono-rules-modal')?.classList.remove('active');
     }
 
-    function toggleMonoRuleCodes(group) {
-        if (monoRuleCodesOpen.has(group)) monoRuleCodesOpen.delete(group);
-        else monoRuleCodesOpen.add(group);
+    function filterMonoRules(value) {
+        monoRulesQuery = String(value || '').trim().toLowerCase();
         renderMonoRules();
     }
 
-    function monoRuleChip(kind, match, rule, emptyLabel, emptyTone) {
-        const tone = rule ? (rule.target === IGNORED_TARGET ? 'is-ignored' : '') : emptyTone;
-        const label = rule ? categoryNameByKey(rule.target) : emptyLabel;
+    function monoRuleChip(match, name, rule) {
+        const tone = rule ? (rule.target === IGNORED_TARGET ? 'is-ignored' : '') : 'is-empty';
+        const label = rule ? categoryNameByKey(rule.target) : 'Обрати категорію';
         return `
-            <button type="button" class="mr-chip ${tone}" data-action="openMonoRulePicker" data-args="${escapeAttr(JSON.stringify([kind, match]))}">
+            <button type="button" class="mr-chip ${tone}" data-action="openMonoRulePicker" data-args="${escapeAttr(JSON.stringify([match, name]))}">
                 <span>${escapeHtml(label)}</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </button>`;
@@ -7998,68 +7995,40 @@ function generatePayrollSparklineHTML(currentTotal) {
     function renderMonoRules() {
         const body = document.getElementById('mono-rules-body');
         if (!body) return;
+        const rules = new Map(monoRules.filter((rule) => rule.kind === 'merchant').map((rule) => [rule.match, rule]));
         const rows = monoRulesSummary();
-        const ruleOf = (kind, match) => monoRules.find((rule) => rule.kind === kind && rule.match === match);
-        const merchants = monoRules.filter((rule) => rule.kind === 'merchant');
+        // Stores known only from a rule (no purchases loaded yet) still belong in the list.
+        rules.forEach((rule, key) => {
+            if (!rows.some((row) => row.key === key)) rows.push({ key, name: rule.label || key, total: 0, count: 0, unassigned: 0 });
+        });
+        const search = document.getElementById('mono-rules-search');
+        if (search) search.hidden = rows.length < 8;
+        const visible = monoRulesQuery ? rows.filter((row) => row.name.toLowerCase().includes(monoRulesQuery)) : rows;
 
-        if (monoRulesLoading && !monoRules.length) {
-            body.innerHTML = '<div class="mr-empty">Завантаження правил…</div>';
-        } else if (!rows.length && !merchants.length) {
+        if (monoRulesLoading && !rows.length) {
+            body.innerHTML = '<div class="mr-empty">Завантаження…</div>';
+        } else if (!rows.length) {
             body.innerHTML = `
                 <div class="mr-empty">
                     <div class="mr-empty-title">Ще немає покупок з Монобанку</div>
-                    Підтягніть виписку — тут з’являться типи покупок, і ви вирішите, у які категорії вони йдуть.
+                    Підтягніть виписку — тут з’являться магазини, і ви вирішите, у які категорії йдуть їхні покупки.
                 </div>`;
+        } else if (!visible.length) {
+            body.innerHTML = '<div class="mr-empty">Нічого не знайдено</div>';
         } else {
-            // Types that still leave purchases in «Нерозподілене» come first.
-            const needs = (row) => row.unassigned > 0 && !ruleOf('group', row.group);
-            const ordered = [...rows].sort((a, b) => Number(needs(b)) - Number(needs(a)) || b.total - a.total);
-            const groupsHtml = ordered.map((row) => {
-                const open = monoRuleCodesOpen.has(row.group);
-                const codesHtml = row.codes.length > 1 || (row.codes.length === 1 && ruleOf('mcc', String(row.codes[0].mcc)))
-                    ? `
-                        <button type="button" class="mr-codes-toggle${open ? ' is-open' : ''}" aria-expanded="${open}" data-action="toggleMonoRuleCodes" data-args="${escapeAttr(JSON.stringify([row.group]))}">
-                            Окремі коди · ${row.codes.length}
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </button>
-                        ${open ? `<div class="mr-codes">${row.codes.map((code) => `
-                            <div class="mr-code-row">
-                                <div class="mr-code-info">
-                                    <span class="mr-code">${code.mcc}</span>
-                                    <span class="mr-code-merchants">${escapeHtml(code.merchants.join(', ') || '—')}</span>
-                                </div>
-                                ${monoRuleChip('mcc', String(code.mcc), ruleOf('mcc', String(code.mcc)), 'Як увесь тип', 'is-inherit')}
-                            </div>`).join('')}</div>` : ''}`
-                    : '';
-                return `
+            const needs = (row) => row.unassigned > 0 && !rules.has(row.key);
+            body.innerHTML = `
+                <p class="mr-section-hint">Призначте категорію магазину — його покупки поточного місяця й нові підуть туди. Минулі місяці не змінюються. Новий магазин спершу з’явиться в «Нерозподілене».</p>
+                ${visible.map((row) => `
                     <div class="mr-group${needs(row) ? ' needs-attention' : ''}">
                         <div class="mr-group-row">
                             <div class="mr-group-info">
-                                <div class="mr-group-name">${escapeHtml(row.group)}${needs(row) ? `<span class="mr-badge">${row.unassigned} без категорії</span>` : ''}</div>
-                                <div class="mr-group-meta tabular">${row.count} ${pluralUk(row.count, 'покупка', 'покупки', 'покупок')} · ${formatMoney(row.total)} ₴</div>
+                                <div class="mr-group-name"><span class="mr-merchant-name">${escapeHtml(row.name)}</span>${needs(row) ? `<span class="mr-badge">${row.unassigned} без категорії</span>` : ''}</div>
+                                ${row.count ? `<div class="mr-group-meta tabular">${row.count} ${pluralUk(row.count, 'покупка', 'покупки', 'покупок')} · ${formatMoney(row.total)} ₴</div>` : ''}
                             </div>
-                            ${monoRuleChip('group', row.group, ruleOf('group', row.group), 'Обрати', 'is-empty')}
+                            ${monoRuleChip(row.key, row.name, rules.get(row.key))}
                         </div>
-                        ${codesHtml}
-                    </div>`;
-            }).join('');
-            const merchantsHtml = merchants.length
-                ? `
-                    <div class="mr-section-title">Продавці</div>
-                    <p class="mr-section-hint">Правило продавця важливіше за тип покупки.</p>
-                    ${merchants.map((rule) => `
-                        <div class="mr-group mr-merchant">
-                            <div class="mr-group-row">
-                                <div class="mr-group-info"><div class="mr-group-name">${escapeHtml(rule.label || rule.match)}</div></div>
-                                ${monoRuleChip('merchant', rule.match, rule, '', '')}
-                            </div>
-                        </div>`).join('')}`
-                : '';
-            body.innerHTML = `
-                ${rows.length ? `<div class="mr-section-title">Типи покупок</div>
-                <p class="mr-section-hint">Оберіть категорію для кожного типу — покупки поточного місяця й нові розкладатимуться самі. Минулі місяці не змінюються.</p>` : ''}
-                ${groupsHtml}
-                ${merchantsHtml}`;
+                    </div>`).join('')}`;
         }
 
         const pendingBox = document.getElementById('mono-rules-pending');
@@ -8854,7 +8823,7 @@ const uiActions = {
   submitMonoPicker,
   openMonoRules,
   closeMonoRules,
-  toggleMonoRuleCodes,
+  filterMonoRules,
   applyMonoRulesPending,
   formatMoney,
   formatNumberShort,
