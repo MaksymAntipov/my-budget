@@ -4,6 +4,8 @@ import {
   newId,
   sameId,
   formatMoney,
+  roundMoney,
+  addMoney,
   formatNumberShort,
   countDaysInMonth,
   countWeekdaysInMonth,
@@ -36,7 +38,7 @@ import {
   mobilityLabel,
   vectorLabel,
 } from './growth/trajectory.js';
-import { closeOpenDropdowns } from './bind-ui.js';
+import { closeOpenDropdowns, registerUiActions } from './bind-ui.js';
 import { openRunway, closeRunway } from './runway/index.js';
 import {
   debtRemainingInMonth,
@@ -374,13 +376,17 @@ function loadAuthStats() { /* /api/stats removed */ }
         const savedUserId = localStorage.getItem('budget_saved_user_id');
         const savedUserInfo = localStorage.getItem('budget_saved_user_info');
         // Session cookie is HttpOnly — restore UI from saved profile; 401 clears it.
-        if (savedUserId && savedUserInfo) {
-            const user = JSON.parse(savedUserInfo);
-            await performLogin(user, { openHub: false });
+        let savedUser = null;
+        try {
+            savedUser = savedUserId && savedUserInfo ? JSON.parse(savedUserInfo) : null;
+        } catch (e) {
+            savedUser = null;
+        }
+        if (savedUser?.id) {
+            await performLogin(savedUser, { openHub: false });
         } else {
             localStorage.removeItem('budget_saved_user_id');
             localStorage.removeItem('budget_saved_user_info');
-            localStorage.removeItem('budget_auth_token');
             showAuthScreen();
         }
 
@@ -636,7 +642,6 @@ function loadAuthStats() { /* /api/stats removed */ }
 
     function cancelAccountSelect() {
         document.getElementById('account-select-overlay').classList.remove('active');
-        localStorage.removeItem('budget_auth_token');
         localStorage.removeItem('budget_saved_user_id');
         localStorage.removeItem('budget_saved_user_info');
         localStorage.removeItem('budget_available_profiles');
@@ -1049,7 +1054,7 @@ async function performLogin(user, { openHub = false } = {}) {
         pendingSaves.clear();
         clearSaveFailure();
         try {
-            const response = await apiFetch(`/api/data?userId=${userId}`);
+            const response = await apiFetch(`/api/data?userId=${encodeURIComponent(userId)}`);
             const data = await response.json();
 
             if (response.status === 401) {
@@ -1065,7 +1070,12 @@ async function performLogin(user, { openHub = false } = {}) {
 
             dataVersion = Number(data.dataVersion) || 0;
             if (!globalData.jars) globalData.jars = {};
-            globalData.jars[userId] = data.jars || [];
+            // Older saves may hold string or drifted amounts; keep jars as rounded numbers.
+            globalData.jars[userId] = (data.jars || []).map((jar) => ({
+                ...jar,
+                balance: roundMoney(jar.balance),
+                goal: roundMoney(jar.goal),
+            }));
             if (!globalData.suppliers) globalData.suppliers = {};
         globalData.suppliers[userId] = data.suppliers || [];
 
@@ -1114,7 +1124,7 @@ if (!globalData.debts) globalData.debts = {};
                 data.invoices.forEach(inv => {
                     if (!appData[inv.year]) appData[inv.year] = {};
                     if (!appData[inv.year][inv.month]) {
-                        appData[inv.year][inv.month] = { initialized: false, incomes: [], expenses: [], cogs: {type: 'percent', value: 0, businessHours: 8}, invoices: [] };
+                        appData[inv.year][inv.month] = createEmptyMonth({ invoices: [] });
                     }
                     if (!appData[inv.year][inv.month].invoices) appData[inv.year][inv.month].invoices = [];
                     appData[inv.year][inv.month].invoices.push(inv);
@@ -1123,7 +1133,7 @@ if (!globalData.debts) globalData.debts = {};
 
             if (!appData[currentYear]) appData[currentYear] = {};
             if (!appData[currentYear][currentMonth]) {
-            appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: {type:'percent', value:0}, payroll: [] };
+            appData[currentYear][currentMonth] = createEmptyMonth();
             }
 
             // Restore last viewed month/year for this profile (avoid landing on "today"
@@ -1131,7 +1141,7 @@ if (!globalData.debts) globalData.debts = {};
             restoreViewedPeriod();
             if (!appData[currentYear]) appData[currentYear] = {};
             if (!appData[currentYear][currentMonth]) {
-                appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: { type: 'percent', value: 0 }, payroll: [] };
+                appData[currentYear][currentMonth] = createEmptyMonth();
             }
 
             hydrateUserDebtsOutsidePaid(userId);
@@ -1384,7 +1394,6 @@ function logout() {
         
         localStorage.removeItem('budget_saved_user_id');
         localStorage.removeItem('budget_saved_user_info');
-        localStorage.removeItem('budget_auth_token');
         localStorage.removeItem('budget_available_profiles');
         try { localStorage.removeItem(VIEW_PERIOD_KEY); } catch (e) {}
         
@@ -1540,15 +1549,7 @@ function logout() {
 
     function clearCurrentMonth() {
         showConfirm("Очистити місяць", "Ви впевнені, що хочете повністю очистити дані за цей місяць? Дію неможливо скасувати.", () => {
-            appData[currentYear][currentMonth] = {
-                initialized: false,
-                cleared: true,
-                incomes: [],
-                expenses: [],
-                cogs: normalizeCogs(),
-                payroll: [],
-                invoices: []
-            };
+            appData[currentYear][currentMonth] = createEmptyMonth({ cleared: true, invoices: [] });
             
             const viewDate = currentYear * 100 + currentMonth;
             if (globalData.debts && globalData.debts[currentUser.id]) {
@@ -1593,7 +1594,7 @@ function logout() {
         await saveData(true);
         currentYear += delta;
         if (!appData[currentYear]) appData[currentYear] = {};
-        if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
+        if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = createEmptyMonth();
         persistViewedPeriod();
         renderCalendar();
         applyMonthData();
@@ -1604,7 +1605,7 @@ function logout() {
         if (m === currentMonth) return;
         await saveData(true);
         currentMonth = m;
-        if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [] };
+        if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = createEmptyMonth();
         persistViewedPeriod();
         renderCalendar();
         applyMonthData();
@@ -1615,7 +1616,7 @@ function logout() {
     }
 
     function applyMonthData() {
-        const data = appData[currentYear][currentMonth] || { initialized: false, incomes: [], expenses: [], cogs: {type:'percent', value:0} };
+        const data = appData[currentYear][currentMonth] || createEmptyMonth();
         
         if (data.initialized) {
             document.getElementById('main-dashboard').classList.remove('blurred');
@@ -2390,6 +2391,14 @@ if (isBiz) {
         saveData();
         convertCurrency();
         renderIncomes();
+    }
+
+    /**
+     * A month the user has not started. Pass `invoices: []` only when the month's invoices are
+     * known to be empty: an `invoices` array is synced (and replaces the server list) on save.
+     */
+    function createEmptyMonth(extra = {}) {
+        return { initialized: false, incomes: [], expenses: [], cogs: normalizeCogs(), payroll: [], ...extra };
     }
 
     function normalizeCogs(cogs) {
@@ -3278,7 +3287,7 @@ function getHistoricalIncome(year, month) {
                     const jar = (globalData.jars[currentUser.id] || []).find(j => j.id == item.envelopeId);
                     if (jar) {
                         const amount = parseFloat(item.amount) || 0;
-                        jar.balance -= amount;
+                        jar.balance = addMoney(jar.balance, -amount);
                         jarDeltas.push({ jarId: jar.id, amount });
                     }
                 }
@@ -3302,7 +3311,7 @@ function getHistoricalIncome(year, month) {
                 if (currentUser) {
                     jarDeltas.forEach(({ jarId, amount }) => {
                         const jar = (globalData.jars[currentUser.id] || []).find(j => j.id == jarId);
-                        if (jar) jar.balance += amount;
+                        if (jar) jar.balance = addMoney(jar.balance, amount);
                     });
                 }
                 debtIds.forEach(debtId => syncGlobalDebtBalance(debtId));
@@ -3325,7 +3334,7 @@ function getHistoricalIncome(year, month) {
             const newVal = parseFloat(val) || 0;
             if (category.isSavings && item.envelopeId) {
                 const jar = globalData.jars[currentUser.id].find(j => j.id == item.envelopeId);
-                if (jar) { jar.balance += (newVal - (item.amount || 0)); updateSavingsDisplay(); }
+                if (jar) { jar.balance = addMoney(jar.balance, newVal - (item.amount || 0)); updateSavingsDisplay(); }
             }
 
             item.amount = newVal;
@@ -3367,7 +3376,7 @@ function getHistoricalIncome(year, month) {
             const jar = (globalData.jars[currentUser.id] || []).find(j => j.id == item.envelopeId);
             if (jar) {
                 const amount = parseFloat(item.amount) || 0;
-                jar.balance -= amount;
+                jar.balance = addMoney(jar.balance, -amount);
                 jarDelta = { jarId: jar.id, amount };
                 updateSavingsDisplay();
             }
@@ -3395,7 +3404,7 @@ function getHistoricalIncome(year, month) {
             });
             if (jarDelta && currentUser) {
                 const jar = (globalData.jars[currentUser.id] || []).find(j => j.id == jarDelta.jarId);
-                if (jar) jar.balance += jarDelta.amount;
+                if (jar) jar.balance = addMoney(jar.balance, jarDelta.amount);
             }
             if (debtIdToSync) {
                 syncGlobalDebtBalance(debtIdToSync);
@@ -3794,8 +3803,8 @@ function renderEnvelopes() {
     function updateJarBalance(id, val) {
         const jar = findUserJar(id);
         if (!jar) return;
-        const next = Math.max(0, parseFloat(val) || 0);
-        const prev = parseFloat(jar.balance) || 0;
+        const next = Math.max(0, roundMoney(parseFloat(val) || 0));
+        const prev = roundMoney(jar.balance);
         jar.balance = next;
         recordJarBalanceDelta(jar, next - prev);
         updateSavingsDisplay();
@@ -3825,7 +3834,7 @@ function renderEnvelopes() {
     function updateJarGoal(id, val) {
         const jar = findUserJar(id);
         if (!jar) return;
-        jar.goal = Math.max(0, parseFloat(val) || 0);
+        jar.goal = Math.max(0, roundMoney(parseFloat(val) || 0));
         refreshJarProgress(id);
         renderFinancialPlanBlock();
         saveData();
@@ -3854,7 +3863,7 @@ function renderEnvelopes() {
 
             const mainJar = jars.find(j => j.isMain) || jars.find(j => j.id != id);
             if (mainJar && priorBalance > 0) {
-                mainJar.balance = (parseFloat(mainJar.balance) || 0) + priorBalance;
+                mainJar.balance = addMoney(mainJar.balance, priorBalance);
             }
 
             globalData.jars[currentUser.id] = jars.filter(j => j.id != id);
@@ -3921,7 +3930,7 @@ function renderEnvelopes() {
         if (!savingsCat) { savingsCat = { id: newId(), name: "Заощадження", isSavings: true, items: [] }; expenses.push(savingsCat); }
         
         const jar = globalData.jars[currentUser.id].find(j => j.id == jarId);
-        if(jar) { jar.balance += val; savingsCat.items.push({ id: newId(), name: "У конверт: " + jar.name, amount: val, envelopeId: jarId }); }
+        if(jar) { jar.balance = addMoney(jar.balance, val); savingsCat.items.push({ id: newId(), name: "У конверт: " + jar.name, amount: val, envelopeId: jarId }); }
         
         if (appData[currentYear] && appData[currentYear][currentMonth]) {
             appData[currentYear][currentMonth].expenses = expenses;
@@ -4134,7 +4143,7 @@ function renderEnvelopes() {
         if (!debt) return;
 
         const totalPaid = getAppPaidAllTime(debtId);
-        debt.remaining_amount = Math.max(0, debt.total_amount - totalPaid - getDebtOutsidePaid(debt));
+        debt.remaining_amount = Math.max(0, roundMoney(debt.total_amount - totalPaid - getDebtOutsidePaid(debt)));
         
         if (debt.remaining_amount > 0 && debt.is_archived > 0) debt.is_archived = 0;
     }
@@ -6346,8 +6355,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         if (activeDebts.length > 0) {
             prompt += `\n### АКТИВНІ БОРГОВІ ЗОБОВ'ЯЗАННЯ\n`;
             activeDebts.forEach(d => {
-                const remaining = getHistoricalDebtBalance(d.id, currentYear, currentMonth);
-                prompt += `- ${d.name}: Залишок ${remaining.toFixed(2)} ${d.currency} із загальної суми ${d.total_amount} ${d.currency} (Ставка: ${d.interest_rate}%)\n`;
+                prompt += formatAiDebtLine(d);
             });
         }
 
@@ -6452,6 +6460,12 @@ function generatePayrollSparklineHTML(currentTotal) {
     }
 
     /** @param {{ name: string, balance: number, goal?: number }} jar */
+    /** One debt line for AI prompts. The rate is monthly (see getMonthlyInterestEstimate). */
+    function formatAiDebtLine(debt) {
+        const remaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
+        return `- ${debt.name}: Залишок ${remaining.toFixed(2)} ${debt.currency} із загальної суми ${debt.total_amount} ${debt.currency} (Ставка: ${debt.interest_rate}% / міс)\n`;
+    }
+
     function formatAiJarLine(jar) {
         const jarType = getJarType(jar);
         const typeLabel = jarType !== 'regular' ? ` [${JAR_TYPE_LABELS[jarType] || jarType}]` : '';
@@ -7246,8 +7260,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         if (activeDebts.length > 0) {
             prompt += `\n### АКТИВНІ БОРГОВІ ЗОБОВ'ЯЗАННЯ\n`;
             activeDebts.forEach((d) => {
-                const remaining = getHistoricalDebtBalance(d.id, currentYear, currentMonth);
-                prompt += `- ${d.name}: Залишок ${remaining.toFixed(2)} ${d.currency} із загальної суми ${d.total_amount} ${d.currency} (Ставка: ${d.interest_rate}% / міс)\n`;
+                prompt += formatAiDebtLine(d);
             });
         }
 
@@ -7788,10 +7801,33 @@ function generatePayrollSparklineHTML(currentTotal) {
         else await enqueueSave(year, monthIndex);
     }
 
+    /** Joins statement pages; the inclusive page cursor can repeat items at the boundary second. */
+    function combineMonoPages(pages) {
+        const seen = new Set();
+        const fresh = (item) => {
+            const key = String(item?.monoId || item?.id || '');
+            if (!key) return true;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        };
+        const categories = [];
+        const incomes = [];
+        pages.forEach((page) => {
+            page.categories.forEach((cat) => {
+                const items = (cat.items || []).filter(fresh);
+                if (items.length) categories.push({ ...cat, items });
+            });
+            incomes.push(...page.incomes.filter(fresh));
+        });
+        return { categories, incomes };
+    }
+
     async function runMonoQueue(year, monthIndex, accountIds) {
         const gen = ++monoQueueGen;
         if (monoQueue?.timer) clearTimeout(monoQueue.timer);
-        monoQueue = { year, monthIndex, accountIds, index: 0, timer: null, progress: 0 };
+        // pages: earlier pages of the current card's statement (Monobank sends 500 items per call).
+        monoQueue = { year, monthIndex, accountIds, index: 0, timer: null, progress: 0, pageTo: null, pages: [] };
         monobankBusy = true;
         renderMonobankButton();
         if (monobankLink?.accounts) renderMonobankCards(monobankLink.accounts);
@@ -7812,6 +7848,7 @@ function generatePayrollSparklineHTML(currentTotal) {
                         year,
                         month: monthIndex + 1,
                         accountId,
+                        ...(monoQueue.pageTo != null ? { to: monoQueue.pageTo } : {}),
                     }),
                 });
                 data = await response.json().catch(() => ({}));
@@ -7838,9 +7875,23 @@ function generatePayrollSparklineHTML(currentTotal) {
                 return;
             }
 
+            monoQueue.pages.push({ categories: data.categories || [], incomes: data.incomes || [] });
+            if (typeof data.nextTo === 'number') {
+                // More of this card's month is left: fetch the next (older) page after Monobank's pause.
+                monoQueue.pageTo = data.nextTo;
+                const from = monoQueue.index / total;
+                const wait = Math.max(1, Number(data.retryAfter) || 60);
+                const ready = await waitMonoProgress(wait, from, from + 0.85 / total);
+                if (!ready) return;
+                continue;
+            }
+            const pages = combineMonoPages(monoQueue.pages);
+            monoQueue.pages = [];
+            monoQueue.pageTo = null;
+
             const pulledId = data.accountId || accountId;
-            mergeMonobankCard(year, monthIndex, pulledId, data.categories || []);
-            mergeMonobankIncomes(year, monthIndex, pulledId, data.incomes || []);
+            mergeMonobankCard(year, monthIndex, pulledId, pages.categories);
+            mergeMonobankIncomes(year, monthIndex, pulledId, pages.incomes);
             await persistMonoMonth(year, monthIndex);
             if (!still()) return;
             if (year === currentYear && monthIndex === currentMonth && monobankLink) {
@@ -8186,8 +8237,9 @@ function generatePayrollSparklineHTML(currentTotal) {
         }, { confirm: 'Відключити', cancel: 'Назад' });
     }
 
-// Inline HTML handlers (onclick/onload) need window globals in ES modules.
-Object.assign(window, {
+// Handlers for data-action / data-*-action markup (bind-ui.js). Also kept on window
+// for the console and QA scripts.
+const uiActions = {
   addCategory,
   addIncome,
   addInvoice,
@@ -8456,7 +8508,9 @@ Object.assign(window, {
   updateTopSubItemBadges,
   usdToUah,
   verifyAuthOtp
-});
+};
+registerUiActions(uiActions);
+Object.assign(window, uiActions);
 
 document.addEventListener('DOMContentLoaded', () => {
   init();

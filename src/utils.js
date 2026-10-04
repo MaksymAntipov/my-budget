@@ -25,6 +25,17 @@ export function sameId(a, b) {
     return String(a) === String(b);
 }
 
+/** Number rounded to kopiyky; strings and junk become numbers (junk → 0). */
+export function roundMoney(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+}
+
+/** a + b without float drift building up across many jar transfers. */
+export function addMoney(a, b) {
+    return roundMoney(roundMoney(a) + roundMoney(b));
+}
+
 export function formatMoney(amount) {
     return Number(amount || 0).toLocaleString('uk-UA', {
         minimumFractionDigits: 2,

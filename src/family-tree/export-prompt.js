@@ -22,7 +22,9 @@ export function buildArchiveResearchPrompt(tree) {
     people[0] ||
     null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Local date: toISOString() is UTC and shows yesterday between 00:00 and 03:00 in Kyiv.
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const personBlocks = people.map((p, i) => {
     const rel = relationLabelToSelf(p.id, tree) || '—';

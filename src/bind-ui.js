@@ -1,7 +1,20 @@
 /**
  * Event delegation — replaces inline onclick/on* for CSP without script unsafe-inline.
- * Handlers live on window (exported from app.js).
+ * Only handlers registered with registerUiActions can run, so injected markup cannot
+ * call arbitrary window functions.
  */
+const actions = Object.create(null);
+
+/** @param {Record<string, Function>} map */
+export function registerUiActions(map) {
+  for (const [name, fn] of Object.entries(map)) {
+    if (typeof fn === 'function') actions[name] = fn;
+  }
+}
+
+function action(name) {
+  return name && typeof actions[name] === 'function' ? actions[name] : null;
+}
 function parseArgs(el) {
   const raw = el.getAttribute('data-args');
   if (!raw) return [];
@@ -28,7 +41,7 @@ function setDropdownOpen(el, open) {
 function invokeAction(el, event) {
   const name = el.getAttribute('data-action');
   if (!name) return false;
-  const fn = typeof window[name] === 'function' ? window[name] : null;
+  const fn = action(name);
   if (!fn) return false;
 
   const args = parseArgs(el);
@@ -82,7 +95,7 @@ function onDelegatedInput(event) {
   const el = event.target.closest('[data-input-action]');
   if (!el || el !== event.target) return;
   const name = el.getAttribute('data-input-action');
-  const fn = typeof window[name] === 'function' ? window[name] : null;
+  const fn = action(name);
   if (!fn) return;
   const raw = el.getAttribute('data-args');
   if (!raw) {
@@ -102,7 +115,7 @@ function onDelegatedChange(event) {
   const el = event.target.closest('[data-change-action]');
   if (!el || el !== event.target) return;
   const name = el.getAttribute('data-change-action');
-  const fn = typeof window[name] === 'function' ? window[name] : null;
+  const fn = action(name);
   if (!fn) return;
   const raw = el.getAttribute('data-args');
   const value = el.type === 'checkbox' ? el.checked : el.value;
@@ -121,7 +134,7 @@ function onDelegatedChange(event) {
 
 function invokeDragHandler(el, attr, event) {
   const name = el.getAttribute(attr);
-  const fn = typeof window[name] === 'function' ? window[name] : null;
+  const fn = action(name);
   if (!fn) return;
   const raw = el.getAttribute('data-args');
   try {
@@ -146,14 +159,14 @@ function bindDragActions(root) {
   root.addEventListener('dragover', (event) => {
     const el = event.target.closest('[data-drag-over]');
     if (!el) return;
-    const fn = window[el.getAttribute('data-drag-over')];
-    if (typeof fn === 'function') fn(event);
+    const fn = action(el.getAttribute('data-drag-over'));
+    if (fn) fn(event);
   });
   root.addEventListener('dragleave', (event) => {
     const el = event.target.closest('[data-drag-leave]');
     if (!el) return;
-    const fn = window[el.getAttribute('data-drag-leave')];
-    if (typeof fn === 'function') fn(event);
+    const fn = action(el.getAttribute('data-drag-leave'));
+    if (fn) fn(event);
   });
   root.addEventListener('drop', (event) => {
     const el = event.target.closest('[data-drag-drop]');
@@ -163,8 +176,8 @@ function bindDragActions(root) {
   root.addEventListener('dragend', (event) => {
     const el = event.target.closest('[data-drag-end]');
     if (!el) return;
-    const fn = window[el.getAttribute('data-drag-end')];
-    if (typeof fn === 'function') fn(event);
+    const fn = action(el.getAttribute('data-drag-end'));
+    if (fn) fn(event);
   });
 }
 

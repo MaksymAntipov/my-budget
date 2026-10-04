@@ -18,3 +18,14 @@ test('data-args JSON survives names with quotes, apostrophes and backslashes', (
     assert.doesNotMatch(attr, /["<>]/);
     assert.deepEqual(JSON.parse(decodeAttr(attr)), args);
 });
+
+import { addMoney, roundMoney } from './utils.js';
+
+test('money helpers stay on kopiyky', () => {
+    let balance = 0;
+    for (let i = 0; i < 10; i++) balance = addMoney(balance, 0.1);
+    assert.equal(balance, 1);
+    assert.equal(addMoney(0.1, 0.2), 0.3);
+    assert.equal(addMoney('100.50', '-0.5'), 100);
+    assert.equal(roundMoney('abc'), 0);
+});
