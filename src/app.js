@@ -7741,7 +7741,10 @@ function generatePayrollSparklineHTML(currentTotal) {
     function monoOperationDate(item) {
         const time = Number(item?.time);
         if (!time) return '';
-        return new Date(time * 1000).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+        const at = new Date(time * 1000);
+        const day = at.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+        const clock = at.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+        return `${day} · ${clock}`;
     }
 
     function pluralUk(n, one, few, many) {
