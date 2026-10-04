@@ -8498,8 +8498,13 @@ function generatePayrollSparklineHTML(currentTotal) {
         const locked = Boolean(monoQueue);
         list.innerHTML = accounts.map((account) => {
             const selected = selectedIds.has(account.id);
+            // Accounts without a card number (ФОП) differ only by IBAN.
+            const iban = !account.maskedPan && account.iban ? account.iban.replace(/(.{4})(?=.)/g, '$1 ') : '';
             return `<button type="button" class="mono-card-option${selected ? ' is-selected' : ''}" data-action="toggleMonobankAccount" data-args="${escapeAttr(JSON.stringify([account.id]))}" ${locked ? 'disabled' : ''}>
-                <span>${escapeHtml(account.label || account.maskedPan || 'Картка')}</span>
+                <span class="mono-card-text">
+                    <span class="mono-card-label">${escapeHtml(account.label || account.maskedPan || 'Картка')}</span>
+                    ${iban ? `<small class="mono-card-iban">${escapeHtml(iban)}</small>` : ''}
+                </span>
                 <span>${selected ? 'Обрано' : ''}</span>
             </button>`;
         }).join('');
