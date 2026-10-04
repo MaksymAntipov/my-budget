@@ -2,7 +2,6 @@ import {
   escapeHtml,
   escapeAttr,
   newId,
-  jsId,
   sameId,
   formatMoney,
   formatNumberShort,
@@ -172,7 +171,21 @@ import {
     let tempAuthData = null; 
     let otpTimer = null;
     let saveTimeout = null;
+    let saveTimeoutTarget = null;
     let saveQueue = Promise.resolve();
+    // Profile id whose data finished loading. Saves are blocked until then, so an
+    // empty, not-yet-loaded month is never sent over the server copy.
+    let dataLoadedFor = null;
+    // Server data version this tab last loaded or saved; the server rejects saves from an older one.
+    let dataVersion = 0;
+    const saveClientId = newId();
+    // "year-month" -> number of the latest save request not yet confirmed by the server.
+    const pendingSaves = new Map();
+    let saveRequestSeq = 0;
+    let saveFailed = false;
+    let saveRetryTimer = null;
+    let saveRetryAttempt = 0;
+    let saveStatusTimer = null;
     let availableProfiles = [];
 
     const VIEW_PERIOD_KEY = 'budget_view_period';
@@ -321,7 +334,7 @@ function loadAuthStats() { /* /api/stats removed */ }
         });
 
         function flushSaveKeepalive() {
-            if (!currentUser) return;
+            if (!isDataLoaded() || pendingSaves.size === 0) return;
             if (saveTimeout) {
                 clearTimeout(saveTimeout);
                 saveTimeout = null;
@@ -330,16 +343,30 @@ function loadAuthStats() { /* /api/stats removed */ }
             if (appData[currentYear]?.[currentMonth]?.initialized) {
                 appData[currentYear][currentMonth].expenses = expenses;
             }
-            try {
-                apiFetch('/api/data', {
-                    method: 'POST',
-                    body: JSON.stringify(buildSavePayload(currentYear, currentMonth)),
-                    keepalive: true
-                });
-            } catch (e) {}
+            for (const [key, seq] of pendingSaves) {
+                const [year, month] = key.split('-').map(Number);
+                try {
+                    apiFetch('/api/data', {
+                        method: 'POST',
+                        body: JSON.stringify(buildSavePayload(year, month)),
+                        keepalive: true
+                    })
+                        .then((response) => handleSaveResponse(response, year, month, seq))
+                        .catch(() => {});
+                } catch (e) {}
+            }
         }
 
-        window.addEventListener('beforeunload', flushSaveKeepalive);
+        window.addEventListener('beforeunload', (e) => {
+            flushSaveKeepalive();
+            if (saveFailed && pendingSaves.size > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+        window.addEventListener('online', () => {
+            if (saveFailed) retryFailedSaves();
+        });
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') flushSaveKeepalive();
         });
@@ -1013,7 +1040,14 @@ async function performLogin(user, { openHub = false } = {}) {
         renderFinancialPlanBlock();
     }
 
+    function isDataLoaded() {
+        return Boolean(currentUser) && dataLoadedFor === currentUser.id;
+    }
+
     async function loadDataFromServer(userId) {
+        dataLoadedFor = null;
+        pendingSaves.clear();
+        clearSaveFailure();
         try {
             const response = await apiFetch(`/api/data?userId=${userId}`);
             const data = await response.json();
@@ -1029,6 +1063,7 @@ async function performLogin(user, { openHub = false } = {}) {
                 return;
             }
 
+            dataVersion = Number(data.dataVersion) || 0;
             if (!globalData.jars) globalData.jars = {};
             globalData.jars[userId] = data.jars || [];
             if (!globalData.suppliers) globalData.suppliers = {};
@@ -1100,6 +1135,7 @@ if (!globalData.debts) globalData.debts = {};
             }
 
             hydrateUserDebtsOutsidePaid(userId);
+            dataLoadedFor = userId;
             renderCalendar();
             applyMonthData();
             updateSavingsDisplay();
@@ -1111,40 +1147,135 @@ if (!globalData.debts) globalData.debts = {};
     }
 
 async function flushSaveToServer(year, month) {
-        if (!currentUser) return;
+        if (!isDataLoaded()) return;
+        const seq = pendingSaves.get(saveKey(year, month));
+        // Already saved, or dropped by a reload after a conflict.
+        if (seq === undefined) return;
 
-        const payload = buildSavePayload(year, month);
-
+        let response;
         try {
-            const response = await apiFetch('/api/data', {
+            response = await apiFetch('/api/data', {
                 method: 'POST',
-                body: JSON.stringify(payload)
+                body: JSON.stringify(buildSavePayload(year, month))
             });
-
-            if (response.status === 401) {
-                logout();
-                return;
-            }
-
-            if (!response.ok) {
-                const errData = await response.json();
-                console.error("СЕРВЕР ВІДХИЛИВ ДАНІ:", errData);
-                alert(`Помилка бази даних: ${errData.error}`);
-                return;
-            }
-            const saved = await response.json().catch(() => ({}));
-            if (appData[year]?.[month] && typeof saved.serverTime === 'number') {
-                appData[year][month].monoSyncedAt = saved.serverTime;
-            }
-            if (Array.isArray(saved.monoAdded)) {
-                saved.monoAdded.forEach((event) => {
-                    if (event?.kind === 'income') appendLocalMonoIncome(year, month, event);
-                    else appendLocalMonoEvent(year, month, event);
-                });
-            }
         } catch (e) {
             console.error("Помилка збереження на сервер:", e);
+            reportSaveFailure("немає з'єднання із сервером");
+            return;
         }
+        await handleSaveResponse(response, year, month, seq);
+    }
+
+    async function handleSaveResponse(response, year, month, seq) {
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+        if (!isDataLoaded()) return;
+        const data = await response.json().catch(() => ({}));
+
+        if (response.status === 409 && (data.code === 'stale_data' || data.code === 'month_reset_rejected')) {
+            await reloadAfterConflict();
+            return;
+        }
+        if (!response.ok) {
+            console.error("СЕРВЕР ВІДХИЛИВ ДАНІ:", data);
+            // 4xx will fail the same way again; only server and network errors retry on their own.
+            reportSaveFailure(data.error || `помилка сервера (${response.status})`, response.status >= 500);
+            return;
+        }
+
+        if (typeof data.dataVersion === 'number') dataVersion = Math.max(dataVersion, data.dataVersion);
+        if (appData[year]?.[month] && typeof data.serverTime === 'number') {
+            appData[year][month].monoSyncedAt = data.serverTime;
+        }
+        if (Array.isArray(data.monoAdded)) {
+            data.monoAdded.forEach((event) => {
+                if (event?.kind === 'income') appendLocalMonoIncome(year, month, event);
+                else appendLocalMonoEvent(year, month, event);
+            });
+        }
+        const key = saveKey(year, month);
+        if (pendingSaves.get(key) === seq) pendingSaves.delete(key);
+        if (saveFailed && pendingSaves.size === 0) clearSaveFailure();
+    }
+
+    async function reloadAfterConflict() {
+        pendingSaves.clear();
+        clearSaveFailure();
+        showSaveStatus('Дані змінено на іншому пристрої. Завантажено актуальну версію, останню зміну не збережено.', { tone: 'info', autoHideMs: 7000 });
+        if (currentUser) await loadDataFromServer(currentUser.id);
+    }
+
+    function saveKey(year, month) {
+        return `${year}-${month}`;
+    }
+
+    function reportSaveFailure(message, retry = true) {
+        saveFailed = true;
+        showSaveStatus(`Не збережено: ${message}`, { tone: 'error', canRetry: true });
+        if (retry) scheduleSaveRetry();
+    }
+
+    function scheduleSaveRetry() {
+        if (saveRetryTimer) return;
+        const delays = [3000, 10000, 30000, 60000];
+        const delay = delays[Math.min(saveRetryAttempt, delays.length - 1)];
+        saveRetryAttempt++;
+        saveRetryTimer = setTimeout(() => {
+            saveRetryTimer = null;
+            retryFailedSaves();
+        }, delay);
+    }
+
+    function retryFailedSaves() {
+        if (saveRetryTimer) {
+            clearTimeout(saveRetryTimer);
+            saveRetryTimer = null;
+        }
+        if (appData[currentYear]?.[currentMonth]?.initialized) {
+            appData[currentYear][currentMonth].expenses = expenses;
+        }
+        for (const key of [...pendingSaves.keys()]) {
+            const [year, month] = key.split('-').map(Number);
+            enqueueSave(year, month);
+        }
+    }
+
+    function clearSaveFailure() {
+        saveFailed = false;
+        saveRetryAttempt = 0;
+        if (saveRetryTimer) {
+            clearTimeout(saveRetryTimer);
+            saveRetryTimer = null;
+        }
+        hideSaveStatus({ only: 'error' });
+    }
+
+    function showSaveStatus(message, { tone = 'error', canRetry = false, autoHideMs = 0 } = {}) {
+        const box = document.getElementById('save-status');
+        const text = document.getElementById('save-status-text');
+        const retryBtn = document.getElementById('save-status-retry');
+        if (!box || !text) return;
+        if (saveStatusTimer) {
+            clearTimeout(saveStatusTimer);
+            saveStatusTimer = null;
+        }
+        text.textContent = message;
+        box.dataset.tone = tone;
+        if (retryBtn) retryBtn.hidden = !canRetry;
+        box.hidden = false;
+        if (autoHideMs > 0) saveStatusTimer = setTimeout(() => hideSaveStatus(), autoHideMs);
+    }
+
+    function hideSaveStatus({ only } = {}) {
+        const box = document.getElementById('save-status');
+        if (!box || (only && box.dataset.tone !== only)) return;
+        if (saveStatusTimer) {
+            clearTimeout(saveStatusTimer);
+            saveStatusTimer = null;
+        }
+        box.hidden = true;
     }
 
     function buildSavePayload(year, month) {
@@ -1166,11 +1297,15 @@ async function flushSaveToServer(year, month) {
             suppliers: suppliersLoaded ? globalData.suppliers[currentUser.id] : undefined,
             invoices: invoicesLoaded ? currentMonthData.invoices : undefined,
             is_initialized: currentMonthData.initialized ? 1 : 0,
+            clear_month: currentMonthData.cleared === true,
+            baseVersion: dataVersion,
+            clientId: saveClientId,
             monoSyncedAt: typeof currentMonthData.monoSyncedAt === 'number' ? currentMonthData.monoSyncedAt : undefined
         };
     }
 
     function enqueueSave(year, month) {
+        pendingSaves.set(saveKey(year, month), ++saveRequestSeq);
         saveQueue = saveQueue
             .then(() => flushSaveToServer(year, month))
             .catch((e) => console.error("Помилка черги збереження:", e));
@@ -1182,11 +1317,20 @@ async function flushSaveToServer(year, month) {
 
         const year = currentYear;
         const month = currentMonth;
+        // Mark now so a tab hidden during the debounce still sends this edit.
+        pendingSaves.set(saveKey(year, month), ++saveRequestSeq);
 
-        if (saveTimeout) clearTimeout(saveTimeout);
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+            // A debounced save for another month must not be dropped by this one.
+            const prev = saveTimeoutTarget;
+            if (prev && (prev.year !== year || prev.month !== month)) enqueueSave(prev.year, prev.month);
+        }
 
+        saveTimeoutTarget = { year, month };
         saveTimeout = setTimeout(() => {
             saveTimeout = null;
+            saveTimeoutTarget = null;
             enqueueSave(year, month);
         }, 1000);
     }
@@ -1227,6 +1371,11 @@ function logout() {
         try { unloadAiChat(); } catch (e) {}
 
         currentUser = null;
+        dataLoadedFor = null;
+        dataVersion = 0;
+        pendingSaves.clear();
+        clearSaveFailure();
+        hideSaveStatus();
         stopMonoQueue();
         stopMonoLiveWatch();
         monobankLink = null;
@@ -1393,6 +1542,7 @@ function logout() {
         showConfirm("Очистити місяць", "Ви впевнені, що хочете повністю очистити дані за цей місяць? Дію неможливо скасувати.", () => {
             appData[currentYear][currentMonth] = {
                 initialized: false,
+                cleared: true,
                 incomes: [],
                 expenses: [],
                 cogs: normalizeCogs(),
@@ -8106,6 +8256,7 @@ Object.assign(window, {
   filterSuppliers,
   filterInvoicesByAmount,
   flushSaveToServer,
+  retryFailedSaves,
   formatMoney,
   formatNumberShort,
   formatYearsLabel,
@@ -8156,7 +8307,6 @@ Object.assign(window, {
   initNewJarTypeDropdown,
   initializeMonth,
   isDebtActiveInCurrentMonth,
-  jsId,
   loadAuthStats,
   loadDataFromServer,
   logout,

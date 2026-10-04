@@ -8,25 +8,16 @@ export function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-/** Escape for JS string literals inside double-quoted HTML attributes (onclick="... 'value' ..."). */
+/**
+ * Escape for a double-quoted HTML attribute value, e.g. data-args="${escapeAttr(JSON.stringify(args))}".
+ * The browser decodes the entities back, so getAttribute() returns the original string intact.
+ */
 export function escapeAttr(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/"/g, '&quot;')
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "\\'")
-        .replace(/\n/g, '\\n')
-        .replace(/\r/g, '\\r')
-        .replace(/</g, '\\u003c')
-        .replace(/>/g, '\\u003e');
+    return escapeHtml(str);
 }
 
 export function newId() {
     return crypto.randomUUID();
-}
-
-export function jsId(id) {
-    return "'" + escapeAttr(String(id)) + "'";
 }
 
 /** Loose id equality for legacy numeric ids vs string ids from the DOM. */
