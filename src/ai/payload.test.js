@@ -164,3 +164,18 @@ describe('defaultSuggestions', () => {
     assert.equal(chips.includes('Скільки відкласти цього місяця?'), false);
   });
 });
+
+describe('capital report', () => {
+  it('is complete only once its last section arrives', () => {
+    const head = '## КАПІТАЛ ЗАРАЗ\nактиви 10 000 ₴\n\n## ДИНАМІКА\nросте';
+    assert.equal(looksTruncatedAiReply(head, { expectReport: true }), true);
+    assert.equal(looksTruncatedAiReply(`${head}\n\n## РИЗИКИ\nок\n\n## КУДИ СПРЯМУВАТИ ГРОШІ\nподушка\n\n## ДЕ КАПІТАЛ ВИТІКАЄ\nоренда`, { expectReport: true }), false);
+  });
+
+  it('keeps every capital section when summarizing a long report', () => {
+    const sections = ['КАПІТАЛ ЗАРАЗ', 'ДИНАМІКА', 'РИЗИКИ', 'КУДИ СПРЯМУВАТИ ГРОШІ', 'ДЕ КАПІТАЛ ВИТІКАЄ'];
+    const long = sections.map((name) => `## ${name}\n${'а'.repeat(1500)}`).join('\n\n');
+    const out = summarizeBriefing(long, 2500);
+    sections.forEach((name) => assert.match(out, new RegExp(name)));
+  });
+});

@@ -6469,31 +6469,138 @@ function generatePayrollSparklineHTML(currentTotal) {
         return prompt;
     }
 
+    /** Capital-analysis line for an envelope: type and balance only — envelope goals belong to growth. */
+    function formatCapitalJarLine(jar) {
+        const jarType = getJarType(jar);
+        const typeLabel = JAR_TYPE_LABELS[jarType] || 'Звичайний';
+        return `  * ${jar.name} [${typeLabel}]: ${formatMoney(parseFloat(jar.balance) || 0)} ₴\n`;
+    }
+
+    /** Where a month's money went: consumption vs. capital moves (envelopes, debt payments). */
+    function capitalFlowForMonth(year, month, isBiz) {
+        const data = appData[year]?.[month];
+        if (!data?.initialized) return null;
+        const income = getMonthIncomeUah(year, month);
+        let consumption = 0;
+        let toEnvelopes = 0;
+        let debtPaid = 0;
+        (data.expenses || []).forEach((cat) => {
+            (cat.items || []).forEach((item) => {
+                const amount = parseFloat(item.amount) || 0;
+                if (item.debtId) debtPaid += amount;
+                else if (cat.isSavings) toEnvelopes += amount;
+                else consumption += amount;
+            });
+        });
+        if (isBiz) {
+            if (data.invoices && data.invoices.length > 0) {
+                consumption += data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+            } else if (data.cogs) {
+                consumption += data.cogs.type === 'percent' ? income * (data.cogs.value / 100) : (parseFloat(data.cogs.value) || 0);
+            }
+            (data.payroll || []).forEach((emp) => { consumption += getEmployeeAccrued(emp); });
+        }
+        const free = income - consumption - toEnvelopes - debtPaid;
+        const savingRate = income > 0 ? ((toEnvelopes + debtPaid) / income) * 100 : 0;
+        return { income, consumption, toEnvelopes, debtPaid, free, savingRate };
+    }
+
+    /** Data for «Аналіз капіталу»: assets, liabilities, capital flow. No goals, tracks or point B. */
+    function buildCapitalDump(isBiz) {
+        const jars = globalData.jars[currentUser.id] || [];
+        const debts = (globalData.debts[currentUser.id] || []).filter((d) => !d.is_archived || d.is_archived === 0);
+        const fp = getFinancialPlan();
+
+        let prompt = generateAiFxSection();
+        prompt += generateAiNowSection();
+
+        const jarsTotal = jars.reduce((sum, j) => sum + (parseFloat(j.balance) || 0), 0);
+        const brokerUsd = isBiz ? 0 : (parseFloat(fp.brokerBalanceUsd) || 0);
+        const brokerUah = brokerUsd > 0 && currentExchangeRate > 0 ? brokerUsd * currentExchangeRate : 0;
+        prompt += `### АКТИВИ\n`;
+        prompt += `- Конверти разом: ${formatMoney(jarsTotal)} ₴\n`;
+        jars.forEach((j) => { prompt += formatCapitalJarLine(j); });
+        if (brokerUsd > 0) {
+            prompt += `- Брокерський рахунок: ${formatMoney(brokerUsd)} $${brokerUah ? ` (≈ ${formatMoney(brokerUah)} ₴)` : ' — курсу немає, у ₴ не перераховуй'}\n`;
+        }
+
+        let debtUah = 0;
+        let usdUnconverted = 0;
+        let interestUah = 0;
+        prompt += `\n### ЗОБОВ'ЯЗАННЯ\n`;
+        if (!debts.length) prompt += `- Активних боргів немає\n`;
+        debts.forEach((d) => {
+            const remaining = getHistoricalDebtBalance(d.id, currentYear, currentMonth);
+            const part = debtRemainingToUah(d);
+            debtUah += part.uah;
+            usdUnconverted += part.usdUnconverted;
+            const interest = getMonthlyInterestEstimate(d, remaining);
+            const interestInUah = d.currency === 'USD' ? (currentExchangeRate > 0 ? interest * currentExchangeRate : 0) : interest;
+            interestUah += interestInUah;
+            const sign = d.currency === 'USD' ? '$' : '₴';
+            const rate = parseFloat(d.interest_rate) || 0;
+            prompt += `- ${d.name}: тіло ${formatMoney(remaining)} ${sign} з ${formatMoney(parseFloat(d.total_amount) || 0)} ${sign}; ставка ${rate}% / міс`;
+            prompt += interest > 0 ? `; відсотки ≈ ${formatMoney(interest)} ${sign}/міс` : '';
+            prompt += d.currency === 'USD' ? ' (борг у доларах)' : '';
+            prompt += `\n`;
+        });
+        if (debts.length) prompt += `- Боргів разом: ${formatMoney(debtUah)} ₴${usdUnconverted > 0 ? ` + ${formatMoney(usdUnconverted)} $ без курсу` : ''}; відсотки ≈ ${formatMoney(interestUah)} ₴/міс\n`;
+
+        const net = jarsTotal + brokerUah - debtUah;
+        prompt += `\n### ЧИСТИЙ КАПІТАЛ\n`;
+        prompt += `- Активи − борги: ${formatMoney(net)} ₴${usdUnconverted > 0 ? ' (без доларових сум, яких не вдалося перерахувати)' : ''}\n`;
+
+        if (!isBiz) {
+            const current = appData[currentYear]?.[currentMonth];
+            const essentialMonthly = current?.initialized ? monthlyCushionBaseUah(0, current.expenses) : 0;
+            const cushion = getCushionBalanceUah();
+            prompt += `\n### ПОДУШКА (стійкість)\n`;
+            prompt += `- У конвертах «Подушка»: ${formatMoney(cushion)} ₴\n`;
+            if (essentialMonthly > 0) {
+                prompt += `- Обов'язкові витрати: ${formatMoney(essentialMonthly)} ₴/міс → подушки вистачить на ${(cushion / essentialMonthly).toFixed(1)} міс. (норма Скрині — 6)\n`;
+            } else if (current?.initialized && hasEssentialCategories(current.expenses)) {
+                prompt += `- Обов'язкові категорії позначені, але витрат по них цього місяця ще немає: тривалість подушки в місяцях не рахуй\n`;
+            } else {
+                prompt += `- Обов'язкові категорії не позначені: тривалість подушки в місяцях не рахуй і ціль не вигадуй\n`;
+            }
+        }
+
+        prompt += `\n### РУХ КАПІТАЛУ ПО МІСЯЦЯХ\n`;
+        prompt += `Споживання — звичайні категорії${isBiz ? ' + собівартість і зарплати' : ''}. У конверти — поповнення мінус зняття. Борги — платежі по тілу й відсотках. Вільний залишок = дохід − споживання − конверти − борги. Норма заощаджень = (конверти + борги) / дохід.\n`;
+        const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
+        years.forEach((y) => {
+            Object.keys(appData[y] || {}).map(Number).sort((a, b) => a - b).forEach((m) => {
+                const flow = capitalFlowForMonth(y, m, isBiz);
+                if (!flow || (flow.income === 0 && flow.consumption === 0 && flow.toEnvelopes === 0 && flow.debtPaid === 0)) return;
+                const mark = y === currentYear && m === currentMonth ? ' (поточний)' : '';
+                prompt += `- ${monthNames[m]} ${y}${mark}: дохід ${formatMoney(flow.income)} ₴; споживання ${formatMoney(flow.consumption)} ₴; у конверти ${formatMoney(flow.toEnvelopes)} ₴; борги ${formatMoney(flow.debtPaid)} ₴; вільний залишок ${formatMoney(flow.free)} ₴; норма заощаджень ${flow.savingRate.toFixed(0)}%\n`;
+            });
+        });
+
+        if (appData[currentYear]?.[currentMonth]?.initialized) {
+            prompt += `\n### КАТЕГОРІЇ ПОТОЧНОГО МІСЯЦЯ\n`;
+            prompt += `«за 10 років» = місяць × 120 — скільки капіталу забирає потік, якщо так і триватиме.\n`;
+            prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz, { lineItems: false });
+        }
+        return prompt;
+    }
+
     async function buildAnalyticsPrompt(_type = 'all') {
         const isBiz = currentUser && currentUser.account_type === 'business';
         const profileTypeStr = isBiz ? 'Бізнес' : 'Особистий (фіз. особа)';
-        let prompt = `Виступи в ролі професійного фінансового аналітика. Проаналізуй мої фінансові дані (Тип профілю: ${profileTypeStr}) та надай детальний звіт.\n`;
-        prompt += `Зверни увагу на співвідношення доходів і витрат, скільки рекомендовано відкласти цього місяця, фінансову подушку (6 × обов'язкові витрати; якщо позначок немає — не вигадуй ціль), цільовий особистий капітал (правило ×25), типи конвертів та швидкість погашення боргів.\n`;
-        if (!isBiz) {
-            prompt += `Окремо врахуй мої річні треки (життєві/робочі пріоритети) — активні, на паузі і заблоковані — і зв'яжи їх з грошима: що фінансує прогрес, що блокує, де дірки в бюджеті б'ють по цілях. Пауза/блокер не означає «ігноруй трек». Якщо є «ПОСЛІДОВНІСТЬ» — це порядок «що за чим»: не пропонуй наступний трек раніше попередника; паралельні можна вести одночасно.\n`;
-        }
-        prompt += `Надай 3-5 конкретних і практичних рекомендацій щодо оптимізації бюджету та збільшення вільного капіталу. Легший крок — плюс, якщо закриває дірку; важчий теж ок, якщо він сильніший важіль. Не ріж життєво важливе лише заради «простіше». Категорії з міткою «обов'язкові» — база подушки в тактиці; не рекомендуй їх різати, поки є необов'язкові — якщо цифри не показують, що саме це правило шкодить курсу.\n`;
-        prompt += `ГОРИЗОНТ 10 РОКІВ: біля категорій є «за 10 років» (місяць × 120). Це капітал, замкнений у звичці, не прогноз інфляції. Мотивуй оптимізувати великі 10-річні потоки, не дрібниці. Якщо потік (оренда житла, таксі, підписки, доставка тощо) за 10 років уже порівнянний із купівлею активу — прямо сигналізуй підміну капіталу: оренда vs іпотека/своя квартира, таксі vs авто, щомісячна підписка vs рік. Не вигадуй ціни квартир і ставки іпотеки: порівняй із цифрами з дампу, назви порядок величини і скажи «перевір на ринку». Категорії [заощадження] не ріж — їхній 10-річний хвіст це капітал, не дірка.\n\n`;
-        prompt += `СТРУКТУРА ВІДПОВІДІ (обов'язково в такому порядку):\n`;
-        prompt += `1) HELICOPTER VIEW (коротко, 1 блок, без дрібних цифр у кожному абзаці): чи моя фінансова поведінка взагалі веде туди, куди я йду; де сліпа зона; що я переоцінюю; чи дивлюсь не туди — скажи прямо; запропонуй 1–2 альтернативні рамки / пріоритети на найближчі 90 днів; що свідомо ігнорувати. Правила Скрині (подушка 6×, капітал ×25, «не ріж обов'язкові») — робоча доктрина, не догма: якщо цифри показують, що правило шкодить курсу — скажи прямо тут, не ховай у тактиці.\n`;
-        prompt += `2) ТАКТИКА: детальний розбір цифр, рекомендація «скільки відкласти», подушка, капітал ×25, топ-3 категорії за 10 років (і підміна капіталу, якщо цифри це тримають), слабкі місця і конкретні поради.\n`;
-        prompt += `3) НА ПОДУМАТИ: спирайся лише на мою базу (фінанси + треки), не на інший всесвіт (інша країна / професія / життя, якого немає в даних). Альтернатива має бути сумісна з цією базою. Можна дати і легший, і сильніший шлях. % близькості до ідеалу — якщо корисно; не відмовся від альтернативи лише тому, що «курс ок».\n\n`;
+        let prompt = `Виступи в ролі аналітика капіталу. Тип профілю: ${profileTypeStr}.\n`;
+        prompt += `Аналізуй лише капітал і гроші: що в мене є, куди воно тече і наскільки це стійко. НЕ аналізуй цілі, річні треки, точку Б, анкету росту, правило ×25 і цілі конвертів — це окрема «Стратегія росту». Не пиши розділів HELICOPTER VIEW, ТАКТИКА чи НА ПОДУМАТИ.\n`;
+        prompt += `Цифри лише з даних нижче; дохідність, курси й ціни ринку не вигадуй. Суми в гривнях. Конверти й платежі по боргах — це рух капіталу, а не споживання. Подушка = 6 × обов'язкові витрати; без позначених обов'язкових — ціль не вигадуй. Не ріж обов'язкові, поки є необов'язкові.\n\n`;
+        prompt += `СТРУКТУРА ВІДПОВІДІ (саме ці заголовки, в такому порядку):\n`;
+        prompt += `## КАПІТАЛ ЗАРАЗ — активи (конверти за типами${isBiz ? '' : ', брокер'}), зобов'язання (тіло, валюта, ставка, відсотки ₴/міс), чистий капітал; яка частина ліквідна, яка інвестована.\n`;
+        prompt += `## ДИНАМІКА — по місяцях: скільки пішло в конверти і на борги, вільний залишок, норма заощаджень. Капітал росте чи тане і за рахунок чого. Історії балансів немає — висновок роби з руху коштів.\n`;
+        prompt += `## РИЗИКИ — на скільки місяців вистачить подушки; борги, дорожчі за розумну дохідність; валютний ризик (борг у $ при доході в ₴); концентрація; від'ємний вільний залишок.\n`;
+        prompt += `## КУДИ СПРЯМУВАТИ ГРОШІ — порядок для вільного залишку наступного місяця з конкретними сумами (наприклад: дорогий борг → подушка → інвестиції), виходячи з цих цифр, а не з шаблону.\n`;
+        prompt += `## ДЕ КАПІТАЛ ВИТІКАЄ — 1–3 найбільші потоки споживання поточного місяця і скільки капіталу вони забирають за 10 років. Лише великі, не дрібниці. Підміну капіталу (оренда vs житло, таксі vs авто) — лише якщо цифри це тримають.\n`;
+        prompt += `Пиши по суті й по цифрах; таблиці доречні.\n\n`;
 
-        prompt += await buildAiSkryniaDataDump();
-
-        prompt += `\nНа основі цих даних, напиши висновок у двох рівнях.\n`;
-        prompt += `Спочатку — HELICOPTER VIEW: чи правильно я розподіляю гроші/увагу відносно пріоритетів; де головна стратегічна помилка; що змінити в фокусі на 90 днів.\n`;
-        prompt += `Потім — ТАКТИКА: рекомендація «скільки відкласти», стан подушки безпеки (лише з обов'язкових категорій), прогрес до особистого капіталу (×25) і що змінити в найбільших 10-річних потоках.`;
-        if (!isBiz) {
-            prompt += ` Зв'яжи висновки з річними треками: де витрати/борги підтримують активні треки, а де суперечать; які треки фінансово нереалістичні при поточному залишку. Заблоковані — повноцінні: для кожного чи блокер грошовий і як зняти (не пропускай). Пауза: чи коштує прогресу. Подушка/борги — обмеження, не вето на розблок важливого треку.`;
-        }
-        prompt += ` Вкажи на слабкі місця та дай поради. Наприкінці — НА ПОДУМАТИ: інший шлях має бути сумісний з цією базою, не з іншим всесвітом (легший або сильніший — обидва ок); не відмовся від альтернативи лише тому, що «курс ок».`;
-
+        await ensureExchangeRateForAi();
+        prompt += buildCapitalDump(isBiz);
         return prompt;
     }
 
@@ -7296,7 +7403,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         return { uah: remaining, usdUnconverted: 0 };
     }
 
-    /** Capital + full cash flow for growth. Finance dump stays separate. */
+    /** Capital summary + current month for growth; the full capital review is «Аналіз капіталу». */
     function buildGrowthCashDump(isBiz) {
         const jars = globalData.jars[currentUser.id] || [];
         const totalJars = jars.reduce((sum, j) => sum + j.balance, 0);
@@ -7338,17 +7445,19 @@ function generatePayrollSparklineHTML(currentTotal) {
             prompt += generateAiFinancialPlanSection(getMonthIncomeUah(currentYear, currentMonth));
         }
 
-        prompt += `\n### РУХ КОШТІВ (CASH FLOW)\n`;
-        prompt += `Нижче — усі ініціалізовані місяці. У категоріях: ₴/міс, частка доходу, місце, «за 10 років» (= місяць × 120). Якщо питають про конкретний період (останній місяць, квартал, рік) — рахуй лише відповідні блоки «ПЕРІОД». Блок «ПОТОЧНИЙ МІСЯЦЬ» — стан зараз; блоки «історія» — минуле.\n`;
-        const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
-        years.forEach((y) => {
-            const months = Object.keys(appData[y] || {}).map(Number).sort((a, b) => a - b);
-            months.forEach((m) => {
-                if (appData[y][m]?.initialized) {
-                    prompt += generateAiDataForMonth(y, m, isBiz);
-                }
+        prompt += `\n### КАСА КОРОТКО\n`;
+        prompt += `Поточний місяць — категорії («за 10 років» = місяць × 120); інші місяці — одним рядком.\n`;
+        if (appData[currentYear]?.[currentMonth]?.initialized) {
+            prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz, { lineItems: false });
+        }
+        let others = '';
+        Object.keys(appData).map(Number).sort((a, b) => a - b).forEach((y) => {
+            Object.keys(appData[y] || {}).map(Number).sort((a, b) => a - b).forEach((m) => {
+                if (y === currentYear && m === currentMonth) return;
+                others += generateAiMonthOneLiner(y, m, isBiz);
             });
         });
+        if (others) prompt += `\nІнші місяці:\n${others}`;
         return prompt;
     }
 
@@ -7356,9 +7465,9 @@ function generatePayrollSparklineHTML(currentTotal) {
         if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) return;
         const isBiz = currentUser && currentUser.account_type === 'business';
 
-        let prompt = `Виступи в ролі стратега росту MySkrynia. Це НЕ фінансовий звіт.\n`;
-        prompt += `Фінансовий звіт відповідає: «чи каса здорова / скільки відкласти / що різати». Ти відповідаєш: «чи цей курс (точка Б, вектор, треки) оплатний і досяжний». Каса — доказ для курсу, не фінальний продукт. Не закінчуй висновком касира («відклади N ₴», гаси цей банк першим, типи конвертів), якщо це не знімає блокер і не відкриває точку Б.\n`;
-        prompt += `Спочатку розбери касу на рівні фінансового звіту (чистий капітал, потік, подушка, борги, ×25, конверти), потім скажи, що ці цифри означають для точки Б і треків. Не згортайся лише до кар'єрного чекліста.\n`;
+        let prompt = `Виступи в ролі стратега росту MySkrynia. Це НЕ аналіз капіталу.\n`;
+        prompt += `«Аналіз капіталу» відповідає: «чи каса здорова / скільки відкласти / що різати». Ти відповідаєш: «чи цей курс (точка Б, вектор, треки) оплатний і досяжний». Каса — доказ для курсу, не фінальний продукт. Не закінчуй висновком касира («відклади N ₴», гаси цей банк першим, типи конвертів), якщо це не знімає блокер і не відкриває точку Б.\n`;
+        prompt += `Касу бери коротко — як доказ для курсу (чистий капітал, вільний потік, подушка, ×25, борги). Детальний розбір капіталу — окрема кнопка «Аналіз капіталу»: не повторюй його. Не згортайся лише до кар'єрного чекліста.\n`;
         prompt += `Опирайся на анкету (точка А своїми словами, головний вектор, мобільність, ринок) і на цифри каси. Гео, remote, релокейт і мову — лише з анкети та з треків/навичок. Немає в даних — не пропонуй як основний шлях. Бенди зарплат, якщо є — довідка про стелю, не новий курс.\n`;
         prompt += `Поточна роль у точці А — де я зараз, не пункт призначення. Головний вектор — курс; додаткові не підміняють його. Не згортай точку Б на поточного роботодавця.\n`;
         if (!isBiz) {
@@ -7368,7 +7477,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         prompt += `У дампі категорій є «за 10 років». Якщо споживання (оренда, таксі, сервіси) замикає капітал, якого вистачило б на актив або на точку Б — назви це в HELICOPTER. [заощадження] не вважати діркою. Ціни ринку і ставки іпотеки не вигадуй.\n\n`;
         prompt += `СТРУКТУРА ВІДПОВІДІ (обов'язково в такому порядку):\n`;
         prompt += `1) HELICOPTER VIEW (коротко, 1 блок, без дрібних цифр у кожному абзаці): чи каса фінансує точку Б (не «чи каса здорова» окремо); що я переоцінюю в цифрах і в курсі; чи дивлюсь не туди. Яка стеля цієї гри (бенди — довідка). Чи точка Б живе в іншій грі. Якщо чек / горизонт / каса не сумісні — що здаємо. 1–2 рамки на 90 днів для курсу. Одна сліпа зона. Правила Скрині (подушка 6×, капітал ×25, «не ріж обов'язкові») — робоча доктрина, не догма: якщо вони б'ються з точкою Б і цифри це показують — скажи прямо тут.\n`;
-        prompt += `2) ТАКТИКА: (а) короткий розбір каси як доказ — чистий капітал, потік, скільки рекомендовано відкласти vs що було, подушка, ×25, борги (тіло vs %); без рекомендацій касира як головної цілі. (б) каса vs точка Б: які статті годують активні треки, які суперечать; які треки фінансово нереалістичні при поточному залишку; бар'єр.`;
+        prompt += `2) ТАКТИКА: (а) каса як доказ — 3–5 рядків: чистий капітал, вільний потік, подушка, ×25, борги; без рекомендацій касира як головної цілі. (б) каса vs точка Б: які статті годують активні треки, які суперечать; які треки фінансово нереалістичні при поточному залишку; бар'єр.`;
         if (!isBiz) {
             prompt += ` По КОЖНОМУ заблокованому треку — чи блокер валідний і як зняти (грошовий чи ні); паузу не ігноруй. Подушка/борги — обмеження, не вето на розблок важливого треку.`;
         }

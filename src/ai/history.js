@@ -28,7 +28,7 @@ function sanitizeMessage(raw) {
   if (mode) msg.mode = mode;
   if (source) msg.source = source;
   if (suggestions?.length) msg.suggestions = suggestions;
-  if (!msg.source && role === 'assistant' && /HELICOPTER VIEW/i.test(content)) msg.source = 'briefing';
+  if (!msg.source && role === 'assistant' && /HELICOPTER VIEW|КАПІТАЛ ЗАРАЗ/i.test(content)) msg.source = 'briefing';
   return msg;
 }
 

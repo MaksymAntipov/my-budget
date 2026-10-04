@@ -53,10 +53,21 @@ export function clipText(text, max) {
   return `${t.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
-const BRIEFING_MARKERS = ['HELICOPTER VIEW', 'ТАКТИКА', 'НА ПОДУМАТИ'];
+// Growth report (the only one with HELICOPTER VIEW) and capital report sections.
+const BRIEFING_MARKERS = [
+  'HELICOPTER VIEW',
+  'ТАКТИКА',
+  'НА ПОДУМАТИ',
+  'КАПІТАЛ ЗАРАЗ',
+  'ДИНАМІКА',
+  'РИЗИКИ',
+  'КУДИ СПРЯМУВАТИ ГРОШІ',
+  'ДЕ КАПІТАЛ ВИТІКАЄ',
+];
+const REPORT_RE = /HELICOPTER VIEW|КАПІТАЛ ЗАРАЗ/i;
 
 const WIDE_LOOK_FINANCE =
-  "Користувач просить погляд збоку на всю Скриню. Дай повний HELICOPTER VIEW / ТАКТИКА / НА ПОДУМАТИ: чи курс хибний; які правила Скрині (подушка / ×25 / «не ріж обов'язкові») тут шкодять, якщо цифри це показують; що ігнорувати; рамки на 90 днів. Дивись 10-річні хвости категорій і підміну капіталу (оренда vs житло тощо), якщо цифри це тримають. Цифри лише з дампу. Не згортай до одного абзацу.";
+  "Користувач просить погляд збоку на свої гроші. Дай повний звіт про капітал розділами КАПІТАЛ ЗАРАЗ / ДИНАМІКА / РИЗИКИ / КУДИ СПРЯМУВАТИ ГРОШІ / ДЕ КАПІТАЛ ВИТІКАЄ: що є, куди тече, наскільки це стійко і куди спрямувати вільний залишок. Цілі, треки, точку Б і ×25 не аналізуй — це стратегія росту; розділів HELICOPTER VIEW / ТАКТИКА / НА ПОДУМАТИ не пиши. Цифри лише з дампу. Не згортай до одного абзацу.";
 
 const WIDE_LOOK_GROWTH =
   "Користувач просить погляд збоку на курс життя. Дай повний HELICOPTER VIEW / ТАКТИКА / НА ПОДУМАТИ як стратег росту, не як фінансовий звіт: чи каса фінансує точку Б; яка стеля гри; чи точка Б в іншій грі; що здаємо, якщо чек / горизонт / каса не сумісні. Каса — доказ курсу, не висновок касира: не роби головним «скільки відкласти» і порядок погашення банків. Цифри лише з дампу. Не згортай до одного абзацу.";
@@ -66,7 +77,7 @@ export function wideLookUserPrompt(kind, question) {
   return `${head}\n\n${question}`;
 }
 
-/** Keep HELICOPTER / ТАКТИКА / НА ПОДУМАТИ slices instead of a blind prefix. */
+/** Keep the report's section slices instead of a blind prefix. */
 export function summarizeBriefing(text, max = BRIEFING_SUMMARY_MAX) {
   const t = String(text || '').replace(/\s+\n/g, '\n').trim();
   if (!t) return '';
@@ -127,7 +138,7 @@ function findBriefingAssistant(turns) {
   if (tagged) return tagged;
   return [...turns]
     .reverse()
-    .find((m) => m.role === 'assistant' && /HELICOPTER VIEW/i.test(m.content || ''));
+    .find((m) => m.role === 'assistant' && REPORT_RE.test(m.content || ''));
 }
 
 /**
@@ -256,12 +267,14 @@ export function defaultSuggestions({ kind, lastQuestion, parsed } = {}) {
 }
 
 const CONTINUE_PROMPT =
-  'Попередня відповідь обірвалась на півслові. Продовж ТОЧНО з наступного слова, без повтору вже написаного. Якщо це звіт — допиши HELICOPTER VIEW, потім ТАКТИКА і НА ПОДУМАТИ.';
+  'Попередня відповідь обірвалась на півслові. Продовж ТОЧНО з наступного слова, без повтору вже написаного. Якщо це звіт — допиши розділи, яких ще немає, у тому ж порядку.';
 
 /** True when a report/stream likely died mid-sentence. */
 export function looksTruncatedAiReply(text, { expectReport = false } = {}) {
   const t = String(text || '').trim();
   if (!t) return false;
+  // Capital report: complete once its last section is there.
+  if (/КАПІТАЛ ЗАРАЗ/i.test(t)) return !/ДЕ КАПІТАЛ ВИТІКАЄ/i.test(t);
   const hasHeli = /HELICOPTER VIEW/i.test(t);
   const hasTac = /ТАКТИКА/i.test(t);
   const hasThink = /НА ПОДУМАТИ/i.test(t);
@@ -280,7 +293,7 @@ export function briefingKindFromThread(thread) {
       ? 'growth'
       : 'analytics';
   }
-  if (ctx?.label === 'Аналіз фінансів') return 'analytics';
+  if (ctx?.label === 'Аналіз капіталу' || ctx?.label === 'Аналіз фінансів') return 'analytics';
   const brief = list.find((m) => m?.source === 'briefing');
   if (brief && /точка Б|Roadmap|головний вектор/i.test(brief.content || '')) return 'growth';
   if (brief) return 'analytics';
