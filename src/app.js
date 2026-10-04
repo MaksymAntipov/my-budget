@@ -17,6 +17,7 @@ import {
   dropEmptySystemCategories,
   ensureCategoryKeys,
   isLegacyMonoCategory,
+  isLinkedItem,
   isMonoItem,
   isOwnCategory,
   isUnassigned,
@@ -3277,7 +3278,10 @@ function getHistoricalIncome(year, month) {
             const checkboxHtml = `<div class="check-container ${isChecked}" data-action="togglePaidStatus" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
 
             const mono = isMonoItem(item);
-            const monoMeta = mono ? monoOperationDate(item) : '';
+            const linkedTo = item.envelopeId
+                ? `конверт «${findUserJar(item.envelopeId)?.name || '—'}»`
+                : item.debtId ? `борг «${findUserDebt(item.debtId)?.name || '—'}»` : '';
+            const monoMeta = mono ? [monoOperationDate(item), linkedTo].filter(Boolean).join(' · ') : '';
             const moveHtml = mono
                 ? `<button type="button" class="btn-sub-move" data-action="openMonoMove" data-args="${escapeAttr(JSON.stringify([item.id]))}" title="Перенести в іншу категорію" aria-label="Перенести в іншу категорію"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></button>`
                 : '';
@@ -7608,8 +7612,117 @@ function generatePayrollSparklineHTML(currentTotal) {
     const MONO_PICK_NONE = '__none__';
     const MONO_PICK_NEW = '__new__';
 
+    const MONO_JAR = 'jar:';
+    const MONO_DEBT = 'debt:';
+    const DEBT_CATEGORY_NAME = 'Погашення боргів';
+
+    /** «Заощадження» and «Погашення боргів» belong to envelopes and debts, not to category rules. */
+    function isLedgerCategory(category) {
+        return Boolean(category?.isSavings) || category?.name === DEBT_CATEGORY_NAME;
+    }
+
     function ownCategoriesOfMonth() {
-        return (expenses || []).filter(isOwnCategory);
+        return (expenses || []).filter((category) => isOwnCategory(category) && !isLedgerCategory(category));
+    }
+
+    function isLinkTarget(value) {
+        return typeof value === 'string' && (value.startsWith(MONO_JAR) || value.startsWith(MONO_DEBT));
+    }
+
+    function linkTargetOf(item) {
+        if (item?.envelopeId) return MONO_JAR + item.envelopeId;
+        if (item?.debtId) return MONO_DEBT + item.debtId;
+        return null;
+    }
+
+    function currencySign(currency) {
+        return currency === 'USD' ? '$' : '₴';
+    }
+
+    const nbuRateCache = new Map();
+
+    /** NBU official rate (₴ per unit) on the operation's day. */
+    async function nbuRateOn(currency, unixTime) {
+        const day = new Date((Number(unixTime) || Math.floor(Date.now() / 1000)) * 1000);
+        const ymd = `${day.getFullYear()}${String(day.getMonth() + 1).padStart(2, '0')}${String(day.getDate()).padStart(2, '0')}`;
+        const key = `${currency}:${ymd}`;
+        if (nbuRateCache.has(key)) return nbuRateCache.get(key);
+        const response = await fetch(`https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=${encodeURIComponent(currency)}&date=${ymd}&json`);
+        if (!response.ok) throw new Error(`NBU ${response.status}`);
+        const rate = Number((await response.json())?.[0]?.rate);
+        if (!(rate > 0)) throw new Error('NBU: no rate');
+        const result = { rate, date: day };
+        nbuRateCache.set(key, result);
+        return result;
+    }
+
+    function findItemCategory(item) {
+        return (expenses || []).find((category) => (category.items || []).includes(item)) || null;
+    }
+
+    /** Undoes the envelope top-up / debt payment an operation was turned into; it goes back to «Нерозподілене». */
+    function unlinkMonoOperation(item) {
+        if (item.envelopeId) {
+            const jar = findUserJar(item.envelopeId);
+            if (jar) jar.balance = addMoney(jar.balance, -(parseFloat(item.amount) || 0));
+        }
+        const debtId = item.debtId;
+        delete item.envelopeId;
+        delete item.debtId;
+        delete item.debtDeduction;
+        const from = findItemCategory(item);
+        if (from) from.items = from.items.filter((entry) => entry !== item);
+        placeOperation(expenses, item, null, newId);
+        if (debtId) syncGlobalDebtBalance(debtId);
+    }
+
+    /** Turns a Monobank operation into an envelope top-up or a debt payment — one record, no double count. */
+    function linkMonoOperation(item, target, deduction) {
+        if (isLinkedItem(item)) unlinkMonoOperation(item);
+        const from = findItemCategory(item);
+        if (from) from.items = from.items.filter((entry) => entry !== item);
+        if (target.startsWith(MONO_JAR)) {
+            const jar = findUserJar(target.slice(MONO_JAR.length));
+            let savings = expenses.find((category) => category.isSavings);
+            if (!savings) {
+                savings = { id: newId(), name: 'Заощадження', isSavings: true, items: [] };
+                expenses.push(savings);
+            }
+            item.envelopeId = jar.id;
+            if (!Array.isArray(savings.items)) savings.items = [];
+            savings.items.push(item);
+            jar.balance = addMoney(jar.balance, parseFloat(item.amount) || 0);
+            return `Поповнено конверт «${jar.name}» на ${formatMoney(parseFloat(item.amount) || 0)} ₴`;
+        }
+        const debt = findUserDebt(target.slice(MONO_DEBT.length));
+        let debtCategory = expenses.find((category) => category.name === DEBT_CATEGORY_NAME);
+        if (!debtCategory) {
+            debtCategory = { id: newId(), name: DEBT_CATEGORY_NAME, items: [] };
+            expenses.push(debtCategory);
+        }
+        item.debtId = debt.id;
+        item.debtDeduction = deduction;
+        item.isPaid = true;
+        if (!Array.isArray(debtCategory.items)) debtCategory.items = [];
+        debtCategory.items.push(item);
+        syncGlobalDebtBalance(debt.id);
+        return `Платіж по боргу «${debt.name}»: −${formatMoney(deduction)} ${currencySign(debt.currency)}`;
+    }
+
+    /** Re-renders and saves after an operation was linked to or unlinked from an envelope or debt. */
+    async function afterMonoLinkChange() {
+        expenses = dropEmptySystemCategories(expenses);
+        if (appData[currentYear]?.[currentMonth]) appData[currentYear][currentMonth].expenses = expenses;
+        renderExpenses();
+        updateAll();
+        updateSavingsDisplay();
+        updateDebtsDisplay();
+        renderEnvelopes();
+        if (document.getElementById('category-modal')?.classList.contains('active')) {
+            if (findExpenseById(activeCategoryId)) renderModalItems();
+            else document.getElementById('category-modal').classList.remove('active');
+        }
+        await saveData(true);
     }
 
     function categoryNameByKey(key) {
@@ -7746,8 +7859,9 @@ function generatePayrollSparklineHTML(currentTotal) {
         monoPicker = {
             mode: 'move',
             item,
-            current: isUnassigned(category) || isLegacyMonoCategory(category) ? null : categoryKey(category),
+            current: linkTargetOf(item) || (isUnassigned(category) || isLegacyMonoCategory(category) || isLedgerCategory(category) ? null : categoryKey(category)),
             selected: null,
+            rate: null,
         };
         showMonoPicker();
     }
@@ -7790,7 +7904,63 @@ function generatePayrollSparklineHTML(currentTotal) {
         });
         options.push({ value: MONO_PICK_NEW, name: 'Нова категорія', tone: 'new' });
         options.push({ value: IGNORED_TARGET, name: 'Не враховувати', meta: 'не впливає на суми й ліміти', tone: 'muted' });
+        if (picker.mode !== 'move' || !currentUser) return options;
+
+        const here = (value) => (value === picker.current ? ' · зараз тут' : '');
+        const jars = (globalData.jars[currentUser.id] || []).filter((jar) => !jar.isMain);
+        if (jars.length) {
+            options.push({ section: 'Поповнити конверт' });
+            jars.forEach((jar) => {
+                const balance = parseFloat(jar.balance) || 0;
+                const goal = parseFloat(jar.goal) || 0;
+                options.push({
+                    value: MONO_JAR + jar.id,
+                    name: jar.name || 'Конверт',
+                    meta: (goal > 0 ? `${formatMoney(balance)} / ${formatMoney(goal)} ₴` : `${formatMoney(balance)} ₴`) + here(MONO_JAR + jar.id),
+                });
+            });
+        }
+        const debts = (globalData.debts[currentUser.id] || []).filter((debt) =>
+            String(debt.id) === String(picker.item?.debtId) ||
+            ((!debt.is_archived || debt.is_archived === 0) && (parseFloat(debt.remaining_amount) || 0) > 0)
+        );
+        if (debts.length) {
+            options.push({ section: 'Сплатити борг' });
+            debts.forEach((debt) => {
+                options.push({
+                    value: MONO_DEBT + debt.id,
+                    name: debt.name || 'Борг',
+                    meta: `залишок ${formatMoney(parseFloat(debt.remaining_amount) || 0)} ${currencySign(debt.currency)}${here(MONO_DEBT + debt.id)}`,
+                });
+            });
+        }
         return options;
+    }
+
+    /** The debt a picker selection points at, when it is in a foreign currency (needs the NBU rate). */
+    function pickerForeignDebt(picker) {
+        if (!picker?.selected?.startsWith(MONO_DEBT)) return null;
+        const debt = findUserDebt(picker.selected.slice(MONO_DEBT.length));
+        return debt && debt.currency && debt.currency !== 'UAH' ? debt : null;
+    }
+
+    function renderMonoPickerConvert(picker) {
+        const box = document.getElementById('mono-pick-convert');
+        if (!box) return;
+        const debt = pickerForeignDebt(picker);
+        box.hidden = !debt;
+        if (!debt) return;
+        const amount = parseFloat(picker.item.amount) || 0;
+        const rate = picker.rate;
+        if (!rate || rate.status === 'loading') {
+            box.textContent = 'Отримуємо курс НБУ на день операції…';
+        } else if (rate.status === 'error') {
+            box.textContent = 'Не вдалося отримати курс НБУ. Спробуйте ще раз.';
+        } else {
+            const deduction = roundMoney(amount / rate.rate);
+            const day = rate.date.toLocaleDateString('uk-UA');
+            box.textContent = `З боргу спишеться ${formatMoney(deduction)} ${currencySign(debt.currency)} · курс НБУ ${rate.rate.toFixed(4)} ₴ на ${day}`;
+        }
     }
 
     function renderMonoPicker() {
@@ -7836,6 +8006,7 @@ function generatePayrollSparklineHTML(currentTotal) {
 
         const list = document.getElementById('mono-pick-list');
         list.innerHTML = monoPickerOptions().map((option) => {
+            if (option.section) return `<div class="mr-list-section">${escapeHtml(option.section)}</div>`;
             const selected = picker.selected === option.value;
             return `
                 <button type="button" class="mr-option${option.tone ? ` is-${option.tone}` : ''}${selected ? ' is-selected' : ''}" role="radio" aria-checked="${selected}"
@@ -7847,13 +8018,28 @@ function generatePayrollSparklineHTML(currentTotal) {
         }).join('');
         const newRow = document.getElementById('mono-pick-new');
         newRow.hidden = picker.selected !== MONO_PICK_NEW;
-        submit.disabled = !picker.selected || (picker.mode === 'rule' && picker.selected === picker.current);
+        renderMonoPickerConvert(picker);
+        const linking = picker.mode === 'move' && isLinkTarget(picker.selected);
+        // Envelope and debt links are made by hand for each operation, never remembered.
+        if (picker.mode === 'move') remember.hidden = remember.hidden || linking;
+        if (linking) submit.textContent = picker.selected.startsWith(MONO_JAR) ? 'Поповнити конверт' : 'Зарахувати платіж';
+        const waitingRate = Boolean(pickerForeignDebt(picker)) && picker.rate?.status !== 'ready';
+        submit.disabled = !picker.selected || picker.selected === picker.current || waitingRate;
     }
 
     function pickMonoTarget(value) {
-        if (!monoPicker) return;
-        monoPicker.selected = value;
+        const picker = monoPicker;
+        if (!picker) return;
+        picker.selected = value;
         document.getElementById('mono-pick-error').textContent = '';
+        const debt = pickerForeignDebt(picker);
+        if (debt) {
+            picker.rate = { status: 'loading' };
+            nbuRateOn(debt.currency, picker.item.time)
+                .then(({ rate, date }) => { picker.rate = { status: 'ready', rate, date }; })
+                .catch(() => { picker.rate = { status: 'error' }; })
+                .finally(() => { if (monoPicker === picker && picker.selected === value) renderMonoPicker(); });
+        }
         renderMonoPicker();
         if (value === MONO_PICK_NEW) document.getElementById('mono-pick-new-name')?.focus();
     }
@@ -7881,6 +8067,22 @@ function generatePayrollSparklineHTML(currentTotal) {
                 return;
             }
             target = categoryKey(createCategoryForMono(name));
+        }
+
+        if (picker.mode === 'move' && isLinkTarget(target)) {
+            const debt = pickerForeignDebt(picker);
+            const amount = parseFloat(picker.item.amount) || 0;
+            const deduction = debt ? roundMoney(amount / picker.rate.rate) : amount;
+            const message = linkMonoOperation(picker.item, target, deduction);
+            document.getElementById('mono-pick-modal')?.classList.remove('active');
+            monoPicker = null;
+            await afterMonoLinkChange();
+            showSaveStatus(message, { tone: 'info', autoHideMs: 4000 });
+            return;
+        }
+        if (picker.mode === 'move' && isLinkedItem(picker.item)) {
+            unlinkMonoOperation(picker.item);
+            await afterMonoLinkChange();
         }
 
         let change;

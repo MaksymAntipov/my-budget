@@ -3199,6 +3199,26 @@
         .mr-option.is-muted .mr-option-name { color: var(--text-secondary); }
         .mr-option-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .mr-option-meta { color: var(--text-tertiary); font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .mr-list-section {
+            margin: 10px 2px 2px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .mr-convert {
+            margin: -4px 0 12px;
+            padding: 10px 14px;
+            border-radius: 14px;
+            background: rgba(10, 132, 255, 0.1);
+            border: 1px solid rgba(10, 132, 255, 0.25);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .mr-convert[hidden] { display: none; }
         .mr-new { margin: -4px 0 12px; }
         .mr-new .ios-input { height: 50px; margin: 0; }
         .mr-switch {
@@ -3211,6 +3231,7 @@
             border: 1px solid rgba(255, 255, 255, 0.06);
             cursor: pointer;
         }
+        .mr-switch[hidden] { display: none; }
         .mr-switch input { position: absolute; opacity: 0; pointer-events: none; }
         .mr-switch-track {
             position: relative;

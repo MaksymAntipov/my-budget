@@ -55,6 +55,11 @@ export function isMonoItem(item) {
     return Boolean(item?.monoId);
 }
 
+/** A Monobank operation turned into an envelope top-up or a debt payment; rules leave it alone. */
+export function isLinkedItem(item) {
+    return Boolean(item?.envelopeId || item?.debtId);
+}
+
 function unassignedCategory(makeId) {
     return { id: makeId(), key: UNASSIGNED_KEY, system: 'unassigned', name: UNASSIGNED_NAME, isEssential: false, items: [] };
 }
@@ -95,7 +100,7 @@ export function dropEmptySystemCategories(expenses) {
 export function removeCardOperations(expenses, accountId, legacyAccountId) {
     (expenses || []).forEach((category) => {
         category.items = (category.items || []).filter((item) => {
-            if (!isMonoItem(item)) return true;
+            if (!isMonoItem(item) || isLinkedItem(item)) return true;
             if (item.accountId) return item.accountId !== accountId;
             return accountId !== legacyAccountId;
         });
@@ -127,7 +132,7 @@ export function summarizeMerchants(months) {
         (expenses || []).forEach((category) => {
             const waiting = isUnassigned(category) || isLegacyMonoCategory(category);
             (category.items || []).forEach((item) => {
-                if (isMonoItem(item)) add(item, waiting);
+                if (isMonoItem(item) && !isLinkedItem(item)) add(item, waiting);
             });
         });
         (ignored || []).forEach((item) => {

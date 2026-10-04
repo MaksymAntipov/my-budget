@@ -41,10 +41,12 @@ test('a fresh import replaces only that card, then empty system categories go', 
     const month = [
         { id: 'u', system: 'unassigned', items: [op('1')] },
         { id: 'f', key: 'food', name: 'Їжа', items: [op('2'), { id: 'm', name: 'Ринок', amount: 5 }, op('3', { accountId: 'other' })] },
+        { id: 's', name: 'Заощадження', isSavings: true, items: [op('4', { envelopeId: 'jar' })] },
     ];
     removeCardOperations(month, 'card', 'card');
     assert.deepEqual(month[1].items.map((i) => i.id), ['m', '3']);
-    assert.deepEqual(dropEmptySystemCategories(month).map((c) => c.id), ['f']);
+    assert.deepEqual(month[2].items.map((i) => i.id), ['4']); // linked to an envelope: kept
+    assert.deepEqual(dropEmptySystemCategories(month).map((c) => c.id), ['f', 's']);
 });
 
 test('summarizeMerchants lists stores by spend; only the running month counts as waiting', () => {
