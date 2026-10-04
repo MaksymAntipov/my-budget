@@ -7718,13 +7718,24 @@ function generatePayrollSparklineHTML(currentTotal) {
         return data;
     }
 
-    function currentMonthReroute() {
-        return appData[currentYear]?.[currentMonth]?.initialized ? [{ year: currentYear, month: currentMonth }] : [];
+    /** Rules re-route only the running calendar month; earlier months keep their layout. */
+    function runningMonth() {
+        const now = new Date();
+        return { year: now.getFullYear(), month: now.getMonth() };
     }
 
-    function pendingSummary(pending) {
-        const count = pending.reduce((sum, month) => sum + month.count, 0);
-        return { count, months: pending.length };
+    function isViewingRunningMonth() {
+        const running = runningMonth();
+        return currentYear === running.year && currentMonth === running.month;
+    }
+
+    function runningMonthReroute() {
+        const { year, month } = runningMonth();
+        return appData[year]?.[month]?.initialized ? [{ year, month }] : [];
+    }
+
+    function pendingCount(pending) {
+        return pending.reduce((sum, month) => sum + month.count, 0);
     }
 
     // ---------- Picker: where an operation, a type or a code goes ----------
@@ -7816,7 +7827,9 @@ function generatePayrollSparklineHTML(currentTotal) {
             const merchant = String(item.name || '').trim();
             remember.hidden = !merchant;
             document.getElementById('mono-pick-remember-title').textContent = `Запам'ятати для «${merchant}»`;
-            document.getElementById('mono-pick-remember-hint').textContent = 'Усі покупки цього продавця підуть сюди — і нові, і вже наявні';
+            document.getElementById('mono-pick-remember-hint').textContent = isViewingRunningMonth()
+                ? 'Покупки цього продавця в поточному місяці й нові підуть сюди'
+                : 'Цю покупку перенесемо, а нові покупки цього продавця підуть сюди. Інші покупки минулого місяця не зміняться';
             submit.textContent = 'Перенести';
         } else {
             const kindTitle = { group: 'Тип покупок', mcc: `Код MCC ${picker.match}`, merchant: 'Продавець' }[picker.kind] || 'Правило';
@@ -7895,7 +7908,13 @@ function generatePayrollSparklineHTML(currentTotal) {
         } else {
             change = { set: [{ kind: picker.kind, match: picker.match, target, label: picker.kind === 'merchant' ? picker.label : null }] };
         }
-        change.reroute = currentMonthReroute();
+        if (picker.mode === 'move' && !isViewingRunningMonth()) {
+            // A past month is history: only the operation the user moved changes there.
+            change.reroute = [{ year: currentYear, month: currentMonth, only: [txKey(picker.item)] }];
+            if (remembered) change.reroute.push(...runningMonthReroute());
+        } else {
+            change.reroute = runningMonthReroute();
+        }
 
         submit.disabled = true;
         submit.classList.add('is-busy');
@@ -7917,16 +7936,6 @@ function generatePayrollSparklineHTML(currentTotal) {
             showSaveStatus('Правило збережено', { tone: 'info', autoHideMs: 2500 });
         }
         if (document.getElementById('mono-rules-modal')?.classList.contains('active')) renderMonoRules();
-
-        // A remembered merchant also lives in earlier months: offer to move those too.
-        if (mode === 'move' && remembered && monoRulesPending.length) {
-            const { count, months } = pendingSummary(monoRulesPending);
-            showConfirm(
-                'Минулі місяці',
-                `Ще ${count} ${pluralUk(count, 'операція', 'операції', 'операцій')} у ${months} ${pluralUk(months, 'минулому місяці', 'минулих місяцях', 'минулих місяцях')} розкладуться по-новому. Перенести їх теж?`,
-                () => applyMonoRulesToPast()
-            );
-        }
     }
 
     // ---------- Rules screen: MCC types and codes → own categories ----------
@@ -8048,24 +8057,25 @@ function generatePayrollSparklineHTML(currentTotal) {
                 : '';
             body.innerHTML = `
                 ${rows.length ? `<div class="mr-section-title">Типи покупок</div>
-                <p class="mr-section-hint">Оберіть категорію для кожного типу — нові покупки розкладатимуться самі.</p>` : ''}
+                <p class="mr-section-hint">Оберіть категорію для кожного типу — покупки поточного місяця й нові розкладатимуться самі. Минулі місяці не змінюються.</p>` : ''}
                 ${groupsHtml}
                 ${merchantsHtml}`;
         }
 
         const pendingBox = document.getElementById('mono-rules-pending');
-        const { count, months } = pendingSummary(monoRulesPending);
+        const count = pendingCount(monoRulesPending);
         pendingBox.hidden = count === 0;
         if (count) {
             document.getElementById('mono-rules-pending-text').textContent =
-                `${count} ${pluralUk(count, 'операція', 'операції', 'операцій')} у ${months} ${pluralUk(months, 'місяці', 'місяцях', 'місяцях')} ще не розкладені за правилами`;
+                `${count} ${pluralUk(count, 'операція', 'операції', 'операцій')} цього місяця ще не ${pluralUk(count, 'розкладена', 'розкладені', 'розкладені')} за правилами`;
         }
     }
 
-    async function applyMonoRulesToPast() {
-        const months = monoRulesPending.map(({ year, month }) => ({ year, month }));
-        if (!months.length) return;
-        const { count } = pendingSummary(monoRulesPending);
+    /** Lays out the running month by the rules (e.g. the old Monobank categories). */
+    async function applyMonoRulesPending() {
+        const months = runningMonthReroute();
+        const count = pendingCount(monoRulesPending);
+        if (!months.length || !count) return;
         const button = document.getElementById('mono-rules-pending-btn');
         if (button) button.disabled = true;
         const data = await postMonoRules({ reroute: months });
@@ -8845,7 +8855,7 @@ const uiActions = {
   openMonoRules,
   closeMonoRules,
   toggleMonoRuleCodes,
-  applyMonoRulesToPast,
+  applyMonoRulesPending,
   formatMoney,
   formatNumberShort,
   formatYearsLabel,
