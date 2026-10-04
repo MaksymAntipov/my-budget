@@ -6,13 +6,99 @@ import {
   sameId,
   formatMoney,
   formatNumberShort,
+  countDaysInMonth,
+  countWeekdaysInMonth,
 } from './utils.js';
 import { API_URL } from './config.js';
+import { apiFetch } from './api.js';
+import { syncFamilyTreeNavVisibility, openFamilyTree, closeFamilyTree } from './family-tree/index.js';
+import {
+  syncYearTracksNavVisibility,
+  openYearTracks,
+  closeYearTracks,
+  getYearTracksDocSnapshot,
+} from './year-tracks/index.js';
+import {
+  buildYearTracksAiSection,
+  loadYearTracksForAiExport,
+} from './year-tracks/export-prompt.js';
+import {
+  buildMarketAiSection,
+  getBand,
+  inferLevelFromJob,
+  inferRoleFamilyForProfile,
+  parseUsdAmount,
+} from './growth/market-bands.js';
+import {
+  firstId,
+  inferDomainFromJob,
+  inferOperationFromJob,
+  migrateLegacyVectorIds,
+  mobilityLabel,
+  vectorLabel,
+} from './growth/trajectory.js';
+import { closeOpenDropdowns } from './bind-ui.js';
+import { openRunway, closeRunway } from './runway/index.js';
+import {
+  debtRemainingInMonth,
+  forecastFinish,
+  listRunwayMonths,
+  monthLabel as runwayMonthLabel,
+  reconstructDrawdown,
+  reconstructStock,
+  sumDebtPayments,
+  sumEmergencyDeposits,
+  trailingAverage,
+} from './runway/model.js';
+import { hasLlmKey } from './ai/settings.js';
+import {
+  initAiChat,
+  openAiChat,
+  closeAiChat,
+  toggleAiChatExpand,
+  sendAiChatMessage,
+  stopAiChat,
+  startAiBriefing,
+  hydrateAiChat,
+  unloadAiChat,
+  resetAiChat,
+  copyLastAiPrompt,
+  sendAiSuggestion,
+  openLlmSettings,
+  closeLlmSettings,
+  saveLlmSettingsFromForm,
+  clearLlmSettingsFromForm,
+  selectLlmProvider,
+  selectLlmModel,
+  syncAiEntryButtons,
+  launchAiAgent,
+} from './ai/chat-ui.js';
 
 // ==========================================
     // НОВИНИ / CHANGELOG
     // ==========================================
     const changelogData = [
+        {
+            date: "Вересень 2026",
+            version: "v1.4.0",
+            changes: [
+                "Монобанк: підключення токена до профілю і підтягування витрат за відкритий місяць у категорії з міткою «Монобанк»."
+            ]
+        },
+        {
+            date: "Серпень 2026",
+            version: "v1.3.0",
+            changes: [
+                "ШІ в Скрині: свій API-ключ у профілі (Gemini / OpenAI / Anthropic / OpenRouter / будь-який OpenAI-compatible) і чат замість копіювання промпта."
+            ]
+        },
+        {
+            date: "Серпень 2026",
+            version: "v1.2.1",
+            changes: [
+                "Стратегія росту: універсальна траєкторія — домен, головний вектор, мобільність і стан своєї справи. IT-бенди лишаються шаром, не центром."
+            ]
+        },
         {
             date: "Липень 2026",
             version: "v1.2.0",
@@ -69,7 +155,14 @@ import { API_URL } from './config.js';
     let appData = {}; 
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth(); 
-    let expenses = []; 
+    let expenses = [];
+    let monobankLink = null;
+    let monobankBusy = false;
+    let monoQueue = null;
+    let monoQueueGen = 0;
+    let monoLiveTimer = null;
+    let undoTimer = null;
+    let undoRestore = null; 
     let myChart = null;
     let analyticsChart = null; 
     let currentExchangeRate = 0;
@@ -83,6 +176,15 @@ import { API_URL } from './config.js';
     let availableProfiles = [];
 
     const VIEW_PERIOD_KEY = 'budget_view_period';
+    const SKRYNIA_MODULE_KEY = 'budget_skrynia_module';
+    const SKRYNIA_MODULE_LABELS = {
+        budget: 'Бюджет',
+        tracks: 'Мої треки',
+        runway: 'Внески',
+        tree: 'Сімейне дерево',
+    };
+    let currentSkryniaModule = 'budget';
+    let suppressSkryniaCloseHook = false;
 
     function persistViewedPeriod() {
         if (!currentUser?.id) return;
@@ -167,11 +269,11 @@ function loadAuthStats() { /* /api/stats removed */ }
 
     function createDefaultExpenseCategories() {
         return [
-            { id: newId(), name: "Житло", items: [], budgetBucket: "needs" },
-            { id: newId(), name: "Їжа", items: [], budgetBucket: "needs" },
-            { id: newId(), name: "Транспорт", items: [], budgetBucket: "needs" },
-            { id: newId(), name: "Розваги", items: [], budgetBucket: "wants" },
-            { id: newId(), name: "Інше", items: [], budgetBucket: "wants" }
+            { id: newId(), name: "Житло", items: [], isEssential: true },
+            { id: newId(), name: "Їжа", items: [], isEssential: true },
+            { id: newId(), name: "Транспорт", items: [], isEssential: true },
+            { id: newId(), name: "Розваги", items: [], isEssential: false },
+            { id: newId(), name: "Інше", items: [], isEssential: false }
         ];
     }
 
@@ -198,9 +300,9 @@ function loadAuthStats() { /* /api/stats removed */ }
         // --- БЕЗПЕЧНЕ ГЛОБАЛЬНЕ БЛОКУВАННЯ СКРОЛУ ---
         // Замість спостереження за всім DOM (що "вішало" сторінку), 
         // стежимо тільки за самими модальними вікнами.
-        const modals = document.querySelectorAll('.modal-overlay, .auth-glass-overlay');
+        const modals = document.querySelectorAll('.modal-overlay, .auth-glass-overlay, .serenity-overlay');
         const observer = new MutationObserver(() => {
-            const hasActiveModal = document.querySelector('.modal-overlay.active, .auth-glass-overlay.active') !== null;
+            const hasActiveModal = document.querySelector('.modal-overlay.active, .auth-glass-overlay.active, .serenity-overlay.active') !== null;
             document.body.style.overflow = hasActiveModal ? 'hidden' : '';
         });
         
@@ -209,7 +311,14 @@ function loadAuthStats() { /* /api/stats removed */ }
         });
         // ----------------------------------------------
 
-        document.addEventListener('click', closeProfileSwitcher);
+        document.addEventListener('click', (e) => {
+            closeProfileSwitcher(e);
+            closeSkryniaSwitcher(e);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeSerenityEasterEgg();
+        });
 
         function flushSaveKeepalive() {
             if (!currentUser) return;
@@ -221,15 +330,9 @@ function loadAuthStats() { /* /api/stats removed */ }
             if (appData[currentYear]?.[currentMonth]?.initialized) {
                 appData[currentYear][currentMonth].expenses = expenses;
             }
-            const token = localStorage.getItem('budget_auth_token');
-            if (!token) return;
             try {
-                fetch(`${API_URL}/api/data`, {
+                apiFetch('/api/data', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
                     body: JSON.stringify(buildSavePayload(currentYear, currentMonth)),
                     keepalive: true
                 });
@@ -243,19 +346,27 @@ function loadAuthStats() { /* /api/stats removed */ }
 
         const savedUserId = localStorage.getItem('budget_saved_user_id');
         const savedUserInfo = localStorage.getItem('budget_saved_user_info');
-        const savedToken = localStorage.getItem('budget_auth_token');
-        
-        if (savedUserId && savedUserInfo && savedToken) {
+        // Session cookie is HttpOnly — restore UI from saved profile; 401 clears it.
+        if (savedUserId && savedUserInfo) {
             const user = JSON.parse(savedUserInfo);
-            await performLogin(user);
+            await performLogin(user, { openHub: false });
         } else {
-            if (savedUserId || savedUserInfo || savedToken) {
-                localStorage.removeItem('budget_saved_user_id');
-                localStorage.removeItem('budget_saved_user_info');
-                localStorage.removeItem('budget_auth_token');
-            }
+            localStorage.removeItem('budget_saved_user_id');
+            localStorage.removeItem('budget_saved_user_info');
+            localStorage.removeItem('budget_auth_token');
             showAuthScreen();
         }
+
+        initAiChat({
+            getUserId: () => currentUser?.id,
+            isLoggedIn: () => Boolean(currentUser?.id),
+            buildAnalyticsPrompt,
+            buildAiSkryniaDataDump,
+            buildGrowthPrompt,
+            getAiFocusCatalog,
+            hasGrowthProfile: () => Boolean(currentUser?.growthProfile?.job),
+            openGrowthModal,
+        });
     }
 
     // ==========================================
@@ -264,23 +375,36 @@ function loadAuthStats() { /* /api/stats removed */ }
     function startOtpCountdown(btnId, seconds) {
         const btn = document.getElementById(btnId);
         if (!btn) return;
-        
-        btn.style.display = 'block'; 
-        btn.disabled = true;
-        let timeLeft = seconds;
+
+        const total = Math.max(1, Math.floor(Number(seconds) || 0));
+        let timeLeft = total;
 
         if (otpTimer) clearInterval(otpTimer);
 
-        otpTimer = setInterval(() => {
-            timeLeft--;
+        const paint = () => {
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+            btn.classList.add('otp-resend--waiting');
+            btn.style.display = 'block';
             btn.innerText = `Повторна відправка через ${timeLeft} с`;
-            
+        };
+
+        paint();
+
+        otpTimer = setInterval(() => {
+            timeLeft -= 1;
             if (timeLeft <= 0) {
                 clearInterval(otpTimer);
+                otpTimer = null;
                 btn.disabled = false;
+                btn.removeAttribute('aria-disabled');
+                btn.classList.remove('otp-resend--waiting');
                 btn.innerText = 'Відправити повторно';
-                document.getElementById('otp-subtitle').innerText = `Термін дії коду минув. Відправте новий.`;
+                const subtitle = document.getElementById('otp-subtitle');
+                if (subtitle) subtitle.innerText = 'Термін дії коду минув. Відправте новий.';
+                return;
             }
+            paint();
         }, 1000);
     }
 
@@ -343,9 +467,8 @@ function loadAuthStats() { /* /api/stats removed */ }
             btn.innerText = 'Відправка...';
             btn.disabled = true;
 
-            const response = await fetch(`${API_URL}/api/auth/send-otp`, {
+            const response = await apiFetch('/api/auth/send-otp', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const data = await response.json();
@@ -362,9 +485,9 @@ function loadAuthStats() { /* /api/stats removed */ }
                         : `Якщо акаунт з ${payload.email} існує, попередній код ще діє. Перевірте пошту.`;
                     document.getElementById('otp-input').value = '';
                     document.getElementById('otp-error').style.display = 'none';
+                    startOtpCountdown('btn-otp-resend', seconds);
                     document.getElementById('otp-overlay').classList.add('active');
                     
-                    startOtpCountdown('btn-otp-resend', seconds);
                 } else {
                     showError(errorDiv, data.error || 'Помилка');
                 }
@@ -381,9 +504,8 @@ function loadAuthStats() { /* /api/stats removed */ }
                     : `Якщо акаунт з ${payload.email} існує, код надіслано на пошту. Перевірте вхідні та «Спам».`;
                 document.getElementById('otp-input').value = '';
                 document.getElementById('otp-error').style.display = 'none';
+                startOtpCountdown('btn-otp-resend', 600);
                 document.getElementById('otp-overlay').classList.add('active');
-                
-                startOtpCountdown('btn-otp-resend', 600); 
                 btn.innerText = 'Отримати код';
                 btn.disabled = false;
             }
@@ -405,9 +527,8 @@ function loadAuthStats() { /* /api/stats removed */ }
             btn.innerText = 'Перевірка...';
             btn.disabled = true;
 
-            const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
+            const response = await apiFetch('/api/auth/verify-otp', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: tempAuthData.email, otp })
             });
             const data = await response.json();
@@ -422,11 +543,7 @@ function loadAuthStats() { /* /api/stats removed */ }
                 btn.innerText = 'Підтвердити';
                 btn.disabled = false;
                 
-                if (data.token) {
-                    localStorage.setItem('budget_auth_token', data.token);
-                }
-
-                if (data.users) {
+                                if (data.users) {
                     availableProfiles = data.users;
                     localStorage.setItem('budget_available_profiles', JSON.stringify(availableProfiles));
                 }
@@ -434,7 +551,7 @@ function loadAuthStats() { /* /api/stats removed */ }
                 if (data.users && data.users.length > 1) {
                     showAccountSelect(data.users);
                 } else {
-                    await performLogin(data.users ? data.users[0] : data.user);
+                    await performLogin(data.users ? data.users[0] : data.user, { openHub: true });
                 }
             }
         } catch (err) {
@@ -478,7 +595,7 @@ function loadAuthStats() { /* /api/stats removed */ }
             
             btn.onclick = () => {
                 document.getElementById('account-select-overlay').classList.remove('active');
-                performLogin(u);
+                performLogin(u, { openHub: true });
             };
             
             btn.onmouseover = () => { btn.style.transform = 'scale(1.02)'; btn.style.background = 'rgba(255,255,255,0.1)'; };
@@ -505,8 +622,23 @@ function loadAuthStats() { /* /api/stats removed */ }
         }
     }
 
+    function sanitizeOtpInput(value) {
+        const el = document.getElementById('otp-input');
+        if (!el) return;
+        const cleaned = String(value ?? '').replace(/[^0-9]/g, '');
+        if (el.value !== cleaned) el.value = cleaned;
+    }
+
     function cancelOtp() {
         if (otpTimer) clearInterval(otpTimer);
+        otpTimer = null;
+        const resendBtn = document.getElementById('btn-otp-resend');
+        if (resendBtn) {
+            resendBtn.classList.remove('otp-resend--waiting');
+            resendBtn.style.display = 'none';
+            resendBtn.disabled = true;
+            resendBtn.innerText = 'Відправити повторно';
+        }
         document.getElementById('otp-overlay').classList.remove('active');
         if (tempAuthData && tempAuthData.isRegister) {
             document.getElementById('create-profile-overlay').classList.add('active');
@@ -529,13 +661,8 @@ async function fetchAvailableProfiles() {
             try { availableProfiles = JSON.parse(cached); } catch (e) { availableProfiles = []; }
         }
 
-        const token = localStorage.getItem('budget_auth_token');
-        if (!token) return availableProfiles;
-
         try {
-            const response = await fetch(`${API_URL}/api/profiles`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await apiFetch('/api/profiles');
             if (response.status === 401) {
                 logout();
                 return [];
@@ -560,14 +687,17 @@ async function fetchAvailableProfiles() {
         dropdown.classList.remove('open');
         dropdown.innerHTML = '';
 
-        const otherProfiles = availableProfiles.filter(p => p.id !== currentUser?.id);
+        const otherProfiles = availableProfiles.filter(p => String(p.id) !== String(currentUser?.id));
 
         if (otherProfiles.length === 0) {
             badge.classList.remove('badge-type--switchable');
-            badge.disabled = false;
+            badge.disabled = true;
+            badge.removeAttribute('title');
             return;
         }
 
+        badge.disabled = false;
+        badge.title = 'Перемкнути профіль';
         badge.classList.add('badge-type--switchable');
         otherProfiles.forEach(p => {
             const isBiz = p.account_type === 'business';
@@ -578,23 +708,175 @@ async function fetchAvailableProfiles() {
                 <span>${isBiz ? 'Бізнес' : 'Фіз. особа'}</span>
                 <span style="font-size: 11px; opacity: 0.6; font-weight: 500;">${escapeHtml(p.name)}</span>
             `;
-            btn.onclick = (e) => {
+            btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 switchProfile(p);
-            };
+            });
             dropdown.appendChild(btn);
         });
     }
 
     function toggleProfileSwitcher(e) {
         if (e) e.stopPropagation();
-        if (availableProfiles.filter(p => p.id !== currentUser?.id).length === 0) return;
+        if (availableProfiles.filter(p => String(p.id) !== String(currentUser?.id)).length === 0) return;
         document.getElementById('profile-switcher-dropdown').classList.toggle('open');
     }
 
-    function closeProfileSwitcher() {
+    // Must ignore clicks inside the switcher: toggle + this listener both sit on document
+    // (delegated data-action), so stopPropagation alone does not keep the menu open.
+    function closeProfileSwitcher(e) {
+        if (e?.target?.closest?.('#profile-type-container')) return;
         const dropdown = document.getElementById('profile-switcher-dropdown');
         if (dropdown) dropdown.classList.remove('open');
+    }
+
+    function isPersonalSkrynia() {
+        return !(currentUser && currentUser.account_type === 'business');
+    }
+
+    function getSkryniaModules() {
+        if (isPersonalSkrynia()) {
+            return [
+                { id: 'budget', label: SKRYNIA_MODULE_LABELS.budget },
+                { id: 'tracks', label: SKRYNIA_MODULE_LABELS.tracks },
+                { id: 'runway', label: SKRYNIA_MODULE_LABELS.runway },
+                { id: 'tree', label: SKRYNIA_MODULE_LABELS.tree },
+            ];
+        }
+        return [{ id: 'budget', label: SKRYNIA_MODULE_LABELS.budget }];
+    }
+
+    function readLastSkryniaModule() {
+        try {
+            const saved = localStorage.getItem(SKRYNIA_MODULE_KEY);
+            if (saved && SKRYNIA_MODULE_LABELS[saved]) return saved;
+        } catch (e) {}
+        return 'budget';
+    }
+
+    function persistSkryniaModule(moduleId) {
+        currentSkryniaModule = moduleId;
+        try { localStorage.setItem(SKRYNIA_MODULE_KEY, moduleId); } catch (e) {}
+    }
+
+    function updateSkryniaSwitcherUI() {
+        const switchers = document.querySelectorAll('[data-skrynia-switcher]');
+        if (!switchers.length) return;
+
+        const modules = getSkryniaModules();
+        const showSwitcher = Boolean(currentUser) && modules.length > 1;
+        const activeLabel = SKRYNIA_MODULE_LABELS[currentSkryniaModule] || SKRYNIA_MODULE_LABELS.budget;
+
+        switchers.forEach((wrap) => {
+            const btn = wrap.querySelector('.skrynia-switcher-btn');
+            const dropdown = wrap.querySelector('.skrynia-switcher-dropdown');
+            if (!btn || !dropdown) return;
+
+            wrap.style.display = showSwitcher ? '' : 'none';
+            if (!showSwitcher) {
+                dropdown.classList.remove('open');
+                dropdown.innerHTML = '';
+                return;
+            }
+
+            btn.innerHTML = `Скриня · ${activeLabel} <span style="opacity:0.7;font-size:10px;">▾</span>`;
+            dropdown.innerHTML = '';
+            modules.forEach((mod) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'skrynia-switcher-item' + (mod.id === currentSkryniaModule ? ' is-active' : '');
+                item.textContent = mod.label;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openSkryniaModule(mod.id);
+                });
+                dropdown.appendChild(item);
+            });
+        });
+    }
+
+    function toggleSkryniaSwitcher(e) {
+        if (e) e.stopPropagation();
+        closeProfileSwitcher();
+        if (!currentUser || getSkryniaModules().length < 2) return;
+
+        const wrap = e?.target?.closest?.('[data-skrynia-switcher]');
+        const dropdown = wrap?.querySelector('.skrynia-switcher-dropdown');
+        if (!dropdown) return;
+
+        document.querySelectorAll('.skrynia-switcher-dropdown.open').forEach((el) => {
+            if (el !== dropdown) el.classList.remove('open');
+        });
+        dropdown.classList.toggle('open');
+    }
+
+    function closeSkryniaSwitcher(e) {
+        if (e?.target?.closest?.('[data-skrynia-switcher]')) return;
+        document.querySelectorAll('.skrynia-switcher-dropdown.open').forEach((el) => {
+            el.classList.remove('open');
+        });
+    }
+
+    function syncSkryniaHubCards() {
+        const personal = isPersonalSkrynia();
+        document.querySelectorAll('#skrynia-hub-cards [data-module]').forEach((el) => {
+            el.style.display = personal ? '' : 'none';
+        });
+
+        const userEl = document.getElementById('skrynia-hub-user');
+        if (userEl && currentUser) {
+            const type = currentUser.account_type === 'business' ? 'Бізнес' : 'Фіз. особа';
+            userEl.textContent = `${currentUser.name} ${currentUser.surname} · ${type}`;
+        }
+    }
+
+    function showSkryniaHub() {
+        if (!currentUser) return;
+        closeSkryniaSwitcher();
+        closeProfileSwitcher();
+        suppressSkryniaCloseHook = true;
+        try {
+            closeYearTracks();
+            closeFamilyTree();
+            closeRunway();
+        } catch (e) {
+        } finally {
+            suppressSkryniaCloseHook = false;
+        }
+        syncSkryniaHubCards();
+        updateSkryniaSwitcherUI();
+        const hub = document.getElementById('skrynia-hub-overlay');
+        if (hub) hub.classList.add('active');
+    }
+
+    function hideSkryniaHub() {
+        const hub = document.getElementById('skrynia-hub-overlay');
+        if (hub) hub.classList.remove('active');
+    }
+
+    function openSkryniaModule(moduleId) {
+        if (!currentUser) return;
+        const allowed = getSkryniaModules().map((m) => m.id);
+        const next = allowed.includes(moduleId) ? moduleId : 'budget';
+
+        closeSkryniaSwitcher();
+        hideSkryniaHub();
+        suppressSkryniaCloseHook = true;
+        try {
+            closeYearTracks();
+            closeFamilyTree();
+            closeRunway();
+        } catch (e) {
+        } finally {
+            suppressSkryniaCloseHook = false;
+        }
+
+        persistSkryniaModule(next);
+        updateSkryniaSwitcherUI();
+
+        if (next === 'tracks') openYearTracks();
+        else if (next === 'runway') openRunway();
+        else if (next === 'tree') openFamilyTree();
     }
 
     async function switchProfile(user) {
@@ -603,10 +885,10 @@ async function fetchAvailableProfiles() {
         await saveData(true);
         appData = {};
         expenses = [];
-        await performLogin(user);
+        await performLogin(user, { openHub: false });
     }
 
-async function performLogin(user) {
+async function performLogin(user, { openHub = false } = {}) {
         currentUser = user;
         
         localStorage.setItem('budget_saved_user_id', user.id);
@@ -629,17 +911,37 @@ async function performLogin(user) {
         applyUIForAccountType();
         updateProfileSwitcherUI();
         await loadDataFromServer(user.id);
+        await refreshMonobankStatus();
+        startMonoLiveWatch();
+
+        hideSkryniaHub();
+        updateSkryniaSwitcherUI();
+        hydrateAiChat();
+
+        if (isPersonalSkrynia() && openHub) {
+            showSkryniaHub();
+            return;
+        }
+
+        const last = readLastSkryniaModule();
+        const allowed = getSkryniaModules().some((m) => m.id === last);
+        openSkryniaModule(allowed ? last : 'budget');
     }
 
     function applyUIForAccountType() {
         const isBiz = currentUser && currentUser.account_type === 'business';
         
         const badge = document.getElementById('account-type-badge');
+        const canSwitch = availableProfiles.some(p => String(p.id) !== String(currentUser?.id));
         badge.style.display = 'inline-flex';
-        badge.innerHTML = (isBiz ? 'Бізнес' : 'Фіз. особа') + (availableProfiles.filter(p => p.id !== currentUser?.id).length > 0 ? ' <span style="opacity:0.7;font-size:9px;">▾</span>' : '');
+        badge.innerHTML = (isBiz ? 'Бізнес' : 'Фіз. особа') + (canSwitch ? ' <span style="opacity:0.7;font-size:9px;">▾</span>' : '');
         badge.className = isBiz ? 'badge-type badge-business' : 'badge-type';
-        if (availableProfiles.filter(p => p.id !== currentUser?.id).length > 0) {
+        badge.disabled = !canSwitch;
+        if (canSwitch) {
             badge.classList.add('badge-type--switchable');
+            badge.title = 'Перемкнути профіль';
+        } else {
+            badge.removeAttribute('title');
         }
 
         document.getElementById('title-sources').innerText = isBiz ? 'Обіг за рахунками за місяць' : 'Джерела доходу';
@@ -676,16 +978,20 @@ async function performLogin(user) {
         if(reconBox) reconBox.style.display = isBiz ? 'flex' : 'none';
 
         const bHoursRow = document.getElementById('business-hours-row');
-        if(bHoursRow) bHoursRow.style.display = isBiz ? 'flex' : 'none';
+        if (bHoursRow) bHoursRow.style.display = 'flex';
 
         const jarTypeWrap = document.getElementById('new-jar-type-wrap');
         if (jarTypeWrap) jarTypeWrap.style.display = isBiz ? 'none' : 'block';
 
         const growthBtn = document.getElementById('btn-growth-strategy');
         if (growthBtn) growthBtn.style.display = isBiz ? 'none' : 'flex';
+        const growthRunBtn = document.getElementById('btn-ai-growth-run');
+        if (growthRunBtn) growthRunBtn.style.display = isBiz ? 'none' : '';
+        syncAiEntryButtons();
 
-        const aiGrowthBtn = document.getElementById('btn-ai-growth-copy');
-        if (aiGrowthBtn) aiGrowthBtn.style.display = isBiz ? 'none' : '';
+        syncFamilyTreeNavVisibility();
+        syncYearTracksNavVisibility();
+        updateSkryniaSwitcherUI();
 
         // Показуємо cashflow-box для всіх
         const cfRowInvoices = document.getElementById('cf-row-invoices');
@@ -704,23 +1010,12 @@ async function performLogin(user) {
             oldExpBox.parentElement.style.gridTemplateColumns = '1fr';
         }
 
-        if (isBiz) {
-            document.getElementById('daily-limit-box').style.display = 'none';
-        } else {
-            document.getElementById('daily-limit-box').style.display = 'flex';
-        }
-
         renderFinancialPlanBlock();
     }
 
     async function loadDataFromServer(userId) {
         try {
-            const token = localStorage.getItem('budget_auth_token');
-            const response = await fetch(`${API_URL}/api/data?userId=${userId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await apiFetch(`/api/data?userId=${userId}`);
             const data = await response.json();
 
             if (response.status === 401) {
@@ -760,6 +1055,7 @@ if (!globalData.debts) globalData.debts = {};
             }
 
             appData = {};
+            const syncedAt = Number(data.serverTime) || Math.floor(Date.now() / 1000);
             if (data.monthsData) {
                 data.monthsData.forEach(row => {
                     if (!appData[row.year]) appData[row.year] = {};
@@ -769,6 +1065,7 @@ if (!globalData.debts) globalData.debts = {};
 
                  appData[row.year][row.month] = {
                         // Trust DB flag (clear month now persists is_initialized=0).
+                        monoSyncedAt: syncedAt,
                         initialized: Number(row.is_initialized) === 1,
                         incomes: ensureIncomeIds(parsedIncomes),
                         expenses: parsedExpenses,
@@ -802,6 +1099,7 @@ if (!globalData.debts) globalData.debts = {};
                 appData[currentYear][currentMonth] = { initialized: false, incomes: [], expenses: [], cogs: { type: 'percent', value: 0 }, payroll: [] };
             }
 
+            hydrateUserDebtsOutsidePaid(userId);
             renderCalendar();
             applyMonthData();
             updateSavingsDisplay();
@@ -818,13 +1116,8 @@ async function flushSaveToServer(year, month) {
         const payload = buildSavePayload(year, month);
 
         try {
-            const token = localStorage.getItem('budget_auth_token');
-            const response = await fetch(`${API_URL}/api/data`, {
+            const response = await apiFetch('/api/data', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify(payload)
             });
 
@@ -837,6 +1130,17 @@ async function flushSaveToServer(year, month) {
                 const errData = await response.json();
                 console.error("СЕРВЕР ВІДХИЛИВ ДАНІ:", errData);
                 alert(`Помилка бази даних: ${errData.error}`);
+                return;
+            }
+            const saved = await response.json().catch(() => ({}));
+            if (appData[year]?.[month] && typeof saved.serverTime === 'number') {
+                appData[year][month].monoSyncedAt = saved.serverTime;
+            }
+            if (Array.isArray(saved.monoAdded)) {
+                saved.monoAdded.forEach((event) => {
+                    if (event?.kind === 'income') appendLocalMonoIncome(year, month, event);
+                    else appendLocalMonoEvent(year, month, event);
+                });
             }
         } catch (e) {
             console.error("Помилка збереження на сервер:", e);
@@ -846,18 +1150,23 @@ async function flushSaveToServer(year, month) {
     function buildSavePayload(year, month) {
         const currentMonthData = appData[year]?.[month] || {};
         const jars = globalData.jars[currentUser.id] || [];
+        const debtsLoaded = Array.isArray(globalData.debts[currentUser.id]);
+        const suppliersLoaded = Array.isArray(globalData.suppliers[currentUser.id]);
+        const invoicesLoaded = Array.isArray(currentMonthData.invoices);
         return {
             userId: currentUser.id,
             year, month,
             incomes: currentMonthData.incomes || [],
             expenses: currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []) || [],
-            cogs: currentMonthData.cogs || { type: 'percent', value: 0 },
+            cogs: normalizeCogs(currentMonthData.cogs),
             payroll: currentMonthData.payroll || [],
             jars: jars.length > 0 ? jars : undefined,
-            debts: globalData.debts[currentUser.id] || [],
-            suppliers: globalData.suppliers[currentUser.id] || [],
-            invoices: currentMonthData.invoices || [],
-            is_initialized: currentMonthData.initialized ? 1 : 0
+            // undefined = not loaded yet (skip server wipe); [] = intentional clear
+            debts: debtsLoaded ? globalData.debts[currentUser.id] : undefined,
+            suppliers: suppliersLoaded ? globalData.suppliers[currentUser.id] : undefined,
+            invoices: invoicesLoaded ? currentMonthData.invoices : undefined,
+            is_initialized: currentMonthData.initialized ? 1 : 0,
+            monoSyncedAt: typeof currentMonthData.monoSyncedAt === 'number' ? currentMonthData.monoSyncedAt : undefined
         };
     }
 
@@ -908,7 +1217,19 @@ async function flushSaveToServer(year, month) {
     }
 
 function logout() {
+        try {
+            apiFetch('/api/auth/logout', {
+                method: 'POST',
+                keepalive: true,
+            }).catch(() => {});
+        } catch (e) {}
+
+        try { unloadAiChat(); } catch (e) {}
+
         currentUser = null;
+        stopMonoQueue();
+        stopMonoLiveWatch();
+        monobankLink = null;
         appData = {};
         availableProfiles = [];
         
@@ -919,6 +1240,10 @@ function logout() {
         try { localStorage.removeItem(VIEW_PERIOD_KEY); } catch (e) {}
         
         closeProfileSwitcher();
+        closeSkryniaSwitcher();
+        hideSkryniaHub();
+        try { closeYearTracks(); } catch (e) {}
+        try { closeFamilyTree(); } catch (e) {}
         
         const appContainer = document.getElementById('app-container');
         appContainer.style.opacity = '0';
@@ -936,13 +1261,8 @@ function logout() {
             "Буде видалено лише поточний профіль (особистий або бізнес) та його дані. Інші профілі на цю пошту залишаться. Цю дію неможливо скасувати. Ви впевнені?", 
             async () => {
                 try {
-                    const token = localStorage.getItem('budget_auth_token');
-                    const response = await fetch(`${API_URL}/api/user`, {
+                    const response = await apiFetch('/api/user', {
                         method: 'DELETE',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
                         body: JSON.stringify({ userId: currentUser.id })
                     });
                     
@@ -995,11 +1315,12 @@ function logout() {
                     copiedPayroll = JSON.parse(JSON.stringify(prev.data.payroll));
                     // Обнуляємо годинник і гроші для нового місяця, залишаємо лише суть
                     copiedPayroll.forEach(emp => {
-                        emp.hours = 0;
+                        if (getEmployeePayType(emp) !== 'fixed') emp.hours = 0;
                         emp.bonus = 0;
                         emp.penalty = 0;
                         emp.advance = 0;
                         emp.paid_part = 0;
+                        emp.paid_amount = 0;
                         emp.is_paid = false;
                     });
                 }
@@ -1034,7 +1355,7 @@ function logout() {
                 const copiedIncomes = JSON.parse(JSON.stringify(prev.data.incomes || [{ id: newId(), name: "Основний", amount: prev.data.usd || 0, currency: "USD" }])).map(inc => ({
                     ...inc,
                     id: newId()
-                }));
+                })).filter(inc => inc.source !== 'monobank');
                 copiedExpenses.forEach(cat => {
                     cat.id = newId();
                     (cat.items || []).forEach(item => { item.id = newId(); });
@@ -1042,19 +1363,21 @@ function logout() {
                 copiedPayroll.forEach(emp => { emp.id = newId(); });
                 
                 appData[currentYear][currentMonth] = {
+                    monoSyncedAt: 0,
                     initialized: true,
                     incomes: copiedIncomes,
                     expenses: copiedExpenses,
-                    cogs: JSON.parse(JSON.stringify(prev.data.cogs || {type:'percent', value:0})),
+                    cogs: normalizeCogs(prev.data.cogs),
                     payroll: copiedPayroll,
                     invoices: copiedInvoices
                 };
         } else {
             appData[currentYear][currentMonth] = {
+                monoSyncedAt: 0,
                 initialized: true,
                 incomes: [{id: newId(), name: "Основний", amount: 0, currency: "UAH"}],
                 expenses: createDefaultExpenseCategories(),
-                cogs: {type: 'percent', value: 0},
+                cogs: normalizeCogs(),
                 payroll: [],
                 invoices: []
             };
@@ -1072,7 +1395,7 @@ function logout() {
                 initialized: false,
                 incomes: [],
                 expenses: [],
-                cogs: { type: 'percent', value: 0 },
+                cogs: normalizeCogs(),
                 payroll: [],
                 invoices: []
             };
@@ -1124,6 +1447,7 @@ function logout() {
         persistViewedPeriod();
         renderCalendar();
         applyMonthData();
+        refreshMonobankStatus();
     }
 
     async function selectMonth(m, btnElement) {
@@ -1137,6 +1461,7 @@ function logout() {
         if (btnElement && typeof btnElement.scrollIntoView === 'function') {
             btnElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
+        refreshMonobankStatus();
     }
 
     function applyMonthData() {
@@ -1150,22 +1475,22 @@ function logout() {
 
             expenses = data.expenses || [];
 
-if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
-            if (data.cogs.businessHours === undefined) data.cogs.businessHours = 8;
+            data.cogs = normalizeCogs(data.cogs);
+            syncBusinessHoursInput(data.cogs);
             
             // Безпечна перевірка, бо старі інпути ми замінили на модуль Інвойсів
             const cogsValEl = document.getElementById('cogs-value');
             if (cogsValEl) {
                 cogsValEl.value = data.cogs.value || '';
-                const bHoursInput = document.getElementById('business-hours-input');
-                if(bHoursInput) bHoursInput.value = data.cogs.businessHours;
                 document.getElementById('cogs-type-display').innerText = data.cogs.type === 'percent' ? '%' : 'Фікс (₴)';
             }
             if (!appData[currentYear][currentMonth].payroll) appData[currentYear][currentMonth].payroll = [];
             renderPayroll();
             renderIncomes();
-            renderExpenses(); 
-            convertCurrency(); 
+            renderExpenses();
+            renderMonobankButton();
+            convertCurrency();
+            pullMonoLive(); 
         } else {
             document.getElementById('main-dashboard').classList.add('blurred');
             document.getElementById('init-overlay').classList.add('active');
@@ -1173,8 +1498,11 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             if(data.incomes) data.incomes = [];
             expenses = [];
             renderIncomes();
-            renderExpenses(); 
+            renderExpenses();
+            renderMonobankButton();
             currentIncomeUah = 0;
+            data.cogs = normalizeCogs(data.cogs);
+            syncBusinessHoursInput(data.cogs);
             updateAll();
             
             const prev = getLastInitializedData();
@@ -1220,9 +1548,9 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         return Object.entries(JAR_TYPE_LABELS).map(([value, label]) => ({ value, label }));
     }
 
-    function buildDropdownOptionsHtml(items, selectedValue, onclickBuilder) {
+    function buildDropdownOptionsHtml(items, selectedValue, actionBuilder) {
         return items.map(item => `
-            <div class="custom-dropdown-option ${selectedValue === item.value ? 'selected' : ''}" onclick="${onclickBuilder(item.value)}">
+            <div class="custom-dropdown-option ${selectedValue === item.value ? 'selected' : ''}" ${actionBuilder(item.value)}>
                 <span class="option-check">${selectedValue === item.value ? '✓' : ''}</span>
                 <span class="option-label">${escapeHtml(item.label)}</span>
             </div>
@@ -1233,10 +1561,10 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         const selectedLabel = JAR_TYPE_LABELS[selectedValue] || JAR_TYPE_LABELS.regular;
         const cls = sizeClass === 'compact' ? 'compact' : 'compact-xs';
         return `
-            <div class="custom-dropdown ${cls}" onclick="event.stopPropagation(); this.classList.toggle('open')">
+            <div class="custom-dropdown ${cls}" data-stop-propagation="1" data-toggle-open="1">
                 <div class="custom-dropdown-selected">${escapeHtml(selectedLabel)}</div>
                 <div class="custom-dropdown-options">
-                    ${buildDropdownOptionsHtml(getJarTypeOptions(), selectedValue, (val) => `selectJarTypeDropdown(event, ${jsId(jarId)}, '${val}')`)}
+                    ${buildDropdownOptionsHtml(getJarTypeOptions(), selectedValue, (val) => `data-action="selectJarTypeDropdown" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([jarId, val]))}"`)}
                 </div>
             </div>
         `;
@@ -1258,10 +1586,10 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
             ? (BUDGET_BUCKET_LABELS[selectedValue] || BUDGET_BUCKET_LABELS.unassigned)
             : 'Група';
         return `
-            <div class="custom-dropdown compact-xs bucket-dropdown" onclick="event.preventDefault(); event.stopPropagation(); this.classList.toggle('open')">
+            <div class="custom-dropdown compact-xs bucket-dropdown" data-stop-propagation="1" data-toggle-open="1">
                 <div class="custom-dropdown-selected">${escapeHtml(selectedLabel)}</div>
                 <div class="custom-dropdown-options">
-                    ${buildDropdownOptionsHtml(items, selectedValue || 'unassigned', (val) => `selectCategoryBucket(event, ${jsId(categoryId)}, '${val}')`)}
+                    ${buildDropdownOptionsHtml(items, selectedValue || 'unassigned', (val) => `data-action="selectCategoryBucket" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([categoryId, val]))}"`)}
                 </div>
             </div>
         `;
@@ -1271,7 +1599,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         const optionsEl = document.getElementById('new-jar-type-options');
         if (!optionsEl) return;
         const current = document.getElementById('new-jar-type-value')?.value || 'regular';
-        optionsEl.innerHTML = buildDropdownOptionsHtml(getJarTypeOptions(), current, (val) => `selectNewJarType(event, '${val}')`);
+        optionsEl.innerHTML = buildDropdownOptionsHtml(getJarTypeOptions(), current, (val) => `data-action="selectNewJarType" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([val]))}"`);
     }
 
     function selectNewJarType(event, value) {
@@ -1296,12 +1624,56 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         event?.target?.closest?.('.custom-dropdown')?.classList.remove('open');
     }
 
+    function recommendedSaveUah(incomeUah) {
+        return Math.max(0, (Number(incomeUah) || 0) * 0.2);
+    }
+
     function calc502030(incomeUah) {
+        const income = Math.max(0, Number(incomeUah) || 0);
         return {
-            needs: incomeUah * 0.5,
-            wants: incomeUah * 0.3,
-            savings: incomeUah * 0.2,
+            needs: income * 0.5,
+            wants: income * 0.3,
+            savings: recommendedSaveUah(income),
         };
+    }
+
+    function monthExpenseTotalUah(expenseList) {
+        const list = expenseList || expenses || [];
+        return list.reduce((sum, exp) => {
+            if (!exp?.items) return sum;
+            return sum + getCategoryTotal(exp);
+        }, 0);
+    }
+
+    function isEssentialCategory(cat) {
+        return Boolean(cat?.isEssential) && !cat?.isSavings;
+    }
+
+    function hasEssentialCategories(expenseList) {
+        const list = expenseList || expenses || [];
+        return list.some(isEssentialCategory);
+    }
+
+    function monthEssentialTotalUah(expenseList) {
+        const list = expenseList || expenses || [];
+        return list.reduce((sum, exp) => {
+            if (!isEssentialCategory(exp) || !exp.items) return sum;
+            return sum + getCategoryTotal(exp);
+        }, 0);
+    }
+
+    function monthWantsTotalUah(expenseList) {
+        const list = expenseList || expenses || [];
+        return list.reduce((sum, exp) => {
+            if (!exp.items || exp.isSavings || isEssentialCategory(exp)) return sum;
+            return sum + getCategoryTotal(exp);
+        }, 0);
+    }
+
+    /** Cushion base = this month's essential (обов'язкові) spend. No silent income fallback. */
+    function monthlyCushionBaseUah(_incomeUah, expenseList) {
+        if (!hasEssentialCategories(expenseList)) return 0;
+        return monthEssentialTotalUah(expenseList);
     }
 
     function getFinancialPlan() {
@@ -1336,10 +1708,8 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         const profile = { ...(currentUser.growthProfile || {}), financialPlan: fp };
         currentUser.growthProfile = profile;
         try {
-            const token = localStorage.getItem('budget_auth_token');
-            const response = await fetch(`${API_URL}/api/profile`, {
+            const response = await apiFetch('/api/profile', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ userId: currentUser.id, growthProfile: profile }),
             });
             if (!response.ok) {
@@ -1405,6 +1775,102 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
         const jars = globalData.jars[currentUser?.id] || [];
         return jars.filter(j => getJarType(j) === 'emergency').reduce((sum, j) => sum + (parseFloat(j.balance) || 0), 0);
     }
+
+    function listRunwayMonthsChrono() {
+        const now = new Date();
+        return listRunwayMonths(appData, now.getFullYear(), now.getMonth());
+    }
+
+    function monthPillowDepositUah(year, month) {
+        if (!currentUser) return 0;
+        const data = appData[year]?.[month];
+        if (!data) return 0;
+        const jars = (globalData.jars[currentUser.id] || []).filter((j) => getJarType(j) === 'emergency');
+        return sumEmergencyDeposits(data.expenses, jars);
+    }
+
+    function monthDebtPaidUah(year, month) {
+        const data = appData[year]?.[month];
+        if (!data) return 0;
+        return sumDebtPayments(data.expenses);
+    }
+
+    function monthDebtRemainingUah(year, month, todayStamp) {
+        if (!currentUser) return 0;
+        const debts = globalData.debts[currentUser.id] || [];
+        let uah = 0;
+        debts.forEach((d) => {
+            const remaining = debtRemainingInMonth(
+              d,
+              year,
+              month,
+              getDebtPaidThrough(d.id, year, month),
+              todayStamp,
+            );
+            if (d.currency === 'USD') {
+                if (currentExchangeRate > 0) uah += remaining * currentExchangeRate;
+            } else {
+                uah += remaining;
+            }
+        });
+        return uah;
+    }
+
+    function buildRunwaySnapshot() {
+        if (!currentUser || currentUser.account_type === 'business') {
+            return { points: [], pillowTarget: 0, pillowNow: 0, pillowAvg: 0, pillowNowLabel: '—', pillowForecast: { kind: 'stalled' }, hasDebts: false, debtNow: 0, debtAvg: 0, debtNowLabel: '—', debtForecast: { kind: 'stalled' }, incomeUah: 0, essentialsUah: 0, wantsUah: 0 };
+        }
+        const months = listRunwayMonthsChrono();
+        const pillowNow = getCushionBalanceUah();
+        const essentialsMarked = hasEssentialCategories();
+        const pillowTarget = essentialsMarked ? monthlyCushionBaseUah(currentIncomeUah) * 6 : 0;
+        const deposits = months.map((p) => monthPillowDepositUah(p.year, p.month));
+        const stocks = reconstructStock(pillowNow, deposits);
+        const payments = months.map((p) => monthDebtPaidUah(p.year, p.month));
+        const debts = globalData.debts[currentUser.id] || [];
+        const hasDebts = debts.length > 0;
+        const last = months[months.length - 1] || { year: currentYear, month: currentMonth };
+        const todayStamp = last.year * 100 + last.month;
+        const fromDebts = months.map((p) => monthDebtRemainingUah(p.year, p.month, todayStamp));
+        const debtNow = hasDebts ? monthDebtRemainingUah(last.year, last.month, todayStamp) : 0;
+        const fromPaydowns = reconstructDrawdown(debtNow, payments);
+        const remainings = months.map((_, i) => Math.max(fromDebts[i] ?? 0, fromPaydowns[i] ?? 0));
+        const points = months.map((p, i) => ({
+            year: p.year,
+            month: p.month,
+            label: runwayMonthLabel(p.year, p.month),
+            pillow: stocks[i] ?? 0,
+            debt: remainings[i] ?? 0,
+        }));
+        const pillowAvg = trailingAverage(deposits, 3);
+        const debtAvg = trailingAverage(payments, 3);
+        const pillowForecast = pillowTarget > 0
+            ? forecastFinish(Math.max(0, pillowTarget - pillowNow), pillowAvg, last.year, last.month)
+            : { kind: 'no-target' };
+        const debtForecast = hasDebts
+            ? forecastFinish(debtNow, debtAvg, last.year, last.month)
+            : { kind: 'done' };
+        return {
+            points,
+            pillowTarget,
+            pillowNow,
+            pillowAvg,
+            pillowNowLabel: pillowTarget > 0
+                ? `${formatMoney(pillowNow)} / ${formatMoney(pillowTarget)} ₴`
+                : `${formatMoney(pillowNow)} ₴`,
+            pillowForecast,
+            hasDebts,
+            debtNow,
+            debtAvg,
+            debtNowLabel: `${formatMoney(debtNow)} ₴`,
+            debtForecast,
+            incomeUah: currentIncomeUah || 0,
+            essentialsUah: monthEssentialTotalUah(),
+            wantsUah: monthWantsTotalUah(),
+        };
+    }
+
+    window.__getRunwaySnapshot = buildRunwaySnapshot;
 
     function getInvestmentJarsBalanceUah() {
         const jars = globalData.jars[currentUser?.id] || [];
@@ -1482,98 +1948,66 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
                 <div class="rule-502030-header">
                     <span class="rule-502030-title">Фінансовий план</span>
                 </div>
-                <div class="rule-502030-empty">Додайте доходи, щоб побачити рекомендації 50/30/20 та довгострокові цілі.</div>
+                <div class="rule-502030-empty">Додайте доходи, щоб побачити, скільки варто відкласти цього місяця.</div>
             `;
             return;
         }
 
-        const amounts = calc502030(income);
-        const actuals = get502030Actuals();
-        const amountKeys = ['needs', 'wants', 'savings'];
-
-        const rowsHtml = RULE_502030_ITEMS.map((item, i) => {
-            const rec = amounts[amountKeys[i]];
-            const act = actuals[item.bucket];
-            const delta = act - rec;
-            const deltaHtml = act > 0
-                ? `<div class="fp-compare-row"><span style="color:var(--text-tertiary)">факт: ${formatMoney(act)} ₴</span><span class="${delta > 0 ? 'fp-over' : 'fp-ok'}">${delta > 0 ? '+' : ''}${formatMoney(delta)}</span></div>`
-                : '';
-            return `
-            <div class="rule-502030-row">
-                <span class="rule-502030-row-label">
-                    <span class="rule-502030-dot" style="background: ${item.color};"></span>
-                    <span>${item.label} (${item.pct}%)</span>
-                </span>
-                <span class="rule-502030-row-amount tabular">${formatMoney(rec)} ₴</span>
-            </div>${deltaHtml}`;
-        }).join('');
-
-        const detailsHtml = RULE_502030_ITEMS.map(item => `
-            <div class="rule-502030-detail-item">
-                <strong>${item.pct}% — ${item.title}:</strong> ${item.desc}
-            </div>
-        `).join('');
-        const unassignedNoteHtml = actuals.unassigned > 0
-            ? `<div class="rule-502030-detail-item" style="margin-top:8px;"><strong>Без категорії:</strong> ${formatMoney(actuals.unassigned)} ₴ не враховано у 50/30/20. Оберіть для цих витрат потреби, бажання або збереження.</div>`
-            : '';
-
-        const monthlyNeedsForCushion = actuals.needs > 0 ? actuals.needs : amounts.needs;
-        const cushionBasisLabel = actuals.needs > 0
-            ? `6 × фактичні потреби (${formatMoney(actuals.needs)} ₴/міс)`
-            : `6 × рекомендовані 50% (${formatMoney(amounts.needs)} ₴/міс)`;
-        const cushionTarget = monthlyNeedsForCushion * 6;
+        const saveRec = recommendedSaveUah(income);
+        const essentialsMarked = hasEssentialCategories();
+        const monthlyNeedsForCushion = monthlyCushionBaseUah(income);
+        const cushionTarget = essentialsMarked ? monthlyNeedsForCushion * 6 : 0;
         const cushionActual = getCushionBalanceUah();
         const cushionPct = cushionTarget > 0 ? (cushionActual / cushionTarget) * 100 : 0;
+        const cushionBasisLabel = essentialsMarked
+            ? `6 × обов'язкові витрати цього місяця (${formatMoney(monthlyNeedsForCushion)} ₴/міс)`
+            : `Позначте обов'язкові витрати в категоріях — тоді з'явиться ціль подушки (6 місяців).`;
+        const cushionTargetLabel = essentialsMarked ? `${formatMoney(cushionTarget)} ₴` : '—';
 
         const capitalTargetUsd = (fp.desiredMonthlyUsd || 0) * 12 * 25;
         const capitalCurrentUsd = (fp.brokerBalanceUsd || 0) + uahToUsd(getInvestmentJarsBalanceUah());
         const capitalPct = capitalTargetUsd > 0 ? (capitalCurrentUsd / capitalTargetUsd) * 100 : 0;
 
-        const monthlyInvestUsd = uahToUsd(amounts.savings);
+        const monthlyInvestUsd = uahToUsd(saveRec);
         const yearsToCapital = calcYearsToCapital(capitalTargetUsd, capitalCurrentUsd, monthlyInvestUsd, fp.returnRatePct);
 
         block.innerHTML = `
             <div class="rule-502030-header">
-                <span class="rule-502030-title">Рекомендація 50/30/20</span>
+                <span class="rule-502030-title">Фінансовий план</span>
                 <div style="display:flex;gap:6px;">
-                    <button type="button" class="rule-502030-info-btn" onclick="toggleFinancialPlanSettings(event)" title="Налаштування">⚙</button>
-                    <button type="button" class="rule-502030-info-btn" onclick="toggleRule502030Details(event)" title="Пояснення">i</button>
+                    <button type="button" class="rule-502030-info-btn" data-action="toggleFinancialPlanSettings" data-pass-event="1" title="Налаштування">⚙</button>
                 </div>
             </div>
-            <div class="rule-502030-bar">
-                <div class="rule-502030-bar-seg" style="width: 50%; background: var(--sys-blue);"></div>
-                <div class="rule-502030-bar-seg" style="width: 30%; background: #ff9f0a;"></div>
-                <div class="rule-502030-bar-seg" style="width: 20%; background: var(--sys-green);"></div>
+            <div class="rule-502030-row">
+                <span class="rule-502030-row-label">Рекомендовано відкласти цього місяця</span>
+                <span class="rule-502030-row-amount tabular">${formatMoney(saveRec)} ₴</span>
             </div>
-            ${rowsHtml}
-            ${unassignedNoteHtml}
-            <div id="rule-502030-details" class="rule-502030-details">${detailsHtml}</div>
 
             <div id="fp-settings-panel" class="rule-502030-details">
                 <div class="fp-input-row">
                     <div class="fp-input-wrap">
                         <label>Бажані витрати на місяць ($)</label>
-                        <input type="number" value="${fp.desiredMonthlyUsd || ''}" onchange="updateFinancialPlanField('desiredMonthlyUsd', this.value)">
+                        <input type="number" value="${fp.desiredMonthlyUsd || ''}" data-change-action="updateFinancialPlanField" data-args="${escapeAttr(JSON.stringify(['desiredMonthlyUsd']))}">
                     </div>
                     <div class="fp-input-wrap">
                         <label>Брокерський рахунок ($)</label>
-                        <input type="number" value="${fp.brokerBalanceUsd || ''}" onchange="updateFinancialPlanField('brokerBalanceUsd', this.value)">
+                        <input type="number" value="${fp.brokerBalanceUsd || ''}" data-change-action="updateFinancialPlanField" data-args="${escapeAttr(JSON.stringify(['brokerBalanceUsd']))}">
                     </div>
                     <div class="fp-input-wrap">
                         <label>Очікувана дохідність (%/рік)</label>
-                        <input type="number" value="${fp.returnRatePct || 7}" onchange="updateFinancialPlanField('returnRatePct', this.value)">
+                        <input type="number" value="${fp.returnRatePct || 7}" data-change-action="updateFinancialPlanField" data-args="${escapeAttr(JSON.stringify(['returnRatePct']))}">
                     </div>
                 </div>
                 <div class="rule-502030-detail-item"><strong>Правило ×25:</strong> ${formatMoney(fp.desiredMonthlyUsd || 0)} × 12 × 25 = ${formatMoney(capitalTargetUsd)} $ цільовий капітал</div>
             </div>
 
             <div class="fp-section">
-                <div class="fp-section-title">Подушка безпеки (6 міс. потреб)</div>
+                <div class="fp-section-title">Подушка безпеки (6 міс. обов'язкових витрат)</div>
                 <div class="fp-stat-row">
                     <span class="fp-stat-label">Накопичено / ціль</span>
-                    <span class="fp-stat-value tabular">${formatMoney(cushionActual)} / ${formatMoney(cushionTarget)} ₴</span>
+                    <span class="fp-stat-value tabular">${formatMoney(cushionActual)} / ${cushionTargetLabel}</span>
                 </div>
-                ${fpProgressBar(cushionPct, 'var(--sys-blue)')}
+                ${essentialsMarked ? fpProgressBar(cushionPct, 'var(--sys-blue)') : ''}
                 <div class="rule-502030-detail-item" style="margin:0;">${cushionBasisLabel}</div>
                 <div class="rule-502030-detail-item" style="margin:0;"><strong>Недоторканна:</strong> конверти типу «Подушка безпеки»</div>
             </div>
@@ -1586,7 +2020,7 @@ if (!data.cogs) data.cogs = { type: 'percent', value: 0, businessHours: 8 };
                 </div>
                 ${fpProgressBar(capitalPct, 'var(--sys-green)')}
                 <div class="fp-stat-row">
-                    <span class="fp-stat-label">При ${formatMoney(monthlyInvestUsd)} $/міс (20%)</span>
+                    <span class="fp-stat-label">При ${formatMoney(monthlyInvestUsd)} $/міс (рекомендовано відкласти)</span>
                     <span class="fp-stat-value">${formatYearsLabel(yearsToCapital)}</span>
                 </div>
                 ${currentExchangeRate > 0 ? `<div class="fp-stat-row"><span class="fp-stat-label">≈ в ₴</span><span class="fp-stat-value tabular">${formatMoney(usdToUah(capitalTargetUsd))} ₴</span></div>` : ''}
@@ -1672,6 +2106,32 @@ function renderIncomes() {
         appData[currentYear][currentMonth].incomes = incomes;
         
         incomes.forEach(inc => {
+            if (inc.source === 'monobank') {
+                if (!inc.currency) inc.currency = 'UAH';
+                const row = document.createElement('div');
+                row.className = 'expense-item income-mono';
+                row.style = 'padding: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;';
+                row.innerHTML = `
+                    <div class="income-mono-main">
+                        <span class="mono-mark" role="img" aria-label="Монобанк">m</span>
+                        <input type="text" class="input-name income-name" value="${escapeHtml(inc.name || '')}" readonly tabindex="-1">
+                    </div>
+                    <input type="text" class="input-name tabular income-amount" value="${escapeHtml(formatMoney(parseFloat(inc.amount) || 0))}" readonly tabindex="-1" style="text-align: right; width: 120px; flex-shrink: 0;">
+                    <span class="income-currency-lock">UAH</span>
+                    <button type="button" class="btn-delete income-delete" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                `;
+                const delBtn = row.querySelector('.income-delete');
+                if (delBtn) {
+                    delBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteIncome(inc.id);
+                    });
+                }
+                container.appendChild(row);
+                return;
+            }
             if (!inc.currency) inc.currency = 'UAH';
             const div = document.createElement('div');
             div.className = 'expense-item'; 
@@ -1684,11 +2144,11 @@ if (isBiz) {
                         <input type="text" class="input-name income-name" value="${escapeHtml(inc.name || '')}" placeholder="Назва рахунку (напр. ФОП)" style="flex: 1; height: 48px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0 16px; font-size: 16px; font-weight: 600; color: white; outline: none; transition: 0.3s;">
                         
                         <div style="display: flex; gap: 8px; flex-shrink: 0;">
-                            <div class="custom-dropdown income-currency-dd" style="width: 85px;">
+                            <div class="custom-dropdown income-currency-dd" data-stop-propagation="1" data-toggle-open="1" style="width: 85px;">
                                 <div class="custom-dropdown-selected" style="height: 48px; padding: 0 28px 0 12px; border-radius: 14px; font-size: 14px;">${escapeHtml(inc.currency)}</div>
                                 <div class="custom-dropdown-options" style="min-width: 85px;">
-                                    <div class="custom-dropdown-option" data-currency="UAH">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
-                                    <div class="custom-dropdown-option" data-currency="USD">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
+                                    <div class="custom-dropdown-option ${inc.currency === 'UAH' ? 'selected' : ''}" data-action="selectIncomeCurrency" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([inc.id, 'UAH']))}"><span class="option-check">${inc.currency === 'UAH' ? '✓' : ''}</span><span class="option-label">UAH</span></div>
+                                    <div class="custom-dropdown-option ${inc.currency === 'USD' ? 'selected' : ''}" data-action="selectIncomeCurrency" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([inc.id, 'USD']))}"><span class="option-check">${inc.currency === 'USD' ? '✓' : ''}</span><span class="option-label">USD</span></div>
                                 </div>
                             </div>
                             <button type="button" class="btn-delete income-delete" style="width: 48px; height: 48px; border-radius: 14px;">
@@ -1718,11 +2178,11 @@ if (isBiz) {
                     <input type="text" class="input-name income-name" value="${escapeHtml(inc.name || '')}" placeholder="Назва" style="flex: 1; min-width: 100px;">
                     <input type="number" class="input-name tabular income-amount" value="${inc.amount || ''}" placeholder="0" style="text-align: right; margin: 0 8px; width: 100px;">
                     
-                    <div class="custom-dropdown income-currency-dd" style="width: 90px; flex-shrink: 0;">
+                    <div class="custom-dropdown income-currency-dd" data-stop-propagation="1" data-toggle-open="1" style="width: 90px; flex-shrink: 0;">
                         <div class="custom-dropdown-selected" style="height: 48px; padding: 0 30px 0 12px; border-radius: 14px; font-size: 14px;">${escapeHtml(inc.currency)}</div>
                         <div class="custom-dropdown-options" style="min-width: 90px;">
-                            <div class="custom-dropdown-option" data-currency="UAH">UAH ${inc.currency === 'UAH' ? '✓' : ''}</div>
-                            <div class="custom-dropdown-option" data-currency="USD">USD ${inc.currency === 'USD' ? '✓' : ''}</div>
+                            <div class="custom-dropdown-option ${inc.currency === 'UAH' ? 'selected' : ''}" data-action="selectIncomeCurrency" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([inc.id, 'UAH']))}"><span class="option-check">${inc.currency === 'UAH' ? '✓' : ''}</span><span class="option-label">UAH</span></div>
+                            <div class="custom-dropdown-option ${inc.currency === 'USD' ? 'selected' : ''}" data-action="selectIncomeCurrency" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([inc.id, 'USD']))}"><span class="option-check">${inc.currency === 'USD' ? '✓' : ''}</span><span class="option-label">USD</span></div>
                         </div>
                     </div>
                     <button type="button" class="btn-delete income-delete" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px;">
@@ -1735,26 +2195,6 @@ if (isBiz) {
             bindIncomeField(div.querySelector('.income-name'), inc, 'name');
             bindIncomeField(div.querySelector('.income-amount'), inc, 'amount');
             bindIncomeField(div.querySelector('.income-actual'), inc, 'actual_balance');
-
-            const currencyDd = div.querySelector('.income-currency-dd');
-            if (currencyDd) {
-                currencyDd.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    currencyDd.classList.toggle('open');
-                });
-                currencyDd.querySelectorAll('.custom-dropdown-option').forEach((opt) => {
-                    opt.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const code = opt.getAttribute('data-currency');
-                        if (!code) return;
-                        inc.currency = code;
-                        currencyDd.classList.remove('open');
-                        saveData();
-                        convertCurrency();
-                        renderIncomes();
-                    });
-                });
-            }
 
             const delBtn = div.querySelector('.income-delete');
             if (delBtn) {
@@ -1780,8 +2220,8 @@ if (isBiz) {
         const list = ensureIncomeIds(appData[currentYear]?.[currentMonth]?.incomes || []);
         if (appData[currentYear]?.[currentMonth]) appData[currentYear][currentMonth].incomes = list;
         const inc = list.find(i => sameId(i.id, id));
-        if (!inc) {
-            console.warn('updateIncome: income not found', id, field, value);
+        if (!inc || inc.source === 'monobank') {
+            if (!inc) console.warn('updateIncome: income not found', id, field, value);
             return;
         }
         inc[field] = (field === 'amount' || field === 'actual_balance') ? parseFloat(value) || 0 : value;
@@ -1790,11 +2230,65 @@ if (isBiz) {
         if (field === 'currency') renderIncomes();
     }
 
+    function selectIncomeCurrency(event, incomeId, code) {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        const list = appData[currentYear]?.[currentMonth]?.incomes || [];
+        const inc = list.find(i => sameId(i.id, incomeId));
+        if (!inc || inc.source === 'monobank' || !code) return;
+        inc.currency = code;
+        event?.target?.closest?.('.custom-dropdown')?.classList.remove('open');
+        saveData();
+        convertCurrency();
+        renderIncomes();
+    }
+
+    function normalizeCogs(cogs) {
+        const src = cogs && typeof cogs === 'object' ? cogs : {};
+        const hours = parseFloat(src.businessHours);
+        return {
+            type: src.type === 'fixed' ? 'fixed' : 'percent',
+            value: parseFloat(src.value) || 0,
+            businessHours: Number.isFinite(hours) && hours > 0 ? hours : 8,
+        };
+    }
+
+    function getHoursPerDay(cogs) {
+        const hours = parseFloat(cogs?.businessHours);
+        return Number.isFinite(hours) && hours > 0 ? hours : 8;
+    }
+
+    function getRateWorkingDays() {
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        return isBiz
+            ? countDaysInMonth(currentYear, currentMonth)
+            : countWeekdaysInMonth(currentYear, currentMonth);
+    }
+
+    function syncBusinessHoursInput(cogs) {
+        const input = document.getElementById('business-hours-input');
+        if (input) input.value = String(getHoursPerDay(cogs));
+    }
+
+    function updateRateCalcHint(workingDays, hoursPerDay) {
+        const hint = document.getElementById('rate-calc-hint');
+        if (!hint) return;
+        const days = workingDays || getRateWorkingDays();
+        const hours = hoursPerDay || getHoursPerDay(appData[currentYear]?.[currentMonth]?.cogs);
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        if (isBiz) {
+            hint.innerText = `День = обіг ÷ ${days} дн. місяця (бізнес без вихідних).\nГодина = обіг ÷ (${days} × ${hours}).`;
+        } else {
+            hint.innerText = `День = дохід ÷ ${days} будніх (пн–пт цього місяця).\nГодина = дохід ÷ (${days} × ${hours}).`;
+        }
+    }
+
     function updateBusinessHours(val) {
         if (!appData[currentYear][currentMonth].cogs) {
-            appData[currentYear][currentMonth].cogs = { type: 'percent', value: 0, businessHours: 8 };
+            appData[currentYear][currentMonth].cogs = normalizeCogs();
         }
-        appData[currentYear][currentMonth].cogs.businessHours = parseFloat(val) || 0;
+        const hours = parseFloat(val);
+        if (!Number.isFinite(hours) || hours <= 0) return;
+        appData[currentYear][currentMonth].cogs.businessHours = hours;
         saveData();
         updateAll();
     }
@@ -1846,7 +2340,7 @@ function convertCurrency() {
     }
 
     function updateCOGS(val) {
-        if (!appData[currentYear][currentMonth].cogs) appData[currentYear][currentMonth].cogs = { type: 'percent', value: 0 };
+        if (!appData[currentYear][currentMonth].cogs) appData[currentYear][currentMonth].cogs = normalizeCogs();
         appData[currentYear][currentMonth].cogs.value = parseFloat(val) || 0;
         saveData();
         updateAll();
@@ -1854,7 +2348,7 @@ function convertCurrency() {
 
     function selectCOGSType(event, type) {
         if(event) event.stopPropagation();
-        if (!appData[currentYear][currentMonth].cogs) appData[currentYear][currentMonth].cogs = { type: 'percent', value: 0 };
+        if (!appData[currentYear][currentMonth].cogs) appData[currentYear][currentMonth].cogs = normalizeCogs();
         appData[currentYear][currentMonth].cogs.type = type;
         document.getElementById('cogs-type-display').innerText = type === 'percent' ? '%' : 'Фікс (₴)';
         document.getElementById('cogs-type-display').closest('.custom-dropdown').classList.remove('open');
@@ -1866,18 +2360,68 @@ function convertCurrency() {
     // 7. РАСХОДЫ И МАТЕМАТИКА
     // ==========================================
     function getCategoryTotal(category) {
-        return category.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        return (category.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    }
+
+    function categoryLimitNumber(category) {
+        const limit = Number(category?.limit);
+        return Number.isFinite(limit) && limit > 0 ? limit : 0;
+    }
+
+    function categoryIsOverLimit(category) {
+        const limit = categoryLimitNumber(category);
+        return limit > 0 && getCategoryTotal(category) > limit;
+    }
+
+    function syncCategoryLimitState(category) {
+        if (!category) return;
+        const card = document.querySelector(`.expense-card-pro[data-category-id="${CSS.escape(String(category.id))}"]`);
+        if (!card) return;
+        const over = categoryIsOverLimit(category);
+        card.classList.toggle('is-over-limit', over);
+        let note = card.querySelector('.expense-limit-over');
+        if (over && !note) {
+            note = document.createElement('div');
+            note.className = 'expense-limit-over';
+            note.textContent = 'Вийшли за ліміт';
+            card.querySelector('.expense-pro-title-group')?.append(note);
+        } else if (!over && note) {
+            note.remove();
+        }
+    }
+
+    function getEmployeePayType(emp) {
+        return emp && emp.pay_type === 'fixed' ? 'fixed' : 'hourly';
+    }
+
+    function getEmployeeAccrued(emp) {
+        if (!emp) return 0;
+        const bonus = parseFloat(emp.bonus) || 0;
+        const penalty = parseFloat(emp.penalty) || 0;
+        const rate = parseFloat(emp.rate) || 0;
+        const base = getEmployeePayType(emp) === 'fixed'
+            ? rate
+            : rate * (parseFloat(emp.hours) || 0);
+        return base + bonus - penalty;
+    }
+
+    function getEmployeeAlreadyPaid(emp) {
+        if (!emp) return 0;
+        if (emp.paid_amount !== undefined && emp.paid_amount !== null && emp.paid_amount !== '') {
+            return parseFloat(emp.paid_amount) || 0;
+        }
+        return (parseFloat(emp.advance) || 0) + (parseFloat(emp.paid_part) || 0);
+    }
+
+    function getEmployeePaidCash(emp) {
+        if (!emp) return 0;
+        const accrued = getEmployeeAccrued(emp);
+        return emp.is_paid ? accrued : getEmployeeAlreadyPaid(emp);
     }
 
     function getPayrollAccruedFromList(payroll) {
         if (!Array.isArray(payroll)) return 0;
-        return payroll.reduce((sum, emp) => {
-            const rate = parseFloat(emp.rate) || 0;
-            const hours = parseFloat(emp.hours) || 0;
-            const bonus = parseFloat(emp.bonus) || 0;
-            const penalty = parseFloat(emp.penalty) || 0;
-            return sum + (rate * hours) + bonus - penalty;
-        }, 0);
+        return payroll.reduce((sum, emp) => sum + getEmployeeAccrued(emp), 0);
     }
 
     function getMonthIncomeUahFromData(data) {
@@ -1969,7 +2513,7 @@ function convertCurrency() {
                 const diff = Math.abs(((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1);
                 diffText = `+${diff}%`;
             }
-            trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+            trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↑ ${diffText}</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -1980,7 +2524,7 @@ function convertCurrency() {
                 const diff = Math.abs(((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1);
                 diffText = `-${diff}%`;
             }
-            trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+            trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↓ ${diffText}</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -2056,14 +2600,14 @@ function convertCurrency() {
             colorMain = '#ff453a'; 
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-up" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; cursor:pointer;">
+            trendHtml = `<div class="trend-badge trend-up" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; cursor:pointer;">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#ff453a';
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-down" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; cursor:pointer;">
+            trendHtml = `<div class="trend-badge trend-down" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; cursor:pointer;">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -2149,14 +2693,14 @@ function getHistoricalIncome(year, month) {
             colorMain = '#32d74b'; 
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+            trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#32d74b';
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
+            trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
@@ -2262,13 +2806,13 @@ function getHistoricalIncome(year, month) {
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
             if (isSavings) {
-                trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="color: #32d74b; background: rgba(50, 215, 75, 0.15);">
+                trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="color: #32d74b; background: rgba(50, 215, 75, 0.15);">
                                 <span class="trend-main-text">↑ +${diff}%</span>
                                 <span class="trend-hover-text">${diffMoneyText}</span>
                              </div>`;
                 colorMain = '#32d74b';
             } else {
-                trendHtml = `<div class="trend-badge trend-up" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();">
+                trendHtml = `<div class="trend-badge trend-up" data-stop-propagation="1" data-toggle-expanded="1">
                                 <span class="trend-main-text">↑ +${diff}%</span>
                                 <span class="trend-hover-text">${diffMoneyText}</span>
                              </div>`;
@@ -2277,13 +2821,13 @@ function getHistoricalIncome(year, month) {
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
             if (isSavings) {
-                trendHtml = `<div class="trend-badge" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();" style="color: #ff453a; background: rgba(255, 69, 58, 0.15);">
+                trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="color: #ff453a; background: rgba(255, 69, 58, 0.15);">
                                 <span class="trend-main-text">↓ -${diff}%</span>
                                 <span class="trend-hover-text">${diffMoneyText}</span>
                              </div>`;
                 colorMain = '#ff453a';
             } else {
-                trendHtml = `<div class="trend-badge trend-down" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();">
+                trendHtml = `<div class="trend-badge trend-down" data-stop-propagation="1" data-toggle-expanded="1">
                                 <span class="trend-main-text">↓ -${diff}%</span>
                                 <span class="trend-hover-text">${diffMoneyText}</span>
                              </div>`;
@@ -2364,18 +2908,37 @@ function getHistoricalIncome(year, month) {
 
             const isSavingsClass = exp.isSavings ? 'color: var(--sys-green);' : '';
             const paidCardClass = allItemsPaid ? 'paid-card' : '';
-            const bucket = getCategoryBudgetBucket(exp);
-            const bucketSelectHtml = !isBiz ? buildBucketDropdownHtml(exp.id, bucket, !!exp.isSavings) : '';
+            const essentialCheckHtml = (!isBiz && !exp.isSavings)
+                ? `<label class="expense-essential-check" data-stop-propagation="1">
+                        <input type="checkbox" ${exp.isEssential ? 'checked' : ''} data-change-action="toggleCategoryEssential" data-args="${escapeAttr(JSON.stringify([exp.id]))}">
+                        <span class="expense-essential-box" aria-hidden="true">
+                            <svg viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </span>
+                        <span class="expense-essential-label">Обов'язкові</span>
+                   </label>`
+                : '';
 
+            const overLimit = categoryIsOverLimit(exp);
+            const limitValue = categoryLimitNumber(exp);
             const div = document.createElement('div');
-            div.className = `expense-card-pro ${rankClass} ${paidCardClass}`;
+            div.className = `expense-card-pro ${rankClass} ${paidCardClass}${overLimit ? ' is-over-limit' : ''}`;
+            div.dataset.categoryId = String(exp.id);
             div.innerHTML = `
-                <div class="expense-pro-main" onclick="handleExpenseCardClick(event, ${jsId(exp.id)})" style="cursor: pointer; position: relative;">
+                <div class="expense-pro-main" data-action="handleExpenseCardClick" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([exp.id]))}" style="cursor: pointer; position: relative;">
                     <div class="expense-pro-header">
                         <div class="expense-pro-title-group">
                             ${badgeHtml}
-                            <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" placeholder="Назва категорії" oninput="updateCategoryName(${jsId(exp.id)}, this.value)" onclick="event.stopPropagation()" style="${isSavingsClass}">
-                            ${bucketSelectHtml}
+                            <div class="expense-pro-name-row">
+                                ${exp.source === 'monobank' ? '<span class="mono-mark" role="img" aria-label="Монобанк">m</span>' : ''}
+                                <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" placeholder="Назва категорії" data-input-action="updateCategoryName" data-args="${escapeAttr(JSON.stringify([exp.id]))}" data-stop-propagation="1" style="${isSavingsClass}">
+                            </div>
+                            ${essentialCheckHtml}
+                            <label class="expense-limit" data-stop-propagation="1">
+                                <span>Ліміт</span>
+                                <input class="expense-limit-input" type="number" min="0" step="1" inputmode="decimal" value="${limitValue ? limitValue : ''}" placeholder="Без ліміту" data-input-action="previewCategoryLimit" data-change-action="updateCategoryLimit" data-args="${escapeAttr(JSON.stringify([exp.id]))}" data-stop-propagation="1">
+                                <span>₴</span>
+                            </label>
+                            ${overLimit ? '<div class="expense-limit-over">Вийшли за ліміт</div>' : ''}
                         </div>
                         <div class="expense-pro-trend">
                             ${sparkData.trendHtml}
@@ -2396,8 +2959,8 @@ function getHistoricalIncome(year, month) {
                 </div>
                 
                 <div class="expense-pro-actions">
-                    <button class="btn-pro-action btn-pro-add" onclick="openModal(${jsId(exp.id)})" title="Додати статті">+</button>
-                    <button class="btn-pro-action btn-pro-del" onclick="deleteCategory(${jsId(exp.id)})" title="Видалити категорію">
+                    <button class="btn-pro-action btn-pro-add" data-action="openModal" data-args="${escapeAttr(JSON.stringify([exp.id]))}" title="Додати статті">+</button>
+                    <button class="btn-pro-action btn-pro-del" data-action="deleteCategory" data-args="${escapeAttr(JSON.stringify([exp.id]))}" title="Видалити категорію">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                     </button>
                 </div>
@@ -2419,13 +2982,40 @@ function getHistoricalIncome(year, month) {
         if (cat) { cat.name = val; saveData(); updateChart(); renderFinancialPlanBlock(); }
     }
 
+    function limitFromInput(val) {
+        const num = parseFloat(String(val ?? '').replace(',', '.'));
+        return Number.isFinite(num) && num > 0 ? num : 0;
+    }
+
+    function previewCategoryLimit(id, val) {
+        const cat = findExpenseById(id);
+        if (!cat) return;
+        syncCategoryLimitState({ ...cat, limit: limitFromInput(val) });
+    }
+
+    function updateCategoryLimit(id, val) {
+        const cat = findExpenseById(id);
+        if (!cat) return;
+        cat.limit = limitFromInput(val);
+        saveData();
+        syncCategoryLimitState(cat);
+    }
+
+    function toggleCategoryEssential(categoryId, checked) {
+        const cat = findExpenseById(categoryId);
+        if (!cat || cat.isSavings) return;
+        cat.isEssential = Boolean(checked);
+        saveData();
+        renderFinancialPlanBlock();
+    }
+
     function handleExpenseCardClick(event, categoryId) {
         if (event.target.closest('.custom-dropdown, .expense-pro-input, button, a, input, select, textarea')) return;
         openModal(categoryId);
     }
 
     function addCategory() {
-        expenses.push({ id: newId(), name: "", items: [] });
+        expenses.push({ id: newId(), name: "", items: [], isEssential: false });
         renderExpenses(); saveData(); updateAll();
     }
 
@@ -2467,7 +3057,7 @@ function getHistoricalIncome(year, month) {
             const badgeHtml = badgeText ? `<div class="badge-wrapper" style="display:flex; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge ${badgeClass}">${badgeText}</span></div>` : `<div class="badge-wrapper" style="display:none; justify-content: flex-end; margin-bottom: -4px;"><span class="top-subitem-badge"></span></div>`;
             const isChecked = item.isPaid ? 'checked' : '';
             const paidClass = item.isPaid ? 'paid-amount' : '';
-            const checkboxHtml = `<div class="check-container ${isChecked}" onclick="togglePaidStatus(${jsId(item.id)})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
+            const checkboxHtml = `<div class="check-container ${isChecked}" data-action="togglePaidStatus" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
 
             const div = document.createElement('div');
             div.className = `sub-item ${rankClass}`;
@@ -2475,9 +3065,9 @@ function getHistoricalIncome(year, month) {
                 ${badgeHtml}
                 <div class="sub-item-row">
                     ${checkboxHtml}
-                    <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" placeholder="Назва статті" oninput="updateSubItemName(${jsId(item.id)}, this.value)">
-                    <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" oninput="updateSubItemAmount(${jsId(item.id)}, this.value)">
-                    <button class="btn-sub-delete" onclick="deleteSubItem(${jsId(item.id)})"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                    <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" placeholder="Назва статті" data-input-action="updateSubItemName" data-args="${escapeAttr(JSON.stringify([item.id]))}">
+                    <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" data-input-action="updateSubItemAmount" data-args="${escapeAttr(JSON.stringify([item.id]))}">
+                    <button class="btn-sub-delete" data-action="deleteSubItem" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
             `;
             list.appendChild(div);
@@ -2524,33 +3114,57 @@ function getHistoricalIncome(year, month) {
 
     function deleteCategory(id) {
         showConfirm("Видалити категорію", "Видалити цю категорію з усіма витратами?", () => {
-            const category = findExpenseById(id);
-            let debtsToSync = new Set();
-            
-            if (category) {
-                category.items.forEach(item => {
-                    if (category.isSavings && item.envelopeId) {
-                        const jar = globalData.jars[currentUser.id].find(j => j.id == item.envelopeId);
-                        if (jar) jar.balance -= (item.amount || 0);
-                    }
-                    if (item.debtId) debtsToSync.add(item.debtId);
-                });
-            }
-            
-            expenses = expenses.filter(e => !sameId(e.id, id));
-            
-            if (appData[currentYear] && appData[currentYear][currentMonth]) {
-                appData[currentYear][currentMonth].expenses = expenses;
-            }
-            
-            debtsToSync.forEach(debtId => syncGlobalDebtBalance(debtId));
+            const index = expenses.findIndex(e => sameId(e.id, id));
+            const category = index >= 0 ? expenses[index] : null;
+            if (!category) return;
+            const snapshot = JSON.parse(JSON.stringify(category));
+            const year = currentYear;
+            const month = currentMonth;
+            const jarDeltas = [];
+            const debtIds = new Set();
 
-            renderExpenses(); 
-            updateAll(); 
-            updateSavingsDisplay(); 
+            (category.items || []).forEach(item => {
+                if (category.isSavings && item.envelopeId && currentUser) {
+                    const jar = (globalData.jars[currentUser.id] || []).find(j => j.id == item.envelopeId);
+                    if (jar) {
+                        const amount = parseFloat(item.amount) || 0;
+                        jar.balance -= amount;
+                        jarDeltas.push({ jarId: jar.id, amount });
+                    }
+                }
+                if (item.debtId) debtIds.add(item.debtId);
+            });
+
+            expenses = expenses.filter(e => !sameId(e.id, id));
+            if (appData[year] && appData[year][month]) appData[year][month].expenses = expenses;
+
+            debtIds.forEach(debtId => syncGlobalDebtBalance(debtId));
+            renderExpenses();
+            updateAll();
+            updateSavingsDisplay();
             updateDebtsDisplay();
-            
-            saveDataToServer(); 
+            saveDataToServer();
+
+            showUndo('Категорію видалено', () => {
+                restoreExpenseSnapshot(year, month, (list) => {
+                    list.splice(Math.min(index, list.length), 0, snapshot);
+                });
+                if (currentUser) {
+                    jarDeltas.forEach(({ jarId, amount }) => {
+                        const jar = (globalData.jars[currentUser.id] || []).find(j => j.id == jarId);
+                        if (jar) jar.balance += amount;
+                    });
+                }
+                debtIds.forEach(debtId => syncGlobalDebtBalance(debtId));
+                if (year === currentYear && month === currentMonth) {
+                    renderExpenses();
+                    updateAll();
+                    updateSavingsDisplay();
+                    updateDebtsDisplay();
+                    if (sameId(activeCategoryId, snapshot.id)) renderModalItems();
+                }
+                persistUndoMonth(year, month);
+            });
         });
     }
 
@@ -2581,6 +3195,7 @@ function getHistoricalIncome(year, month) {
             }
             document.getElementById('modal-category-total').innerText = formatMoney(getCategoryTotal(category));
             updateTopSubItemBadges(category);
+            syncCategoryLimitState(category);
             saveData();
         }
     }
@@ -2588,26 +3203,123 @@ function getHistoricalIncome(year, month) {
     function deleteSubItem(subId) {
         const category = findExpenseById(activeCategoryId);
         if (!category) return;
-        const item = findSubItemById(category, subId);
-        const debtIdToSync = item && item.debtId ? item.debtId : null;
-        
-        if (category.isSavings && item && item.envelopeId) {
-            const jar = globalData.jars[currentUser.id].find(j => j.id == item.envelopeId);
-            if (jar) { jar.balance -= (item.amount || 0); updateSavingsDisplay(); }
+        const index = (category.items || []).findIndex(i => sameId(i.id, subId));
+        const item = index >= 0 ? category.items[index] : null;
+        if (!item) return;
+        const snapshot = JSON.parse(JSON.stringify(item));
+        const categoryId = category.id;
+        const year = currentYear;
+        const month = currentMonth;
+        const debtIdToSync = item.debtId || null;
+        let jarDelta = null;
+
+        if (category.isSavings && item.envelopeId && currentUser) {
+            const jar = (globalData.jars[currentUser.id] || []).find(j => j.id == item.envelopeId);
+            if (jar) {
+                const amount = parseFloat(item.amount) || 0;
+                jar.balance -= amount;
+                jarDelta = { jarId: jar.id, amount };
+                updateSavingsDisplay();
+            }
         }
-        
+
         category.items = category.items.filter(i => !sameId(i.id, subId));
-        
-        if (appData[currentYear] && appData[currentYear][currentMonth]) {
-            appData[currentYear][currentMonth].expenses = expenses;
+
+        if (appData[year] && appData[year][month]) {
+            appData[year][month].expenses = expenses;
         }
-        
+
         if (debtIdToSync) {
             syncGlobalDebtBalance(debtIdToSync);
             updateDebtsDisplay();
         }
         renderModalItems();
         saveData();
+
+        showUndo('Статтю видалено', () => {
+            restoreExpenseSnapshot(year, month, (list) => {
+                const cat = list.find(entry => sameId(entry.id, categoryId));
+                if (!cat) return;
+                if (!Array.isArray(cat.items)) cat.items = [];
+                cat.items.splice(Math.min(index, cat.items.length), 0, snapshot);
+            });
+            if (jarDelta && currentUser) {
+                const jar = (globalData.jars[currentUser.id] || []).find(j => j.id == jarDelta.jarId);
+                if (jar) jar.balance += jarDelta.amount;
+            }
+            if (debtIdToSync) {
+                syncGlobalDebtBalance(debtIdToSync);
+                updateDebtsDisplay();
+            }
+            if (year === currentYear && month === currentMonth) {
+                renderExpenses();
+                updateAll();
+                updateSavingsDisplay();
+                if (sameId(activeCategoryId, categoryId)) {
+                    renderModalItems();
+                    const totalEl = document.getElementById('modal-category-total');
+                    const cat = findExpenseById(categoryId);
+                    if (totalEl && cat) totalEl.innerText = formatMoney(getCategoryTotal(cat));
+                }
+            }
+            persistUndoMonth(year, month);
+        });
+    }
+
+    function restoreExpenseSnapshot(year, month, mutate) {
+        if (!appData[year]) appData[year] = {};
+        if (!appData[year][month]) appData[year][month] = { initialized: true, incomes: [], expenses: [] };
+        const list = appData[year][month].expenses || [];
+        mutate(list);
+        appData[year][month].expenses = list;
+        if (year === currentYear && month === currentMonth) expenses = list;
+    }
+
+    function persistUndoMonth(year, month) {
+        if (year === currentYear && month === currentMonth) saveData();
+        else enqueueSave(year, month);
+    }
+
+    function showUndo(message, restore) {
+        if (undoTimer) {
+            clearTimeout(undoTimer);
+            undoTimer = null;
+            undoRestore = null;
+        }
+        undoRestore = restore;
+        const toast = document.getElementById('undo-toast');
+        const text = document.getElementById('undo-toast-text');
+        const bar = document.getElementById('undo-toast-bar');
+        if (!toast || !text) {
+            undoRestore = null;
+            return;
+        }
+        text.textContent = message;
+        toast.classList.add('active');
+        toast.hidden = false;
+        if (bar) {
+            bar.style.animation = 'none';
+            void bar.offsetWidth;
+            bar.style.animation = '';
+        }
+        undoTimer = setTimeout(hideUndoToast, 3000);
+    }
+
+    function hideUndoToast() {
+        if (undoTimer) clearTimeout(undoTimer);
+        undoTimer = null;
+        undoRestore = null;
+        const toast = document.getElementById('undo-toast');
+        if (toast) {
+            toast.classList.remove('active');
+            toast.hidden = true;
+        }
+    }
+
+    function undoLastDelete() {
+        const restore = undoRestore;
+        hideUndoToast();
+        if (restore) restore();
     }
 
     function togglePaidStatus(subId) {
@@ -2685,18 +3397,8 @@ let payrollAccruedTotal = 0;
             // РАХУЄМО ЗАРПЛАТИ В ЗАГАЛЬНІ ВИТРАТИ
             const payroll = appData[currentYear]?.[currentMonth]?.payroll || [];
             payroll.forEach(emp => {
-                const rate = parseFloat(emp.rate) || 0;
-                const hours = parseFloat(emp.hours) || 0;
-                const bonus = parseFloat(emp.bonus) || 0;
-                const penalty = parseFloat(emp.penalty) || 0;
-                const advance = parseFloat(emp.advance) || 0;
-                const paidPart = parseFloat(emp.paid_part) || 0;
-                
-                const accrued = (rate * hours) + bonus - penalty; // Загальна сума витрати на співробітника
-                const paidCash = emp.is_paid ? accrued : (advance + paidPart); // Скільки реально видали з каси
-                
-                payrollAccruedTotal += accrued;
-                payrollPaidTotal += paidCash;
+                payrollAccruedTotal += getEmployeeAccrued(emp);
+                payrollPaidTotal += getEmployeePaidCash(emp);
             });
         }
         
@@ -2727,15 +3429,12 @@ let payrollAccruedTotal = 0;
 
         renderFinancialPlanBlock();
 
-let workingDays = 21;
-        let hoursPerDay = 8;
-        if (isBiz) {
-            workingDays = new Date(currentYear, currentMonth + 1, 0).getDate();
-            const currentCogs = appData[currentYear]?.[currentMonth]?.cogs || {};
-            hoursPerDay = currentCogs.businessHours > 0 ? currentCogs.businessHours : 8;
-        }
-        const workingHours = workingDays * hoursPerDay;        document.getElementById('daily-rate-uah').innerText = formatMoney(displayIncomeUah > 0 ? (displayIncomeUah / workingDays) : 0);
+        let workingDays = getRateWorkingDays();
+        const hoursPerDay = getHoursPerDay(appData[currentYear]?.[currentMonth]?.cogs);
+        const workingHours = workingDays * hoursPerDay;
+        document.getElementById('daily-rate-uah').innerText = formatMoney(displayIncomeUah > 0 ? (displayIncomeUah / workingDays) : 0);
         document.getElementById('hourly-rate-uah').innerText = formatMoney(displayIncomeUah > 0 ? (displayIncomeUah / workingHours) : 0);
+        updateRateCalcHint(workingDays, hoursPerDay);
 
         if (!isBiz) {
             document.getElementById('daily-rate-usd').innerText = formatMoney(displayIncomeUsd > 0 ? (displayIncomeUsd / workingDays) : 0);
@@ -2788,19 +3487,6 @@ let workingDays = 21;
         const progressWidth = Math.max(0, Math.min(100, displayIncomeUah > 0 ? ((remaining / displayIncomeUah) * 100) : 0));
         document.getElementById('summary-progress').style.width = progressWidth + '%';
 
-        const dailyLimitVal = document.getElementById('daily-limit-val');
-        if (!isBiz) {
-            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-            if (remaining > 0) {
-                dailyLimitVal.innerText = formatMoney(remaining / daysInMonth);
-                dailyLimitVal.style.color = 'var(--sys-green)';
-            } else {
-                dailyLimitVal.innerText = '0.00';
-                dailyLimitVal.style.color = 'var(--sys-red)';
-            }
-        }
-
-
         const percentElements = document.querySelectorAll('.expense-info.tabular');
         expenses.forEach((exp, index) => {
             const catPercent = displayIncomeUah > 0 ? ((getCategoryTotal(exp) / displayIncomeUah) * 100).toFixed(1) : 0;
@@ -2813,9 +3499,13 @@ let workingDays = 21;
     // ==========================================
     // 8. МОДАЛКА ПОДТВЕРЖДЕНИЯ (Confirm)
     // ==========================================
-    function showConfirm(title, message, callback) {
+    function showConfirm(title, message, callback, buttons) {
         document.getElementById('confirm-title').innerText = title;
         document.getElementById('confirm-text').innerText = message;
+        const cancelBtn = document.getElementById('confirm-btn-cancel');
+        const okBtn = document.getElementById('confirm-btn-ok');
+        if (cancelBtn) cancelBtn.innerText = (buttons && buttons.cancel) || 'Назад';
+        if (okBtn) okBtn.innerText = (buttons && buttons.confirm) || 'Підтвердити';
         pendingConfirmAction = callback;
         document.getElementById('confirm-modal').classList.add('active');
     }
@@ -2855,18 +3545,25 @@ function renderEnvelopes() {
         
         if (userJars.length === 0) return list.innerHTML = '<div style="color: var(--text-tertiary); text-align: center; padding: 20px; font-weight: 500;">Немає створених конвертів</div>';
 
+        const jarInputStyle = (color) =>
+            `background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: ${color}; font-size: 16px; font-weight: 700; width: 120px; padding: 6px 10px; outline: none; transition: 0.3s; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);`;
+
+        const jarAmountInput = (jarId, action, value, color) =>
+            `<div style="display: flex; align-items: center; gap: 6px;">
+                <input type="number" min="0" step="0.01" value="${value || 0}"
+                    data-change-action="${action}"
+                    data-args="${escapeAttr(JSON.stringify([jarId]))}"
+                    style="${jarInputStyle(color)}">
+                <span>₴</span>
+            </div>`;
+
         userJars.forEach(jar => {
             const percent = jar.goal > 0 ? Math.min(100, (jar.balance / jar.goal) * 100) : 0;
-            const goalText = jar.goal > 0 ? `/ ${formatMoney(jar.goal)} ₴` : '';
             const jarType = getJarType(jar);
             const isPersonal = currentUser && currentUser.account_type !== 'business';
             
-            const balanceDisplay = jar.isMain 
-                ? `<div style="display: flex; align-items: center; gap: 6px;"><input type="number" value="${jar.balance}" onchange="updateMainJarBalance(${jsId(jar.id)}, this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--sys-green); font-size: 16px; font-weight: 700; width: 110px; padding: 6px 10px; outline: none; transition: 0.3s; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" onfocus="this.style.background='rgba(255,255,255,0.1)'" onblur="this.style.background='rgba(255,255,255,0.05)'"> <span>₴</span></div>`
-                : `<span style="color: var(--sys-green);">${formatMoney(jar.balance)} ₴</span>`;
-            
             // Кнопка видалення у стилі карток боргів (хрестик у квадраті)
-            const deleteBtn = jar.isMain ? '' : `<button onclick="deleteEnvelope(${jsId(jar.id)})" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; border-color: transparent;" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-tertiary)'; border-color: rgba(255,255,255,0.1);">✕</button>`;
+            const deleteBtn = jar.isMain ? '' : `<button data-action="deleteEnvelope" data-args="${escapeAttr(JSON.stringify([jar.id]))}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;">✕</button>`;
             
             // Бейджик для основного рахунку
             const mainBadge = jar.isMain ? `<span style="font-size: 11px; background: rgba(10, 132, 255, 0.15); padding: 2px 6px; border-radius: 6px; color: var(--sys-blue); flex-shrink: 0;">Основний</span>` : '';
@@ -2874,7 +3571,7 @@ function renderEnvelopes() {
             const typeSelect = isPersonal && !jar.isMain ? buildJarTypeDropdownHtml(jar.id, jarType, 'compact-xs') : '';
 
             list.innerHTML += `
-            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+            <div class="jar-card" data-jar-id="${escapeHtml(String(jar.id))}" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                     <div style="font-weight: 700; font-size: 16px; color: var(--text-primary); display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
                         <span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(jar.name)}</span>
@@ -2886,11 +3583,12 @@ function renderEnvelopes() {
                 ${typeSelect}
 
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div style="overflow: hidden; padding-right: 8px;">
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 4px;">Зібрано ${jar.goal > 0 ? '/ Ціль' : ''}</div>
-                        <div style="font-size: 16px; font-weight: 700; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;">
-                            ${balanceDisplay}
-                            ${goalText ? `<span style="font-size: 13px; color: var(--text-tertiary); font-weight: 500;">${goalText}</span>` : ''}
+                    <div style="overflow: hidden; padding-right: 8px; width: 100%;">
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 4px;">Зібрано / Ціль</div>
+                        <div style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            ${jarAmountInput(jar.id, 'updateJarBalance', jar.balance, 'var(--sys-green)')}
+                            <span style="color: var(--text-tertiary); font-weight: 500;">/</span>
+                            ${jarAmountInput(jar.id, 'updateJarGoal', jar.goal, 'var(--text-primary)')}
                         </div>
                     </div>
                 </div>
@@ -2921,9 +3619,70 @@ function renderEnvelopes() {
         saveGlobalData(); renderEnvelopes(); updateSavingsDisplay(); renderFinancialPlanBlock();
     }
 
+    function findUserJar(id) {
+        return (globalData.jars[currentUser.id] || []).find((j) => j.id == id) || null;
+    }
+
+    function refreshJarProgress(id) {
+        const jar = findUserJar(id);
+        const card = document.querySelector(`[data-jar-id="${CSS.escape(String(id))}"]`);
+        if (!jar || !card) return;
+        const bar = card.querySelector('.jar-progress-bg');
+        const percent = jar.goal > 0 ? Math.min(100, (jar.balance / jar.goal) * 100) : 0;
+        if (jar.goal > 0) {
+            if (!bar) {
+                renderEnvelopes();
+                return;
+            }
+            const fill = bar.querySelector('.jar-progress-fill');
+            if (fill) fill.style.width = `${percent}%`;
+            return;
+        }
+        if (bar) bar.remove();
+    }
+
+    function updateJarBalance(id, val) {
+        const jar = findUserJar(id);
+        if (!jar) return;
+        const next = Math.max(0, parseFloat(val) || 0);
+        const prev = parseFloat(jar.balance) || 0;
+        jar.balance = next;
+        recordJarBalanceDelta(jar, next - prev);
+        updateSavingsDisplay();
+        refreshJarProgress(id);
+        renderFinancialPlanBlock();
+        saveData();
+    }
+
+    function recordJarBalanceDelta(jar, delta) {
+        if (!jar || jar.isMain || Math.abs(delta) < 0.005) return;
+        if (!appData[currentYear]?.[currentMonth]?.initialized) return;
+        let savingsCat = expenses.find((e) => e.isSavings);
+        if (!savingsCat) {
+            savingsCat = { id: newId(), name: 'Заощадження', isSavings: true, items: [] };
+            expenses.push(savingsCat);
+        }
+        const item = {
+            id: newId(),
+            name: `${delta >= 0 ? 'У конверт' : 'З конверта'}: ${jar.name}`,
+            amount: delta,
+            envelopeId: jar.id,
+        };
+        savingsCat.items.push(item);
+        appData[currentYear][currentMonth].expenses = expenses;
+    }
+
+    function updateJarGoal(id, val) {
+        const jar = findUserJar(id);
+        if (!jar) return;
+        jar.goal = Math.max(0, parseFloat(val) || 0);
+        refreshJarProgress(id);
+        renderFinancialPlanBlock();
+        saveData();
+    }
+
     function updateMainJarBalance(id, val) {
-        const jar = globalData.jars[currentUser.id].find(j => j.id == id);
-        if (jar) { jar.balance = parseFloat(val) || 0; updateSavingsDisplay(); saveData(); }
+        updateJarBalance(id, val);
     }
 
     function deleteEnvelope(id) {
@@ -2985,7 +3744,7 @@ function renderEnvelopes() {
             userJars.forEach((jar, index) => {
                 const text = `${jar.name} (зараз ${formatMoney(jar.balance)} ₴)`;
                 if (index === 0) { firstJarId = jar.id; firstJarName = text; }
-                optionsContainer.innerHTML += `<div class="custom-dropdown-option" onclick="selectTransferJar(event, ${jsId(jar.id)}, '${escapeAttr(text)}')">${escapeHtml(text)}</div>`;
+                optionsContainer.innerHTML += `<div class="custom-dropdown-option" data-action="selectTransferJar" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([jar.id, text]))}">${escapeHtml(text)}</div>`;
             });
             selectTransferJar(null, firstJarId, firstJarName);
         }
@@ -3025,17 +3784,14 @@ function renderEnvelopes() {
     // ==========================================
     // 10. ДОЛГИ И КРЕДИТЫ
     // ==========================================
-    function getHistoricalDebtBalance(debtId, targetYear, targetMonth) {
-        const debt = globalData.debts[currentUser.id].find(d => d.id == debtId);
-        if (!debt) return 0;
-
+    function getDebtPaidThrough(debtId, targetYear, targetMonth) {
         const targetDate = targetYear * 100 + targetMonth;
         let totalPaid = 0;
 
         for (const y in appData) {
             for (const m in appData[y]) {
                 const monthDate = parseInt(y) * 100 + parseInt(m);
-                if (monthDate <= targetDate && appData[y][m].initialized && appData[y][m].expenses) {
+                if (monthDate <= targetDate && appData[y][m]?.expenses) {
                     appData[y][m].expenses.forEach(cat => {
                         if (cat.items) {
                             cat.items.forEach(item => {
@@ -3046,28 +3802,189 @@ function renderEnvelopes() {
                 }
             }
         }
-        return Math.max(0, debt.total_amount - totalPaid);
+        return totalPaid;
+    }
+
+    function getAppPaidAllTime(debtId) {
+        return getDebtPaidThrough(debtId, 9999, 12);
+    }
+
+    function getDebtOutsidePaid(debt) {
+        return Math.max(0, parseFloat(debt?.outside_paid) || 0);
+    }
+
+    function hydrateDebtOutsidePaid(debt) {
+        if (!debt) return;
+        const appPaid = getAppPaidAllTime(debt.id);
+        const total = parseFloat(debt.total_amount) || 0;
+        const remaining = parseFloat(debt.remaining_amount);
+        const knownRemaining = Number.isFinite(remaining) ? remaining : Math.max(0, total - appPaid);
+        debt.outside_paid = Math.max(0, total - knownRemaining - appPaid);
+    }
+
+    function hydrateUserDebtsOutsidePaid(userId) {
+        (globalData.debts[userId] || []).forEach(hydrateDebtOutsidePaid);
+    }
+
+    function getHistoricalDebtBalance(debtId, targetYear, targetMonth) {
+        const debt = globalData.debts[currentUser.id].find(d => d.id == debtId);
+        if (!debt) return 0;
+        return Math.max(0, debt.total_amount - getDebtPaidThrough(debtId, targetYear, targetMonth) - getDebtOutsidePaid(debt));
+    }
+
+    function findUserDebt(id) {
+        return (globalData.debts[currentUser.id] || []).find((d) => d.id == id) || null;
+    }
+
+    function parseDebtAmountInput(val) {
+        return Math.max(0, parseFloat(String(val).replace(',', '.')) || 0);
+    }
+
+    function getDebtItemDeduction(item) {
+        const deduction = parseFloat(item?.debtDeduction);
+        if (Number.isFinite(deduction)) return Math.max(0, deduction);
+        return Math.max(0, parseFloat(item?.amount) || 0);
+    }
+
+    function setDebtItemDeduction(item, debt, deduction) {
+        const value = Math.max(0, deduction);
+        item.debtDeduction = value;
+        item.amount = debt?.currency === 'USD' ? value * currentExchangeRate : value;
+    }
+
+    function listDebtPaymentEntries(debtId, { currentMonthOnly = false, unpaidOnly = false } = {}) {
+        const entries = [];
+        const visitMonth = (year, month, cats) => {
+            (cats || []).forEach((cat) => {
+                (cat.items || []).forEach((item, index) => {
+                    if (item.debtId != debtId) return;
+                    if (unpaidOnly && item.isPaid) return;
+                    entries.push({ year, month, cat, item, index });
+                });
+            });
+        };
+        if (currentMonthOnly) {
+            visitMonth(currentYear, currentMonth, expenses);
+            entries.sort((a, b) => b.index - a.index);
+            return entries;
+        }
+        for (const y of Object.keys(appData)) {
+            for (const m of Object.keys(appData[y] || {})) {
+                const monthData = appData[y][m];
+                if (!monthData?.initialized || !monthData.expenses) continue;
+                visitMonth(Number(y), Number(m), monthData.expenses);
+            }
+        }
+        entries.sort((a, b) => (b.year * 100 + b.month) - (a.year * 100 + a.month) || b.index - a.index);
+        return entries;
+    }
+
+    function reduceDebtPaymentEntriesToCap(entries, debt, cap) {
+        let sum = entries.reduce((s, e) => s + getDebtItemDeduction(e.item), 0);
+        if (sum <= cap + 0.005) return [];
+        let excess = sum - cap;
+        const touched = [];
+        const seen = new Set();
+        for (const entry of entries) {
+            if (excess <= 0.005) break;
+            const cur = getDebtItemDeduction(entry.item);
+            if (cur <= 0) continue;
+            const next = Math.max(0, cur - excess);
+            excess -= (cur - next);
+            if (next <= 0.005) {
+                entry.cat.items = (entry.cat.items || []).filter((it) => it !== entry.item);
+            } else {
+                setDebtItemDeduction(entry.item, debt, next);
+            }
+            const key = `${entry.year}-${entry.month}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                touched.push({ year: entry.year, month: entry.month });
+            }
+        }
+        return touched;
+    }
+
+    function persistTouchedDebtMonths(touched) {
+        if (appData[currentYear]?.[currentMonth]) {
+            appData[currentYear][currentMonth].expenses = expenses;
+        }
+        (touched || []).forEach(({ year, month }) => {
+            if (year === currentYear && month === currentMonth) return;
+            enqueueSave(year, month);
+        });
+    }
+
+    function refreshBudgetAfterDebtEdit(debtId) {
+        renderExpenses();
+        updateAll();
+        const categoryModal = document.getElementById('category-modal');
+        if (categoryModal?.classList.contains('active')) {
+            const cat = findExpenseById(activeCategoryId);
+            if (cat && (cat.name === "Погашення боргів" || (cat.items || []).some((item) => item.debtId == debtId))) {
+                renderModalItems();
+            }
+        }
+    }
+
+    function reconcileDebtCategoryToAmounts(debtId, newTotal, newRemaining, { trimCurrentPaidToRemaining = false } = {}) {
+        const debt = findUserDebt(debtId);
+        if (!debt) return false;
+        const paidEntries = listDebtPaymentEntries(debtId).filter((e) => e.item.isPaid);
+        const unpaidCurrent = listDebtPaymentEntries(debtId, { currentMonthOnly: true, unpaidOnly: true });
+        const touched = [
+            ...reduceDebtPaymentEntriesToCap(paidEntries, debt, newTotal),
+            ...reduceDebtPaymentEntriesToCap(unpaidCurrent, debt, newRemaining),
+        ];
+        if (trimCurrentPaidToRemaining) {
+            const paidCurrent = listDebtPaymentEntries(debtId, { currentMonthOnly: true }).filter((e) => e.item.isPaid);
+            touched.push(...reduceDebtPaymentEntriesToCap(paidCurrent, debt, newRemaining));
+        }
+        const unique = [];
+        const seen = new Set();
+        touched.forEach((t) => {
+            const key = `${t.year}-${t.month}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            unique.push(t);
+        });
+        if (unique.length === 0) return false;
+        persistTouchedDebtMonths(unique);
+        return true;
+    }
+
+    function debtCategoryOverflow(debtId, newTotal, newRemaining) {
+        const paid = getAppPaidAllTime(debtId);
+        const currentEntries = listDebtPaymentEntries(debtId, { currentMonthOnly: true });
+        const currentSum = currentEntries.reduce((s, e) => s + getDebtItemDeduction(e.item), 0);
+        const unpaidSum = currentEntries.filter((e) => !e.item.isPaid).reduce((s, e) => s + getDebtItemDeduction(e.item), 0);
+        return {
+            paid,
+            currentSum,
+            unpaidSum,
+            hasOverflow: paid > newTotal + 0.005 || currentSum > newRemaining + 0.005 || unpaidSum > newRemaining + 0.005
+        };
+    }
+
+    function confirmDebtCategoryTrim(debt, overflow, newTotal, newRemaining, onConfirm) {
+        const symbol = debt.currency === 'USD' ? '$' : '₴';
+        let message = 'У категорії «Погашення боргів» сума більша за новий борг. Платежі в категорії буде зменшено, щоб вони збігалися з відредагованою сумою.';
+        if (overflow.paid > newTotal + 0.005 && overflow.currentSum > newRemaining + 0.005) {
+            message = `У «Погашення боргів» уже є ${formatMoney(Math.max(overflow.paid, overflow.currentSum))} ${symbol}, а нова сума боргу менша. Зменшити платежі в категорії до ${formatMoney(newRemaining)} ${symbol} залишку / ${formatMoney(newTotal)} ${symbol} всього?`;
+        } else if (overflow.paid > newTotal + 0.005) {
+            message = `У «Погашення боргів» уже проведено ${formatMoney(overflow.paid)} ${symbol}, а нова сума боргу ${formatMoney(newTotal)} ${symbol}. Зменшити платежі в категорії до нової суми?`;
+        } else {
+            message = `У «Погашення боргів» цього місяця ${formatMoney(overflow.currentSum)} ${symbol}, а новий залишок ${formatMoney(newRemaining)} ${symbol}. Зменшити платіж у категорії до залишку?`;
+        }
+        showConfirm("Зменшити платежі в категорії?", message, onConfirm);
     }
 
     function syncGlobalDebtBalance(debtId) {
         const debt = globalData.debts[currentUser.id].find(d => d.id == debtId);
         if (!debt) return;
-        
-        let totalPaid = 0;
-        for (const y in appData) {
-            for (const m in appData[y]) {
-                if (appData[y][m].initialized && appData[y][m].expenses) {
-                    appData[y][m].expenses.forEach(cat => {
-                        if (cat.items) {
-                            cat.items.forEach(item => {
-                                if (item.debtId == debtId && item.isPaid) totalPaid += (parseFloat(item.debtDeduction) || 0);
-                            });
-                        }
-                    });
-                }
-            }
-        }
-        debt.remaining_amount = Math.max(0, debt.total_amount - totalPaid);
+
+        const totalPaid = getAppPaidAllTime(debtId);
+        debt.remaining_amount = Math.max(0, debt.total_amount - totalPaid - getDebtOutsidePaid(debt));
         
         if (debt.remaining_amount > 0 && debt.is_archived > 0) debt.is_archived = 0;
     }
@@ -3108,7 +4025,8 @@ function renderEnvelopes() {
             type: interest > 0 ? 'percent' : 'fix',
             is_archived: 0, 
             start_year: currentYear,
-            start_month: currentMonth
+            start_month: currentMonth,
+            outside_paid: 0
         });
 
         document.getElementById('new-debt-name').value = '';
@@ -3141,29 +4059,43 @@ function renderEnvelopes() {
             const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
             const percent = debt.total_amount > 0 ? Math.min(100, ((debt.total_amount - historicalRemaining) / debt.total_amount) * 100) : 0;
             const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
-            const interestTag = debt.interest_rate > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.2); padding: 2px 6px; border-radius: 6px; color: #ff453a; margin-left: 6px; flex-shrink: 0;">${debt.interest_rate}% / міс.</span>` : '';
+            const interestTag = debt.interest_rate > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.2); padding: 2px 6px; border-radius: 6px; color: #ff453a;">${debt.interest_rate}% / міс.</span>` : '';
             const monthlyInterest = getMonthlyInterestEstimate(debt, historicalRemaining);
             const interestEstimateTag = monthlyInterest > 0 ? `<span style="font-size: 11px; color: var(--text-secondary); background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; flex-shrink: 0;">≈ ${formatMoney(monthlyInterest)} ${currencySymbol} / міс нарахування</span>` : '';
 
             const isPaidOff = historicalRemaining <= 0;
-            const payBtnHtml = isPaidOff 
-                ? `<div style="color: var(--sys-green); font-weight: 700; font-size: 13px; padding: 8px 0;">✓ Виплачено</div>`
-                : `<button onclick="payDebt(${jsId(debt.id)})" style="background-color: rgba(255, 69, 58, 0.1); border: 1px solid rgba(255, 69, 58, 0.2); padding: 8px 16px; border-radius: 12px; color: #ff453a; font-weight: 700; font-size: 13px; cursor: pointer; transition: background-color 0.2s ease; flex-shrink: 0;" onmouseover="this.style.backgroundColor='rgba(255, 69, 58, 0.2)'" onmouseout="this.style.backgroundColor='rgba(255, 69, 58, 0.1)'">Оплатити</button>`;
+            const payBtnHtml = debtPayButtonHtml(debt.id, isPaidOff);
+
+            const debtInputStyle =
+                `background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--text-primary); font-size: 16px; font-weight: 700; width: 132px; max-width: 100%; padding: 6px 10px; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);`;
 
             list.innerHTML += `
-            <div style="background: var(--item-bg); border: 1px solid rgba(255, 69, 58, 0.2); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                    <div style="font-weight: 700; font-size: 16px; color: #ff453a; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
-                        <span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(debt.name)}</span><span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${escapeHtml(debt.currency)}</span>${interestTag}${interestEstimateTag}
+            <div data-debt-id="${escapeHtml(String(debt.id))}" style="background: var(--item-bg); border: 1px solid rgba(255, 69, 58, 0.2); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                    <div style="min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="font-weight: 700; font-size: 16px; color: #ff453a; overflow-wrap: anywhere; word-break: break-word; line-height: 1.3;">${escapeHtml(debt.name)}</div>
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+                            <span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; color: var(--text-primary);">${escapeHtml(debt.currency)}</span>${interestTag}<span data-debt-interest-estimate>${interestEstimateTag}</span>
+                        </div>
                     </div>
-                    <button onclick="deleteDebt(${jsId(debt.id)})" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,69,58,0.2)'; this.style.color='#ff453a'; this.style.borderColor='transparent';" onmouseout="this.style.background='var(--btn-secondary-bg)'; this.style.color='var(--text-tertiary)'; this.style.borderColor='var(--glass-border)';">✕</button>
+                    <button data-action="deleteDebt" data-args="${escapeAttr(JSON.stringify([debt.id]))}" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;">✕</button>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div style="overflow: hidden; padding-right: 8px;">
-                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Залишок / Всього</div>
-                        <div style="font-size: 16px; font-weight: 700; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;"><span style="${isPaidOff ? 'color: var(--sys-green);' : 'color: var(--text-primary)'}">${formatMoney(historicalRemaining)} ${currencySymbol}</span><span style="font-size: 13px; color: var(--text-tertiary); font-weight: 500;">/ ${formatMoney(debt.total_amount)} ${currencySymbol}</span></div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 8px;">
+                    <div style="overflow: hidden; padding-right: 8px; min-width: 0; flex: 1;">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Залишок / Сума боргу</div>
+                        <div style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span data-debt-remaining style="${isPaidOff ? 'color: var(--sys-green);' : 'color: var(--text-primary)'}">${formatMoney(historicalRemaining)} ${currencySymbol}</span>
+                            <span style="color: var(--text-tertiary); font-weight: 500;">/</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <input type="number" min="0" step="0.01" value="${debt.total_amount || 0}" aria-label="Сума боргу"
+                                    data-change-action="updateDebtTotal"
+                                    data-args="${escapeAttr(JSON.stringify([debt.id]))}"
+                                    style="${debtInputStyle}">
+                                <span>${currencySymbol}</span>
+                            </div>
+                        </div>
                     </div>
-                    ${payBtnHtml}
+                    <div data-debt-pay-slot style="flex-shrink: 0;">${payBtnHtml}</div>
                 </div>
                 <div class="jar-progress-bg" style="background: rgba(255, 69, 58, 0.1); height: 6px; border-radius: 3px; margin-top: 4px;"><div class="jar-progress-fill" style="width: ${percent}%; background: linear-gradient(90deg, #ff453a, #d70015); box-shadow: 0 0 10px rgba(255, 69, 58, 0.5); border-radius: 3px;"></div></div>
             </div>`;
@@ -3173,17 +4105,19 @@ function renderEnvelopes() {
             list.innerHTML += `<div style="margin-top: 16px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--glass-border); color: var(--text-secondary); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Архів (закрито / скасовано)</div>`;
             archivedDebts.forEach(debt => {
                 const historicalRemaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
-                const isAutoArchived = debt.is_archived > 0;
-                const statusText = isAutoArchived ? '✓ Виплачено' : 'Скасовано'; const statusColor = isAutoArchived ? 'var(--sys-green)' : 'var(--text-secondary)'; const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
+                const isPaidOff = historicalRemaining <= 0;
+                const statusText = isPaidOff ? '✓ Виплачено' : 'Скасовано';
+                const statusColor = isPaidOff ? 'var(--sys-green)' : 'var(--text-secondary)';
+                const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
                 let deleteBtnHtml = '';
                 if (historicalRemaining === debt.total_amount) {
-                    deleteBtnHtml = `<button onclick="hardDeleteDebt(${jsId(debt.id)})" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-secondary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;" onmouseover="this.style.background='rgba(255,69,58,0.8)'; this.style.color='#ffffff'; this.style.borderColor='transparent';" onmouseout="this.style.background='var(--btn-secondary-bg)'; this.style.color='var(--text-secondary)'; this.style.borderColor='var(--glass-border)';">✕</button>`;
+                    deleteBtnHtml = `<button data-action="hardDeleteDebt" data-args="${escapeAttr(JSON.stringify([debt.id]))}" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-secondary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;">✕</button>`;
                 }
                 list.innerHTML += `
                 <div style="background: var(--item-bg); border: 1px solid var(--glass-border); border-radius: 16px; opacity: 0.7; padding: 12px 16px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="width: 100%; overflow: hidden;">
-                            <div style="color: var(--text-secondary); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(debt.name)}</span> <span style="font-size: 11px; background: var(--btn-secondary-bg); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${escapeHtml(debt.currency)}</span></div>
+                            <div style="color: var(--text-secondary); font-size: 15px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span style="overflow-wrap: anywhere; word-break: break-word; line-height: 1.3;">${escapeHtml(debt.name)}</span> <span style="font-size: 11px; background: var(--btn-secondary-bg); padding: 2px 6px; border-radius: 6px; color: var(--text-primary); flex-shrink: 0;">${escapeHtml(debt.currency)}</span></div>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; gap: 10px;"><div style="color: ${statusColor}; font-size: 13px; font-weight: 700; white-space: nowrap;">${statusText}</div><div style="font-size: 13px; color: var(--text-tertiary); font-weight: 500; white-space: nowrap;">Сума: ${formatMoney(debt.total_amount)} ${currencySymbol}</div></div>
                         </div>
                         ${deleteBtnHtml}
@@ -3219,6 +4153,114 @@ function renderEnvelopes() {
             globalData.debts[currentUser.id] = globalData.debts[currentUser.id].filter(d => d.id != id);
             saveGlobalData(); renderDebts(); updateDebtsDisplay();
         });
+    }
+
+    function debtPayButtonHtml(debtId, isPaidOff) {
+        return isPaidOff
+            ? `<div style="color: var(--sys-green); font-weight: 700; font-size: 13px; padding: 8px 0;">✓ Виплачено</div>`
+            : `<button data-action="payDebt" data-args="${escapeAttr(JSON.stringify([debtId]))}" style="background-color: rgba(255, 69, 58, 0.1); border: 1px solid rgba(255, 69, 58, 0.2); padding: 8px 16px; border-radius: 12px; color: #ff453a; font-weight: 700; font-size: 13px; cursor: pointer; transition: background-color 0.2s ease; flex-shrink: 0;">Оплатити</button>`;
+    }
+
+    function refreshDebtCard(id) {
+        const debt = findUserDebt(id);
+        const card = document.querySelector(`[data-debt-id="${CSS.escape(String(id))}"]`);
+        if (!debt || !card) return;
+
+        const remaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
+        const isPaidOff = remaining <= 0;
+        const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
+        const active = document.activeElement;
+
+        const remainingEl = card.querySelector('[data-debt-remaining]');
+        if (remainingEl) {
+            remainingEl.textContent = `${formatMoney(remaining)} ${currencySymbol}`;
+            remainingEl.style.color = isPaidOff ? 'var(--sys-green)' : 'var(--text-primary)';
+        }
+        const totalInput = card.querySelector('[data-change-action="updateDebtTotal"]');
+        if (totalInput && totalInput !== active) {
+            totalInput.value = debt.total_amount || 0;
+        }
+
+        const percent = debt.total_amount > 0 ? Math.min(100, ((debt.total_amount - remaining) / debt.total_amount) * 100) : 0;
+        const fill = card.querySelector('.jar-progress-fill');
+        if (fill) fill.style.width = `${percent}%`;
+
+        const paySlot = card.querySelector('[data-debt-pay-slot]');
+        if (paySlot) paySlot.innerHTML = debtPayButtonHtml(debt.id, isPaidOff);
+
+        const estimateEl = card.querySelector('[data-debt-interest-estimate]');
+        if (estimateEl) {
+            const monthlyInterest = getMonthlyInterestEstimate(debt, remaining);
+            estimateEl.innerHTML = monthlyInterest > 0
+                ? `<span style="font-size: 11px; color: var(--text-secondary); background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; flex-shrink: 0;">≈ ${formatMoney(monthlyInterest)} ${currencySymbol} / міс нарахування</span>`
+                : '';
+        }
+    }
+
+    function updateDebtRemaining(id, val) {
+        const debt = findUserDebt(id);
+        if (!debt) return;
+        const remaining = parseDebtAmountInput(val);
+        const appPaid = getDebtPaidThrough(id, currentYear, currentMonth);
+        const total = parseFloat(debt.total_amount) || 0;
+        const newTotal = remaining > total - appPaid ? remaining + appPaid : total;
+        const overflow = debtCategoryOverflow(id, newTotal, remaining);
+
+        const apply = () => {
+            reconcileDebtCategoryToAmounts(id, newTotal, remaining, { trimCurrentPaidToRemaining: true });
+            const paidNow = getDebtPaidThrough(id, currentYear, currentMonth);
+            const currentTotal = parseFloat(debt.total_amount) || 0;
+            if (remaining > currentTotal - paidNow) {
+                debt.total_amount = remaining + paidNow;
+                debt.outside_paid = 0;
+            } else {
+                debt.outside_paid = Math.max(0, currentTotal - remaining - paidNow);
+            }
+            syncGlobalDebtBalance(id);
+            refreshDebtCard(id);
+            updateDebtsDisplay();
+            refreshBudgetAfterDebtEdit(id);
+            saveGlobalData();
+        };
+
+        if (overflow.hasOverflow) {
+            confirmDebtCategoryTrim(debt, overflow, newTotal, remaining, apply);
+            refreshDebtCard(id);
+            return;
+        }
+        apply();
+    }
+
+    function updateDebtTotal(id, val) {
+        const debt = findUserDebt(id);
+        if (!debt) return;
+        const appPaid = getAppPaidAllTime(id);
+        const newTotal = parseDebtAmountInput(val);
+        const paidThrough = getDebtPaidThrough(id, currentYear, currentMonth);
+        const newOutside = Math.min(getDebtOutsidePaid(debt), Math.max(0, newTotal - appPaid));
+        const newRemaining = Math.max(0, newTotal - paidThrough - newOutside);
+        const overflow = debtCategoryOverflow(id, newTotal, newRemaining);
+
+        const apply = () => {
+            reconcileDebtCategoryToAmounts(id, newTotal, newRemaining);
+            const paidNow = getAppPaidAllTime(id);
+            debt.total_amount = Math.max(newTotal, 0);
+            if (getDebtOutsidePaid(debt) > debt.total_amount - paidNow) {
+                debt.outside_paid = Math.max(0, debt.total_amount - paidNow);
+            }
+            syncGlobalDebtBalance(id);
+            refreshDebtCard(id);
+            updateDebtsDisplay();
+            refreshBudgetAfterDebtEdit(id);
+            saveGlobalData();
+        };
+
+        if (overflow.hasOverflow) {
+            confirmDebtCategoryTrim(debt, overflow, newTotal, newRemaining, apply);
+            refreshDebtCard(id);
+            return;
+        }
+        apply();
     }
 
     function updateDebtsDisplay() {
@@ -3614,7 +4656,49 @@ let cogsAmount = 0;
         renderScheduleModal();
     }
 
-function closeScheduleModal(e) {
+    function isDebtArchivedInView(debt) {
+        const viewDate = currentYear * 100 + currentMonth;
+        return !!(debt.is_archived && Number(debt.is_archived) !== 0 && viewDate >= Math.abs(debt.is_archived));
+    }
+
+    function isDebtOpenInSchedule(debt) {
+        if (isDebtArchivedInView(debt)) return false;
+        return getHistoricalDebtBalance(debt.id, currentYear, currentMonth) > 0;
+    }
+
+    function getOpenScheduleDebts() {
+        return (globalData.debts[currentUser.id] || []).filter(isDebtOpenInSchedule);
+    }
+
+    function parseDebtSchedule(debt) {
+        if (typeof debt.schedule === 'string') {
+            try { debt.schedule = JSON.parse(debt.schedule); } catch (e) { debt.schedule = {}; }
+        }
+        if (!debt.schedule || typeof debt.schedule !== 'object') debt.schedule = {};
+        return debt.schedule;
+    }
+
+    function getScheduleEntry(debt, monthKey) {
+        const schedule = parseDebtSchedule(debt);
+        const cur = schedule[monthKey];
+        if (cur == null) return { amount: 0, isPaid: false };
+        if (typeof cur === 'object') {
+            return { amount: parseFloat(cur.amount) || 0, isPaid: !!cur.isPaid };
+        }
+        return { amount: parseFloat(cur) || 0, isPaid: false };
+    }
+
+    function setScheduleEntry(debt, monthKey, amount, isPaid) {
+        const schedule = parseDebtSchedule(debt);
+        const amt = parseFloat(amount) || 0;
+        if (amt <= 0 && !isPaid) {
+            delete schedule[monthKey];
+            return;
+        }
+        schedule[monthKey] = { amount: amt, isPaid: !!isPaid };
+    }
+
+    function closeScheduleModal(e) {
         if (!e || e.target.id === 'schedule-modal' || e.target.className === 'btn-close-modal') {
             document.getElementById('schedule-modal').classList.remove('active');
             
@@ -3623,10 +4707,9 @@ function closeScheduleModal(e) {
             updateDebtsDisplay();   // Обновляет общую сумму долгов в шапке
         }
     }
-function updateGlobalScheduleRemaining() {
+    function updateGlobalScheduleRemaining() {
         if (!currentUser || !globalData.debts[currentUser.id]) return;
-        const viewDate = currentYear * 100 + currentMonth;
-        const activeDebts = globalData.debts[currentUser.id].filter(d => !d.is_archived || d.is_archived === 0 || viewDate < Math.abs(d.is_archived));
+        const activeDebts = getOpenScheduleDebts();
         
         let globalUnplannedUah = 0;
         activeDebts.forEach(debt => {
@@ -3683,10 +4766,7 @@ function updateGlobalScheduleRemaining() {
             return;
         }
 
-        const allDebts = globalData.debts[currentUser.id];
-        const viewDate = currentYear * 100 + currentMonth;
-        
-        const activeDebts = allDebts.filter(d => !d.is_archived || d.is_archived === 0 || viewDate < Math.abs(d.is_archived));
+        const activeDebts = getOpenScheduleDebts();
         activeDebts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
         if (activeDebts.length === 0) {
@@ -3720,17 +4800,17 @@ function updateGlobalScheduleRemaining() {
             globalUnplannedUah += (debt.currency === 'USD' ? dynamicRemaining * currentExchangeRate : dynamicRemaining);
 
             html += `<tr class="schedule-row" draggable="true" data-id="${debt.id}" 
-                        ondragstart="handleScheduleDragStart(event, ${jsId(debt.id)})" 
-                        ondragover="handleScheduleDragOver(event)" 
-                        ondragleave="handleScheduleDragLeave(event)" 
-                        ondrop="handleScheduleDrop(event, ${jsId(debt.id)})"
-                        ondragend="handleScheduleDragEnd(event)">`;
+                        data-action="handleScheduleDragStart" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([debt.id]))}" draggable="true" 
+                        data-drag-over="handleScheduleDragOver" 
+                        data-drag-leave="handleScheduleDragLeave" 
+                        data-drag-drop="handleScheduleDrop" data-args="${escapeAttr(JSON.stringify([debt.id]))}"
+                        data-drag-end="handleScheduleDragEnd">`;
             
             html += `<td class="calendar-debt-name-col">
-                        <div style="display: flex; align-items: center; margin-bottom: 6px;">
+                        <div style="display: flex; align-items: flex-start; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;">
                             <span class="drag-handle" title="Перетягніть, щоб змінити порядок">≡</span>
-                            <span style="font-weight: 700; color: var(--sys-red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(debt.name)}</span>
-                            <span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; margin-left: 6px; flex-shrink: 0;">${escapeHtml(debt.currency)}</span>
+                            <span style="font-weight: 700; color: var(--sys-red); overflow-wrap: anywhere; word-break: break-word; line-height: 1.3; min-width: 0; flex: 1;">${escapeHtml(debt.name)}</span>
+                            <span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; flex-shrink: 0;">${escapeHtml(debt.currency)}</span>
                         </div>
                         <div style="font-size: 12px; color: var(--text-secondary); padding-left: 20px;">
                             Залишок плану: <span style="font-weight: 700; color: ${dynamicRemaining < 0 ? 'var(--sys-red)' : 'var(--text-primary)'};">${formatMoney(dynamicRemaining)} ${currencySymbol}</span>
@@ -3738,30 +4818,18 @@ function updateGlobalScheduleRemaining() {
                      </td>`;
 
             months.forEach(m => {
-                let planData = schedule[m.key];
-                let planVal = '';
-                let isPaid = false;
-
-                if (planData !== undefined) {
-                    if (typeof planData === 'object') {
-                        planVal = planData.amount;
-                        isPaid = planData.isPaid;
-                    } else {
-                        planVal = planData;
-                        schedule[m.key] = { amount: planVal, isPaid: false };
-                    }
-                }
-
-                const checkedAttr = isPaid ? 'checked' : '';
-                const inputClass = isPaid ? 'schedule-input is-paid' : 'schedule-input';
+                const entry = getScheduleEntry(debt, m.key);
+                const planVal = entry.amount > 0 ? entry.amount : '';
+                const checkedAttr = entry.isPaid ? 'checked' : '';
+                const inputClass = entry.isPaid ? 'schedule-input is-paid' : 'schedule-input';
 
                 html += `<td>
                             <div class="schedule-input-group">
                                 <input type="checkbox" class="schedule-checkbox" ${checkedAttr} 
                                        title="Позначити у плані графіка (не фіксує фактичну оплату)"
-                                       onchange="toggleSchedulePaid(${jsId(debt.id)}, '${m.key}', this.checked)">
+                                       data-change-action="toggleSchedulePaid" data-args="${escapeAttr(JSON.stringify([debt.id, m.key]))}">
                                 <input type="number" class="${inputClass}" value="${planVal}" placeholder="0" 
-                                       oninput="updateScheduleAmount(${jsId(debt.id)}, '${m.key}', this.value)">
+                                       data-input-action="updateScheduleAmount" data-args="${escapeAttr(JSON.stringify([debt.id, m.key]))}">
                             </div>
                          </td>`;
             });
@@ -3786,35 +4854,23 @@ html += '</tbody></table>';
 
     function toggleSchedulePaid(debtId, monthKey, isChecked) {
         const debt = globalData.debts[currentUser.id].find(d => d.id == debtId);
-        if (!debt || !debt.schedule || !debt.schedule[monthKey]) return;
+        if (!debt) return;
 
-        if (typeof debt.schedule[monthKey] !== 'object') {
-            debt.schedule[monthKey] = { amount: debt.schedule[monthKey], isPaid: isChecked };
-        } else {
-            debt.schedule[monthKey].isPaid = isChecked;
-        }
-        
+        const entry = getScheduleEntry(debt, monthKey);
+        setScheduleEntry(debt, monthKey, entry.amount, isChecked);
         saveGlobalData();
-        renderScheduleModal(); // Перемальовуємо, щоб оновити кольори
+        renderScheduleModal();
     }
 
     function updateScheduleAmount(debtId, monthKey, val) {
         const debt = globalData.debts[currentUser.id].find(d => d.id == debtId);
         if (!debt) return;
 
-        if (typeof debt.schedule === 'string') { try { debt.schedule = JSON.parse(debt.schedule); } catch(e) { debt.schedule = {}; } }
-        if (!debt.schedule) debt.schedule = {};
-
+        const entry = getScheduleEntry(debt, monthKey);
         const numVal = parseFloat(val);
-        const currentIsPaid = debt.schedule[monthKey] && debt.schedule[monthKey].isPaid;
+        setScheduleEntry(debt, monthKey, isNaN(numVal) ? 0 : numVal, entry.isPaid);
 
-        if (isNaN(numVal) || numVal <= 0) {
-            delete debt.schedule[monthKey];
-        } else {
-            debt.schedule[monthKey] = { amount: numVal, isPaid: currentIsPaid || false };
-        }
-        
-        saveGlobalData(); // Тихо зберігаємо на сервер
+        saveGlobalData();
         
         // Оновлюємо текст "Залишок" у колонці зліва без повного перемалювання (щоб інпут не втрачав фокус)
         let totalPlanned = 0;
@@ -3953,11 +5009,12 @@ function handleScheduleDragStart(e, id) {
     function switchInvoiceTab(tab) {
         document.getElementById('btn-tab-invoices').classList.toggle('active', tab === 'invoices');
         document.getElementById('btn-tab-suppliers').classList.toggle('active', tab === 'suppliers');
-        
-        document.getElementById('tab-invoices-content').style.display = tab === 'invoices' ? 'block' : 'none';
-        document.getElementById('tab-suppliers-content').style.display = tab === 'suppliers' ? 'block' : 'none';
-        
+
+        document.getElementById('tab-invoices-content').style.display = tab === 'invoices' ? 'flex' : 'none';
+        document.getElementById('tab-suppliers-content').style.display = tab === 'suppliers' ? 'flex' : 'none';
+
         if (tab === 'suppliers') renderSuppliersTurnover();
+        else renderInvoices();
     }
     
     function selectInvoicePayment(type) {
@@ -3968,9 +5025,104 @@ function handleScheduleDragStart(e, id) {
     
 
     // --- КАСТОМНЫЙ ДРОПДАУН И МОДАЛКА ПОСТАВЩИКА ---
+    function getMonthInvoices() {
+        return appData[currentYear]?.[currentMonth]?.invoices || [];
+    }
+
+    function getInvoiceTotals(invoices) {
+        let total = 0;
+        let cash = 0;
+        let card = 0;
+        (invoices || []).forEach(inv => {
+            const amt = parseFloat(inv.amount) || 0;
+            total += amt;
+            if (inv.payment_method === 'cash') cash += amt;
+            else card += amt;
+        });
+        return { total, cash, card };
+    }
+
+    function updateInvoicesModalStats(invoices) {
+        const { total, cash, card } = getInvoiceTotals(invoices || getMonthInvoices());
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = formatMoney(value) + ' ₴';
+        };
+        setText('modal-invoices-total', total);
+        setText('modal-invoices-cash', cash);
+        setText('modal-invoices-card', card);
+        setText('suppliers-total-stat', total);
+        setText('suppliers-total-cash', cash);
+        setText('suppliers-total-card', card);
+    }
+
+    function formatInvoiceDate(dateStr) {
+        const dObj = parseLocalDate(dateStr);
+        return dObj ? `${dObj.getDate()} ${monthNames[dObj.getMonth()]}` : (dateStr || '—');
+    }
+
+    function formatInvoiceAddedTime(createdAt) {
+        if (!createdAt) return '';
+        const d = new Date(createdAt);
+        if (Number.isNaN(d.getTime())) return '';
+        return d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+
+    function invoiceAddedTimestamp(inv) {
+        if (inv?.created_at) {
+            const t = Date.parse(inv.created_at);
+            if (!Number.isNaN(t)) return t;
+        }
+        const d = parseLocalDate(inv?.date);
+        // Legacy invoices have no add-time: keep date order, always below timestamped rows.
+        return d ? d.getTime() - 1e15 : Number.NEGATIVE_INFINITY;
+    }
+
+    function normalizeInvoiceAmountQuery(query) {
+        return String(query || '').replace(/\s/g, '').replace(',', '.').toLowerCase();
+    }
+
+    function invoiceMatchesAmountQuery(inv, query) {
+        const q = normalizeInvoiceAmountQuery(query);
+        if (!q) return true;
+        const amount = Number(inv.amount) || 0;
+        const formatted = formatMoney(amount);
+        const compact = formatted.replace(/\s/g, '');
+        const compactDot = compact.replace(',', '.');
+        const raw = String(amount);
+        return raw.includes(q) || compact.includes(query.replace(/\s/g, '')) || compactDot.includes(q) || normalizeInvoiceAmountQuery(formatted).includes(q);
+    }
+
+    function filterInvoicesByAmount() {
+        renderInvoices();
+    }
+
     function openNewSupplierModal() {
-        document.getElementById('supplier-dropdown-container').classList.remove('open');
+        document.getElementById('supplier-dropdown-container')?.classList.remove('open');
+        document.getElementById('supplier-edit-id').value = '';
         document.getElementById('new-supplier-name-input').value = '';
+        const title = document.getElementById('supplier-modal-title');
+        const hint = document.getElementById('supplier-modal-hint');
+        const saveBtn = document.getElementById('supplier-save-btn');
+        if (title) title.innerText = 'Новий постачальник';
+        if (hint) hint.innerText = 'Введіть назву компанії або ФОП';
+        if (saveBtn) saveBtn.innerText = 'Додати';
+        document.getElementById('new-supplier-modal').classList.add('active');
+        setTimeout(() => document.getElementById('new-supplier-name-input').focus(), 100);
+    }
+
+    function openEditSupplierModal(id) {
+        const sup = (globalData.suppliers[currentUser.id] || []).find(s => s.id == id);
+        if (!sup) return;
+        document.getElementById('supplier-dropdown-container')?.classList.remove('open');
+        document.getElementById('supplier-edit-id').value = String(sup.id);
+        document.getElementById('new-supplier-name-input').value = sup.name || '';
+        const title = document.getElementById('supplier-modal-title');
+        const hint = document.getElementById('supplier-modal-hint');
+        const saveBtn = document.getElementById('supplier-save-btn');
+        if (title) title.innerText = 'Редагувати постачальника';
+        if (hint) hint.innerText = 'Нова назва компанії або ФОП';
+        if (saveBtn) saveBtn.innerText = 'Зберегти';
         document.getElementById('new-supplier-modal').classList.add('active');
         setTimeout(() => document.getElementById('new-supplier-name-input').focus(), 100);
     }
@@ -3983,18 +5135,48 @@ function handleScheduleDragStart(e, id) {
 
     function confirmAddSupplier() {
         const name = document.getElementById('new-supplier-name-input').value;
-        if (name && name.trim()) {
-            if (!globalData.suppliers) globalData.suppliers = {};
-            if (!globalData.suppliers[currentUser.id]) globalData.suppliers[currentUser.id] = [];
-            
-            const createdId = newId();
-            const cleanName = name.trim();
-            globalData.suppliers[currentUser.id].push({ id: createdId, name: cleanName });
-            saveGlobalData(); 
+        const cleanName = (name || '').trim();
+        if (!cleanName) return;
+
+        if (!globalData.suppliers) globalData.suppliers = {};
+        if (!globalData.suppliers[currentUser.id]) globalData.suppliers[currentUser.id] = [];
+
+        const editId = document.getElementById('supplier-edit-id')?.value;
+        if (editId) {
+            const sup = globalData.suppliers[currentUser.id].find(s => s.id == editId);
+            if (sup) sup.name = cleanName;
+            saveGlobalData();
             renderSuppliersDropdown();
-            selectSupplier(null, createdId, cleanName);
+            renderInvoices();
+            renderSuppliersTurnover();
             closeNewSupplierModal();
+            return;
         }
+
+        const createdId = newId();
+        globalData.suppliers[currentUser.id].push({ id: createdId, name: cleanName });
+        saveGlobalData();
+        renderSuppliersDropdown();
+        const invoicesTab = document.getElementById('tab-invoices-content');
+        if (invoicesTab && invoicesTab.style.display !== 'none') {
+            selectSupplier(null, createdId, cleanName);
+        }
+        renderSuppliersTurnover();
+        closeNewSupplierModal();
+    }
+
+    function deleteSupplier(id) {
+        showConfirm(
+            'Видалити постачальника?',
+            'Інвойси залишаться, але назва в них зникне. Скасувати дію буде неможливо.',
+            () => {
+                globalData.suppliers[currentUser.id] = (globalData.suppliers[currentUser.id] || []).filter(s => s.id != id);
+                saveGlobalData();
+                renderSuppliersDropdown();
+                renderInvoices();
+                renderSuppliersTurnover();
+            }
+        );
     }
     
 function renderSuppliersDropdown() {
@@ -4008,11 +5190,11 @@ function renderSuppliersDropdown() {
         }
 
         // Додаємо поле пошуку на початок списку
-        let html = `<input type="text" class="dropdown-search-input" placeholder="🔍 Пошук постачальника..." onclick="event.stopPropagation()" oninput="filterSuppliers(this.value)">`;
+        let html = `<input type="text" class="dropdown-search-input" placeholder="🔍 Пошук постачальника..." data-stop-propagation="1" data-input-action="filterSuppliers">`;
 
         suppliers.forEach(s => {
             const safeName = escapeAttr(s.name);
-            html += `<div class="custom-dropdown-option supplier-item" onclick="selectSupplier(event, '${escapeAttr(String(s.id))}', '${safeName}')">${escapeHtml(s.name)}</div>`;
+            html += `<div class="custom-dropdown-option supplier-item" data-action="selectSupplier" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([String(s.id), s.name]))}">${escapeHtml(s.name)}</div>`;
         });
         
         container.innerHTML = html;
@@ -4022,7 +5204,10 @@ function renderSuppliersDropdown() {
     function toggleSupplierDropdown(e) {
         e.stopPropagation();
         const container = document.getElementById('supplier-dropdown-container');
-        container.classList.toggle('open');
+        if (!container) return;
+        const willOpen = !container.classList.contains('open');
+        closeOpenDropdowns(container);
+        container.classList.toggle('open', willOpen);
         
         if (container.classList.contains('open')) {
             const searchInput = container.querySelector('.dropdown-search-input');
@@ -4113,153 +5298,208 @@ function addInvoice() {
             date: date,
             payment_method: paymentMethod,
             year: currentYear,
-            month: currentMonth
+            month: currentMonth,
+            created_at: new Date().toISOString()
         });
         
         document.getElementById('new-invoice-amount').value = '';
         saveData(); 
         renderInvoices();
+        renderSuppliersTurnover();
         updateAll();
     }
 
-    // --- УМНАЯ ГРУППИРОВКА НАКЛАДНЫХ ---
     function renderInvoices() {
         const list = document.getElementById('invoices-list');
-        list.innerHTML = '';
-        const invoices = appData[currentYear]?.[currentMonth]?.invoices || [];
+        if (!list) return;
+        const invoices = getMonthInvoices();
         const suppliers = globalData.suppliers[currentUser.id] || [];
-        
+        updateInvoicesModalStats(invoices);
+
         if (invoices.length === 0) {
-            list.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px; font-weight: 500;">Немає накладних за цей місяць</div>';
+            list.innerHTML = '<div class="payroll-empty">Немає накладних за цей місяць</div>';
             return;
         }
-        
-        // Сортировка от новых к старым
-        const sorted = [...invoices].sort((a,b) => String(b.date || '').localeCompare(String(a.date || '')));
-        
-        // Группировка по дате
-        const grouped = {};
-        sorted.forEach(inv => {
-            if (!grouped[inv.date]) grouped[inv.date] = [];
-            grouped[inv.date].push(inv);
-        });
 
-        // Отрисовка
-        for (const [dateStr, invs] of Object.entries(grouped)) {
-            // Красивая дата (напр. 30 Березня)
-            const dObj = parseLocalDate(dateStr);
-            const formattedDate = dObj ? `${dObj.getDate()} ${monthNames[dObj.getMonth()]}` : dateStr;
-
-            // Заголовок группы
-            list.innerHTML += `
-                <div style="font-size: 12px; font-weight: 800; color: var(--text-tertiary); margin: 12px 0 6px 4px; text-transform: uppercase; letter-spacing: 1px;">
-                    📅 ${formattedDate}
-                </div>
-            `;
-
-            // Накладные внутри даты
-            invs.forEach(inv => {
-                const sup = suppliers.find(s => s.id == inv.supplier_id);
-                const supName = escapeHtml(sup ? sup.name : 'Видалений постачальник');
-                const isCash = inv.payment_method === 'cash';
-                const payColor = isCash ? '#ff9f0a' : 'var(--sys-blue)';
-                const payText = isCash ? 'Готівка' : 'Безготівка';
-                    
-                list.innerHTML += `
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.03); padding: 12px 16px; border-radius: 16px; margin-bottom: 6px; box-shadow: inset 0 2px 4px rgba(255,255,255,0.02);">
-                        <div style="flex: 1; overflow: hidden; padding-right: 12px;">
-                            <div style="font-weight: 600; font-size: 15px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">${supName}</div>
-                            <div style="font-size: 12px; font-weight: 700; color: ${payColor};">${payText}</div>
-                        </div>
-                        <div style="text-align: right; margin-right: 12px; flex-shrink: 0;">
-                            <div class="tabular" style="font-weight: 800; font-size: 16px; color: var(--text-primary);">${formatMoney(inv.amount)} ₴</div>
-                        </div>
-                        <button class="btn-delete" style="width: 32px; height: 32px; border-radius: 10px; background: rgba(255,69,58,0.1); color: var(--sys-red); border-color: rgba(255,69,58,0.2); padding: 0;" onclick="deleteInvoice('${escapeAttr(String(inv.id))}')">✕</button>
-                    </div>
-                `;
-            });
+        const amountQuery = document.getElementById('invoice-amount-search')?.value || '';
+        const matched = invoices.filter(inv => invoiceMatchesAmountQuery(inv, amountQuery));
+        if (matched.length === 0) {
+            list.innerHTML = '<div class="payroll-empty">Немає інвойсів з такою сумою</div>';
+            return;
         }
+
+        const sorted = [...matched].sort((a, b) => invoiceAddedTimestamp(b) - invoiceAddedTimestamp(a));
+        const rowsHtml = sorted.map(inv => {
+            const sup = suppliers.find(s => s.id == inv.supplier_id);
+            const supName = sup ? sup.name : 'Видалений постачальник';
+            const isCash = inv.payment_method === 'cash';
+            const amountVal = Number(inv.amount) || 0;
+            const addedTime = formatInvoiceAddedTime(inv.created_at);
+            return `
+                <tr class="payroll-row">
+                    <td class="tabular">
+                        <span class="invoice-date-cell">
+                            <span>${escapeHtml(formatInvoiceDate(inv.date))}</span>
+                            ${addedTime ? `<span class="invoice-date-time">${escapeHtml(addedTime)}</span>` : ''}
+                        </span>
+                    </td>
+                    <td><span class="sheet-name" title="${escapeAttr(supName)}">${escapeHtml(supName)}</span></td>
+                    <td>
+                        <div class="invoice-pay-edit">
+                            <button type="button" class="invoice-pay-edit__btn ${isCash ? 'is-active is-cash' : ''}" data-action="setInvoicePayment" data-args="${escapeAttr(JSON.stringify([String(inv.id), 'cash']))}">Готівка</button>
+                            <button type="button" class="invoice-pay-edit__btn ${!isCash ? 'is-active is-card' : ''}" data-action="setInvoicePayment" data-args="${escapeAttr(JSON.stringify([String(inv.id), 'card']))}">Безготівка</button>
+                        </div>
+                    </td>
+                    <td class="payroll-th-num">
+                        <label class="invoice-amount-edit">
+                            <input type="number" min="0.01" step="0.01" class="invoice-amount-input tabular" value="${amountVal}" data-change-action="updateInvoiceAmount" data-args="${escapeAttr(JSON.stringify([String(inv.id)]))}">
+                            <span>₴</span>
+                        </label>
+                    </td>
+                    <td class="payroll-col-actions">
+                        <button type="button" class="payroll-emp-btn payroll-emp-btn--del" data-action="deleteInvoice" data-args="${escapeAttr(JSON.stringify([String(inv.id)]))}" title="Видалити">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        list.innerHTML = `
+            <div class="payroll-table-wrap">
+                <table class="payroll-table invoices-table">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Постачальник</th>
+                            <th>Оплата</th>
+                            <th class="payroll-th-num">Сума</th>
+                            <th class="payroll-th-num">Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+        `;
     }
 
-    
+    function findMonthInvoice(id) {
+        return getMonthInvoices().find(i => i.id == id);
+    }
 
-    
-function deleteInvoice(id) {
+    function setInvoicePayment(id, type) {
+        const inv = findMonthInvoice(id);
+        if (!inv) return;
+        const next = type === 'cash' ? 'cash' : 'card';
+        if (inv.payment_method === next) return;
+        inv.payment_method = next;
+        saveData();
+        renderInvoices();
+        renderSuppliersTurnover();
+        updateAll();
+    }
+
+    function updateInvoiceAmount(id, val) {
+        const inv = findMonthInvoice(id);
+        if (!inv) return;
+        const amount = parseFloat(val);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            renderInvoices();
+            return;
+        }
+        if (Number(inv.amount) === amount) return;
+        inv.amount = amount;
+        saveData();
+        updateInvoicesModalStats();
+        renderSuppliersTurnover();
+        updateAll();
+    }
+
+    function deleteInvoice(id) {
         showConfirm("Видалити накладну?", "Ви впевнені, що хочете видалити цю накладну? Скасувати дію буде неможливо.", () => {
             appData[currentYear][currentMonth].invoices = appData[currentYear][currentMonth].invoices.filter(i => i.id != id);
             saveData();
             renderInvoices();
+            renderSuppliersTurnover();
             updateAll();
         });
     }
-    
 
-    
     function renderSuppliersTurnover() {
         const list = document.getElementById('suppliers-turnover-list');
-        list.innerHTML = '';
-        
-        const invoices = appData[currentYear]?.[currentMonth]?.invoices || [];
+        if (!list) return;
+
+        const invoices = getMonthInvoices();
         const suppliers = globalData.suppliers[currentUser.id] || [];
-        
-        if (invoices.length === 0) {
-            list.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Немає даних для аналітики</div>';
-            document.getElementById('suppliers-total-stat').innerText = '0.00 ₴';
-            if (document.getElementById('suppliers-total-cash')) document.getElementById('suppliers-total-cash').innerText = '0.00 ₴';
-            if (document.getElementById('suppliers-total-card')) document.getElementById('suppliers-total-card').innerText = '0.00 ₴';
-            return;
-        }
-        
-        let total = 0;
-        let totalCash = 0;
-        let totalCard = 0;
+        updateInvoicesModalStats(invoices);
+        const { total } = getInvoiceTotals(invoices);
+
         const stats = {};
-        
+        suppliers.forEach(s => {
+            stats[s.id] = { name: s.name, total: 0, cash: 0, card: 0, count: 0, known: true };
+        });
         invoices.forEach(inv => {
-            if (!stats[inv.supplier_id]) stats[inv.supplier_id] = { total: 0, cash: 0, card: 0 };
+            if (!stats[inv.supplier_id]) {
+                stats[inv.supplier_id] = { name: 'Видалений постачальник', total: 0, cash: 0, card: 0, count: 0, known: false };
+            }
             const amt = parseFloat(inv.amount) || 0;
             stats[inv.supplier_id].total += amt;
-            
-            if (inv.payment_method === 'cash') {
-                stats[inv.supplier_id].cash += amt;
-                totalCash += amt;
-            } else {
-                stats[inv.supplier_id].card += amt;
-                totalCard += amt;
-            }
-            total += amt;
+            stats[inv.supplier_id].count += 1;
+            if (inv.payment_method === 'cash') stats[inv.supplier_id].cash += amt;
+            else stats[inv.supplier_id].card += amt;
         });
-        
-        document.getElementById('suppliers-total-stat').innerText = formatMoney(total) + ' ₴';
-        if (document.getElementById('suppliers-total-cash')) document.getElementById('suppliers-total-cash').innerText = formatMoney(totalCash) + ' ₴';
-        if (document.getElementById('suppliers-total-card')) document.getElementById('suppliers-total-card').innerText = formatMoney(totalCard) + ' ₴';
-        
-        const sortedStats = Object.entries(stats).sort((a,b) => b[1].total - a[1].total);
-        
-        sortedStats.forEach(([supId, data]) => {
-            const sup = suppliers.find(s => s.id == supId);
-            const supName = escapeHtml(sup ? sup.name : 'Невідомий постачальник');
-            const percent = ((data.total / total) * 100).toFixed(1);
-            
-            list.innerHTML += `
-                <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-weight: 700; font-size: 16px; color: white;">${supName}</span>
-                        <span style="font-weight: 800; font-size: 16px; color: var(--sys-red);">${formatMoney(data.total)} ₴</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-                        <span>Частка: ${percent}%</span>
-                        <div style="display: flex; gap: 12px;">
-                            <span>Готівка: <span style="color: #ff9f0a;">${formatMoney(data.cash)}</span></span>
-                            <span>Безготівка: <span style="color: var(--sys-blue);">${formatMoney(data.card)}</span></span>
-                        </div>
-                    </div>
-                    <div class="jar-progress-bg" style="height: 6px; border-radius: 3px;">
-                        <div class="jar-progress-fill" style="width: ${percent}%; background: linear-gradient(90deg, #ff453a, #d70015); box-shadow: none;"></div>
-                    </div>
-                </div>
+
+        const rows = Object.entries(stats).sort((a, b) => {
+            if (b[1].total !== a[1].total) return b[1].total - a[1].total;
+            return String(a[1].name).localeCompare(String(b[1].name), 'uk');
+        });
+
+        if (rows.length === 0) {
+            list.innerHTML = '<div class="payroll-empty">Немає постачальників</div>';
+            return;
+        }
+
+        const rowsHtml = rows.map(([supId, data]) => {
+            const percent = total > 0 ? ((data.total / total) * 100).toFixed(1) : '0.0';
+            const actions = data.known ? `
+                <button type="button" class="payroll-emp-btn" data-action="openEditSupplierModal" data-args="${escapeAttr(JSON.stringify([String(supId)]))}" title="Редагувати">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+                <button type="button" class="payroll-emp-btn payroll-emp-btn--del" data-action="deleteSupplier" data-args="${escapeAttr(JSON.stringify([String(supId)]))}" title="Видалити">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+            ` : '<span class="payroll-muted">—</span>';
+            return `
+                <tr class="payroll-row">
+                    <td><span class="sheet-name" title="${escapeAttr(data.name)}">${escapeHtml(data.name)}</span></td>
+                    <td class="tabular">${data.count}</td>
+                    <td class="tabular" style="color: #ff9f0a;">${formatMoney(data.cash)} ₴</td>
+                    <td class="tabular" style="color: var(--sys-blue);">${formatMoney(data.card)} ₴</td>
+                    <td class="payroll-col-remain tabular">${formatMoney(data.total)} ₴</td>
+                    <td class="tabular">${percent}%</td>
+                    <td class="payroll-col-actions"><div class="payroll-emp-card__actions">${actions}</div></td>
+                </tr>
             `;
-        });
+        }).join('');
+
+        list.innerHTML = `
+            <div class="payroll-table-wrap">
+                <table class="payroll-table suppliers-table">
+                    <thead>
+                        <tr>
+                            <th>Постачальник</th>
+                            <th>Інвойси</th>
+                            <th>Готівка</th>
+                            <th>Безготівка</th>
+                            <th class="payroll-th-num">Всього</th>
+                            <th>Частка</th>
+                            <th class="payroll-th-num">Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+        `;
     }
 
  // ==========================================
@@ -4305,20 +5545,20 @@ function generatePayrollSparklineHTML(currentTotal) {
             colorMain = '#ff453a'; 
         } else if (currentTotal > prevTotal) {
             const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-up" style="cursor: pointer; margin-bottom: 0;" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();">
+            trendHtml = `<div class="trend-badge trend-up" style="cursor: pointer; margin-bottom: 0;" data-stop-propagation="1" data-toggle-expanded="1">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#ff453a';
         } else if (currentTotal < prevTotal) {
             const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
-            trendHtml = `<div class="trend-badge trend-down" style="cursor: pointer; margin-bottom: 0;" onclick="this.classList.toggle('is-expanded'); event.stopPropagation();">
+            trendHtml = `<div class="trend-badge trend-down" style="cursor: pointer; margin-bottom: 0;" data-stop-propagation="1" data-toggle-expanded="1">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#32d74b';
         } else { 
-            trendHtml = `<div class="trend-badge" style="background: rgba(255,255,255,0.1); color: #a1a1a6; margin-bottom: 0;" onclick="event.stopPropagation()">= Без змін</div>`; 
+            trendHtml = `<div class="trend-badge" style="background: rgba(255,255,255,0.1); color: #a1a1a6; margin-bottom: 0;" data-stop-propagation="1">= Без змін</div>`; 
             colorMain = '#a1a1a6'; 
         }
 
@@ -4339,75 +5579,283 @@ function generatePayrollSparklineHTML(currentTotal) {
         let totalRemainingToPay = 0; let totalAccruedGlobal = 0;
 
         if (payroll.length === 0) {
-            container.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Немає співробітників</div>';
-        }
+            container.innerHTML = '<div class="payroll-empty">Немає співробітників</div>';
+        } else {
+            let rowsHtml = '';
+            payroll.forEach(emp => {
+                const rate = parseFloat(emp.rate) || 0;
+                const hours = parseFloat(emp.hours) || 0;
+                const bonus = parseFloat(emp.bonus) || 0;
+                const penalty = parseFloat(emp.penalty) || 0;
+                const accrued = getEmployeeAccrued(emp);
+                const alreadyPaid = getEmployeeAlreadyPaid(emp);
+                let remaining = Math.max(0, accrued - alreadyPaid);
 
-        payroll.forEach(emp => {
-            const rate = parseFloat(emp.rate) || 0; const hours = parseFloat(emp.hours) || 0; const bonus = parseFloat(emp.bonus) || 0;
-            const penalty = parseFloat(emp.penalty) || 0; const advance = parseFloat(emp.advance) || 0; const paidPart = parseFloat(emp.paid_part) || 0;
-            
-            const accrued = (rate * hours) + bonus - penalty;
-            let remaining = Math.max(0, accrued - advance - paidPart);
-            
-            totalAccruedGlobal += accrued;
-            if (!emp.is_paid && remaining > 0) totalRemainingToPay += remaining;
-            else remaining = 0;
+                totalAccruedGlobal += accrued;
+                if (!emp.is_paid && remaining > 0) totalRemainingToPay += remaining;
+                else remaining = 0;
 
-            const paidClass = emp.is_paid ? 'background: rgba(46, 160, 67, 0.1); border-color: rgba(46, 160, 67, 0.3);' : 'background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.05);';
-            const bonusTag = bonus > 0 ? `<span style="font-size: 11px; background: rgba(50, 215, 75, 0.15); color: #32d74b; padding: 2px 6px; border-radius: 6px; margin-right: 4px;">Премія +${formatMoney(bonus)}</span>` : '';
-            const penaltyTag = penalty > 0 ? `<span style="font-size: 11px; background: rgba(255, 69, 58, 0.15); color: #ff453a; padding: 2px 6px; border-radius: 6px;">Штраф -${formatMoney(penalty)}</span>` : '';
+                const tagsHtml = [
+                    bonus > 0 ? `<span class="payroll-tag payroll-tag--bonus">Премія +${formatMoney(bonus)}</span>` : '',
+                    penalty > 0 ? `<span class="payroll-tag payroll-tag--penalty">Штраф -${formatMoney(penalty)}</span>` : '',
+                ].join('') || '<span class="payroll-muted">—</span>';
 
-            const accountHtml = emp.account ? `
-                <div style="font-size: 12px; font-weight: 600; color: var(--sys-blue); background: rgba(10, 132, 255, 0.1); padding: 6px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; max-width: 100%; box-sizing: border-box;" onclick="copyAccountToClipboard(event, '${escapeAttr(emp.account)}')" title="Натисніть, щоб скопіювати">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    <span class="acc-text" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(emp.account)}</span>
-                </div>
-            ` : '';
+                const accountHtml = emp.account
+                    ? `<button type="button" class="payroll-account" data-action="copyAccountToClipboard" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([emp.account]))}" title="Натисніть, щоб скопіювати">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span class="acc-text">${escapeHtml(emp.account)}</span>
+                       </button>`
+                    : '<span class="payroll-muted">—</span>';
 
-            container.innerHTML += `
-                <div class="payroll-emp-card" style="${paidClass}">
-                    <div class="payroll-emp-card__main">
-                        <div class="payroll-emp-card__name">${escapeHtml(emp.name || 'Без імені')}</div>
-                        <div class="payroll-emp-card__meta">${hours} год × ${rate} ₴</div>
-                        <div class="payroll-emp-card__tags">${bonusTag}${penaltyTag}</div>
-                        ${accountHtml}
-                    </div>
-                    <div class="payroll-emp-card__side">
-                        <div class="payroll-emp-card__amounts">
-                            <div class="tabular payroll-emp-card__accrued">${formatMoney(accrued)} ₴</div>
-                            <div class="tabular payroll-emp-card__remain" style="color: ${emp.is_paid ? 'var(--sys-green)' : 'var(--sys-red)'};">Залишок: ${formatMoney(remaining)} ₴</div>
-                        </div>
-                        <div class="payroll-emp-card__actions">
-                            <button type="button" class="payroll-emp-btn" onclick="openEmployeeModal('${escapeAttr(String(emp.id))}')" title="Редагувати">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                            </button>
-                            <button type="button" class="payroll-emp-btn payroll-emp-btn--del" onclick="deleteEmployee('${escapeAttr(String(emp.id))}', event)" title="Видалити">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
-                            <button type="button" class="payroll-emp-btn payroll-emp-btn--paid ${emp.is_paid ? 'is-paid' : ''}" onclick="event.stopPropagation(); toggleEmployeePaid('${escapeAttr(String(emp.id))}')" title="${emp.is_paid ? 'Скасувати оплату' : 'Відмітити як оплачено'}">
-                                ${emp.is_paid
-                                    ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
-                                    : '<span class="payroll-emp-btn__box"></span>'}
-                            </button>
-                        </div>
-                    </div>
+                const metaHtml = getEmployeePayType(emp) === 'fixed'
+                    ? `Фікс ${formatMoney(rate)} ₴`
+                    : `${hours} год × ${rate} ₴`;
+
+                const empId = escapeAttr(String(emp.id));
+                const position = String(emp.position || '').trim();
+                const positionHtml = position
+                    ? `<span class="payroll-position" title="${escapeAttr(position)}">${escapeHtml(position)}</span>`
+                    : '<span class="payroll-muted">—</span>';
+                rowsHtml += `
+                    <tr class="payroll-row ${emp.is_paid ? 'is-paid' : ''}" draggable="true" data-id="${empId}"
+                        data-drag-start="handlePayrollDragStart"
+                        data-drag-over="handlePayrollDragOver"
+                        data-drag-leave="handlePayrollDragLeave"
+                        data-drag-drop="handlePayrollDrop"
+                        data-drag-end="handlePayrollDragEnd"
+                        data-args="${escapeAttr(JSON.stringify([emp.id]))}">
+                        <td class="payroll-col-drag">
+                            <span class="drag-handle" title="Перетягніть, щоб змінити порядок">≡</span>
+                        </td>
+                        <td class="payroll-col-name">
+                            <div class="payroll-name">${escapeHtml(emp.name || 'Без імені')}</div>
+                        </td>
+                        <td class="payroll-col-position">${positionHtml}</td>
+                        <td class="payroll-col-meta tabular">${metaHtml}</td>
+                        <td class="payroll-col-tags">${tagsHtml}</td>
+                        <td class="payroll-col-account">${accountHtml}</td>
+                        <td class="payroll-col-remain tabular" style="color: ${emp.is_paid ? 'var(--sys-green)' : 'var(--sys-red)'};">${formatMoney(remaining)} ₴</td>
+                        <td class="payroll-col-accrued tabular">${formatMoney(accrued)} ₴</td>
+                        <td class="payroll-col-actions">
+                            <div class="payroll-emp-card__actions">
+                                <button type="button" class="payroll-emp-btn" data-action="downloadPayrollPdfForEmployee" data-args="${escapeAttr(JSON.stringify([empId]))}" title="PDF розрахунковий листок">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                </button>
+                                <button type="button" class="payroll-emp-btn" data-action="openEmployeeModal" data-args="${escapeAttr(JSON.stringify([empId]))}" title="Редагувати">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                </button>
+                                <button type="button" class="payroll-emp-btn payroll-emp-btn--del" data-action="deleteEmployee" data-args="${escapeAttr(JSON.stringify([empId]))}" title="Видалити">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
+                                <button type="button" class="payroll-emp-btn payroll-emp-btn--paid ${emp.is_paid ? 'is-paid' : ''}" data-stop-propagation="1" data-action="toggleEmployeePaid" data-args="${escapeAttr(JSON.stringify([empId]))}" title="${emp.is_paid ? 'Скасувати оплату' : 'Відмітити як оплачено'}">
+                                    ${emp.is_paid
+                                        ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sys-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+                                        : '<span class="payroll-emp-btn__box"></span>'}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="payroll-table-wrap">
+                    <table class="payroll-table">
+                        <thead>
+                            <tr>
+                                <th class="payroll-col-drag"></th>
+                                <th>ПІБ</th>
+                                <th>Посада</th>
+                                <th>Оплата</th>
+                                <th>Премія / штраф</th>
+                                <th>Рахунок</th>
+                                <th class="payroll-th-num">Залишок</th>
+                                <th class="payroll-th-num">Нараховано</th>
+                                <th class="payroll-th-num">Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
                 </div>
             `;
-        });
+        }
 
         const modalAccrued = document.getElementById('modal-payroll-accrued');
         const modalRemaining = document.getElementById('modal-payroll-remaining');
-        if(modalAccrued) modalAccrued.innerText = formatMoney(totalAccruedGlobal) + ' ₴';
-        if(modalRemaining) modalRemaining.innerText = formatMoney(totalRemainingToPay) + ' ₴';
+        if (modalAccrued) modalAccrued.innerText = formatMoney(totalAccruedGlobal) + ' ₴';
+        if (modalRemaining) modalRemaining.innerText = formatMoney(totalRemainingToPay) + ' ₴';
 
         const mainAmountEl = document.getElementById('payroll-total-amount');
         if (mainAmountEl) mainAmountEl.innerText = formatMoney(totalAccruedGlobal);
-        
+
         const sparkData = generatePayrollSparklineHTML(totalAccruedGlobal);
         const trendBadgeEl = document.getElementById('payroll-trend-badge');
         const sparkContainerEl = document.getElementById('payroll-sparkline-container');
         if (trendBadgeEl) trendBadgeEl.innerHTML = sparkData.trendHtml;
         if (sparkContainerEl) sparkContainerEl.innerHTML = sparkData.sparklineSvg + `<div class="sparkline-labels">${sparkData.labelsHtml}</div>`;
+    }
+
+    let draggedPayrollEmpId = null;
+
+    function getPayrollList() {
+        if (!appData[currentYear] || !appData[currentYear][currentMonth]) return null;
+        if (!Array.isArray(appData[currentYear][currentMonth].payroll)) {
+            appData[currentYear][currentMonth].payroll = [];
+        }
+        return appData[currentYear][currentMonth].payroll;
+    }
+
+    function handlePayrollDragStart(e, id) {
+        const origin = e.target instanceof Element ? e.target : e.target.parentElement;
+        if (origin?.closest('button, input, a, textarea, select')) {
+            e.preventDefault();
+            return;
+        }
+        draggedPayrollEmpId = id;
+        setTimeout(() => {
+            const row = origin?.closest?.('.payroll-row');
+            if (row) row.classList.add('dragging');
+        }, 0);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(id));
+    }
+
+    function handlePayrollDragEnd(e) {
+        const row = e.target.closest?.('.payroll-row') || e.target;
+        if (row && row.classList) row.classList.remove('dragging');
+        document.querySelectorAll('.payroll-row').forEach(r => {
+            r.classList.remove('drag-over-top', 'drag-over-bottom', 'dragging');
+        });
+        draggedPayrollEmpId = null;
+    }
+
+    function handlePayrollDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const tr = e.target.closest('tr.payroll-row');
+
+        document.querySelectorAll('.payroll-row').forEach(row => {
+            row.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+
+        if (tr && tr.dataset.id != draggedPayrollEmpId) {
+            const rect = tr.getBoundingClientRect();
+            const relY = e.clientY - rect.top;
+            if (relY < rect.height / 2) tr.classList.add('drag-over-top');
+            else tr.classList.add('drag-over-bottom');
+        }
+        return false;
+    }
+
+    function handlePayrollDragLeave(e) {
+        const tr = e.target.closest('tr.payroll-row');
+        if (tr) tr.classList.remove('drag-over-top', 'drag-over-bottom');
+    }
+
+    function handlePayrollDrop(e, targetId) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const targetRow = e.target.closest('tr.payroll-row');
+        let insertAfter = false;
+        if (targetRow) insertAfter = targetRow.classList.contains('drag-over-bottom');
+
+        document.querySelectorAll('.payroll-row').forEach(row => {
+            row.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom');
+        });
+
+        if (!draggedPayrollEmpId || draggedPayrollEmpId == targetId) return;
+
+        const payroll = getPayrollList();
+        if (!payroll) return;
+
+        const fromIndex = payroll.findIndex(emp => emp.id == draggedPayrollEmpId);
+        let toIndex = payroll.findIndex(emp => emp.id == targetId);
+        if (fromIndex === -1 || toIndex === -1) return;
+
+        const movedItem = payroll.splice(fromIndex, 1)[0];
+        if (insertAfter) {
+            toIndex = fromIndex < toIndex ? toIndex : toIndex + 1;
+        } else {
+            toIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+        }
+        payroll.splice(toIndex, 0, movedItem);
+
+        draggedPayrollEmpId = null;
+        saveDataToServer();
+        renderPayroll();
+    }
+
+    function selectEmpPayType(type) {
+        const payType = type === 'fixed' ? 'fixed' : 'hourly';
+        const typeInput = document.getElementById('emp-edit-pay-type');
+        if (typeInput) typeInput.value = payType;
+
+        const hourlyBtn = document.getElementById('btn-emp-pay-hourly');
+        const fixedBtn = document.getElementById('btn-emp-pay-fixed');
+        if (hourlyBtn) hourlyBtn.classList.toggle('active', payType === 'hourly');
+        if (fixedBtn) fixedBtn.classList.toggle('active', payType === 'fixed');
+
+        const hoursWrap = document.getElementById('emp-hours-wrap');
+        const rateLabel = document.getElementById('emp-edit-rate-label');
+        if (hoursWrap) hoursWrap.style.display = payType === 'fixed' ? 'none' : '';
+        if (rateLabel) rateLabel.innerText = payType === 'fixed' ? 'Фікс ставка (₴)' : 'Ставка / год (₴)';
+    }
+
+    function buildEmployeePayslipModel(emp) {
+        const isHourly = getEmployeePayType(emp) !== 'fixed';
+        const rate = parseFloat(emp.rate) || 0;
+        const hours = parseFloat(emp.hours) || 0;
+        const bonus = parseFloat(emp.bonus) || 0;
+        const penalty = parseFloat(emp.penalty) || 0;
+        const base = isHourly ? rate * hours : rate;
+        const accrued = getEmployeeAccrued(emp);
+        const advance = getEmployeeAlreadyPaid(emp);
+        const isPaid = !!emp.is_paid;
+        const toPay = Math.max(0, accrued - advance);
+
+        return {
+            name: emp.name || 'Без імені',
+            taxId: emp.tax_id || '',
+            account: emp.account || '',
+            isHourly,
+            payTypeLabel: isHourly ? 'Погодинна' : 'Фікс ставка',
+            hours,
+            rate,
+            base,
+            baseLabel: isHourly ? `База (${hours} × ${rate})` : 'База (фікс)',
+            bonus,
+            penalty,
+            accrued,
+            advance,
+            isPaid,
+            toPay,
+        };
+    }
+
+    function getPayrollPdfMeta() {
+        const periodLabel = `${monthNames[currentMonth].toLowerCase()} ${currentYear}`;
+        const now = new Date();
+        const dateLabel = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+        return { periodLabel, dateLabel };
+    }
+
+    async function downloadPayrollPdfForEmployee(empId) {
+        const emp = appData[currentYear]?.[currentMonth]?.payroll?.find(e => e.id == empId);
+        if (!emp) return;
+        try {
+            const { downloadPayrollPayslips } = await import('./payroll-pdf.js');
+            const { periodLabel, dateLabel } = getPayrollPdfMeta();
+            const safeName = String(emp.name || 'spivrobitnyk').replace(/[\\/:*?"<>|]+/g, '_').trim();
+            downloadPayrollPayslips([buildEmployeePayslipModel(emp)], {
+                periodLabel,
+                dateLabel,
+                fileName: `rozrahunkovyj-lystok_${safeName}.pdf`,
+            });
+        } catch (err) {
+            console.error(err);
+            alert(`Не вдалося сформувати PDF${err?.message ? `: ${err.message}` : ''}`);
+        }
     }
 
     function openEmployeeModal(empId) {
@@ -4416,22 +5864,26 @@ function generatePayrollSparklineHTML(currentTotal) {
         
         let emp = null;
         if (empId) {
-            emp = appData[currentYear][currentMonth].payroll.find(e => e.id === empId);
+            emp = appData[currentYear][currentMonth].payroll.find(e => e.id == empId);
             document.getElementById('employee-modal-title').innerText = "Редагувати";
         } else {
             document.getElementById('employee-modal-title').innerText = "Новий співробітник";
         }
 
+        const alreadyPaid = emp ? getEmployeeAlreadyPaid(emp) : 0;
+
         document.getElementById('emp-edit-id').value = emp ? emp.id : '';
         document.getElementById('emp-edit-name').value = emp ? emp.name : '';
+        const positionInput = document.getElementById('emp-edit-position');
+        if (positionInput) positionInput.value = emp ? (emp.position || '') : '';
         document.getElementById('emp-edit-tax').value = emp ? emp.tax_id : '';
         document.getElementById('emp-edit-rate').value = emp ? emp.rate : '';
         document.getElementById('emp-edit-hours').value = emp ? emp.hours : '';
         document.getElementById('emp-edit-bonus').value = emp && emp.bonus != 0 ? emp.bonus : '';
         document.getElementById('emp-edit-penalty').value = emp && emp.penalty != 0 ? emp.penalty : '';
-        document.getElementById('emp-edit-advance').value = emp && emp.advance != 0 ? emp.advance : '';
-        document.getElementById('emp-edit-paidpart').value = emp && emp.paid_part != 0 ? emp.paid_part : '';
+        document.getElementById('emp-edit-paid').value = alreadyPaid ? alreadyPaid : '';
         document.getElementById('emp-edit-account').value = emp ? emp.account : '';
+        selectEmpPayType(emp ? getEmployeePayType(emp) : 'hourly');
     }
 
     function closeEmployeeModal(e) {
@@ -4446,20 +5898,25 @@ function generatePayrollSparklineHTML(currentTotal) {
         const name = document.getElementById('emp-edit-name').value;
         if (!name.trim()) return alert("Введіть ПІБ співробітника");
 
+        const payType = document.getElementById('emp-edit-pay-type')?.value === 'fixed' ? 'fixed' : 'hourly';
+        const paidAmount = parseFloat(document.getElementById('emp-edit-paid').value) || 0;
         const data = {
             name: name,
+            position: (document.getElementById('emp-edit-position')?.value || '').trim(),
             tax_id: document.getElementById('emp-edit-tax').value,
+            pay_type: payType,
             rate: document.getElementById('emp-edit-rate').value,
-            hours: document.getElementById('emp-edit-hours').value,
+            hours: payType === 'fixed' ? 0 : document.getElementById('emp-edit-hours').value,
             bonus: document.getElementById('emp-edit-bonus').value,
             penalty: document.getElementById('emp-edit-penalty').value,
-            advance: document.getElementById('emp-edit-advance').value,
-            paid_part: document.getElementById('emp-edit-paidpart').value,
+            paid_amount: paidAmount,
+            advance: 0,
+            paid_part: 0,
             account: document.getElementById('emp-edit-account').value
         };
 
         if (id) {
-            const emp = appData[currentYear][currentMonth].payroll.find(e => e.id === id);
+            const emp = appData[currentYear][currentMonth].payroll.find(e => e.id == id);
             if (emp) Object.assign(emp, data);
         } else {
             data.id = newId();
@@ -4483,33 +5940,46 @@ function generatePayrollSparklineHTML(currentTotal) {
     }
 
     function copyAccountToClipboard(event, text) {
-        event.stopPropagation();
-        const container = event.currentTarget;
-        const textSpan = container.querySelector('.acc-text');
-        const iconSvg = container.querySelector('svg');
-        
-        const originalText = textSpan.innerText;
-        const originalBg = container.style.background;
-        const originalColor = container.style.color;
-        const originalIcon = iconSvg.innerHTML;
-        
+        if (event) event.stopPropagation();
+
+        const container =
+            event?.target?.closest?.('[data-action="copyAccountToClipboard"]') ||
+            event?.target?.closest?.('.payroll-account') ||
+            null;
+        const textSpan = container?.querySelector?.('.acc-text') || null;
+        const iconSvg = container?.querySelector?.('svg') || null;
+        const copyText =
+            (typeof text === 'string' && text.trim()) ||
+            textSpan?.innerText?.trim() ||
+            '';
+        if (!copyText) return;
+
+        const originalText = textSpan ? textSpan.innerText : copyText;
+        const originalBg = container ? container.style.background : '';
+        const originalColor = container ? container.style.color : '';
+        const originalIcon = iconSvg ? iconSvg.innerHTML : '';
+
         const showSuccess = () => {
-            textSpan.innerText = 'Скопійовано!';
-            container.style.background = 'rgba(46, 160, 67, 0.15)'; 
-            container.style.color = 'var(--sys-green)';
-            iconSvg.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
-            setTimeout(() => { 
-                textSpan.innerText = originalText; 
-                container.style.background = originalBg;
-                container.style.color = originalColor;
-                iconSvg.innerHTML = originalIcon;
+            if (textSpan) textSpan.innerText = 'Скопійовано!';
+            if (container) {
+                container.style.background = 'rgba(46, 160, 67, 0.15)';
+                container.style.color = 'var(--sys-green)';
+            }
+            if (iconSvg) iconSvg.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+            setTimeout(() => {
+                if (textSpan) textSpan.innerText = originalText;
+                if (container) {
+                    container.style.background = originalBg;
+                    container.style.color = originalColor;
+                }
+                if (iconSvg) iconSvg.innerHTML = originalIcon;
             }, 1500);
         };
 
         const fallbackCopy = () => {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
+            const textArea = document.createElement('textarea');
+            textArea.value = copyText;
+            textArea.style.position = 'fixed';
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
@@ -4523,19 +5993,34 @@ function generatePayrollSparklineHTML(currentTotal) {
         };
 
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(showSuccess).catch(fallbackCopy);
+            navigator.clipboard.writeText(copyText).then(showSuccess).catch(fallbackCopy);
         } else {
             fallbackCopy();
         }
     }
 
     function toggleEmployeePaid(id) {
-        const emp = appData[currentYear][currentMonth].payroll.find(e => e.id === id);
-        if (emp) {
-            emp.is_paid = !emp.is_paid;
-            saveDataToServer();
-            renderPayroll();
-        }
+        const emp = appData[currentYear][currentMonth].payroll.find(e => e.id == id);
+        if (!emp) return;
+
+        const willPay = !emp.is_paid;
+        const name = emp.name || 'співробітника';
+        showConfirm(
+            willPay ? 'Відмітити як оплачено?' : 'Скасувати оплату?',
+            willPay
+                ? `Ви впевнені, що хочете позначити виплату для «${name}» як оплачену?`
+                : `Ви впевнені, що хочете зняти позначку оплати для «${name}»?`,
+            () => {
+                emp.is_paid = willPay;
+                saveDataToServer();
+                renderPayroll();
+                updateAll();
+            },
+            {
+                cancel: 'Назад',
+                confirm: willPay ? 'Так, оплачено' : 'Так, зняти оплату',
+            }
+        );
     }
 
     // ==========================================
@@ -4547,50 +6032,38 @@ function generatePayrollSparklineHTML(currentTotal) {
         if (!incomeUah || incomeUah <= 0) return '';
 
         const fp = getFinancialPlan();
-        const amounts = calc502030(incomeUah);
-        const actuals = get502030ActualsFromExpenses(expenses);
+        const saveRec = recommendedSaveUah(incomeUah);
+        const monthlyForCushion = monthlyCushionBaseUah(incomeUah);
 
-        let str = `\n### ФІНАНСОВИЙ ПЛАН (50/30/20 та довгострокові цілі)\n`;
+        let str = `\n### ФІНАНСОВИЙ ПЛАН\n`;
         if (currentExchangeRate > 0) {
             str += `Курс НБУ: ${formatMoney(currentExchangeRate)} ₴/$\n\n`;
         }
 
-        str += `Правило 50/30/20 (рекомендовано vs факт):\n`;
-        RULE_502030_ITEMS.forEach(item => {
-            const rec = amounts[item.bucket];
-            const act = actuals[item.bucket];
-            const delta = act - rec;
-            str += `  - ${item.label} (${item.pct}%): рекомендовано ${formatMoney(rec)} ₴, факт ${formatMoney(act)} ₴`;
-            if (act > 0) str += ` (${delta > 0 ? '+' : ''}${formatMoney(delta)} ₴)`;
-            str += `\n`;
-        });
+        str += `Рекомендовано відкласти цього місяця: ${formatMoney(saveRec)} ₴\n`;
 
-        const catsWithSpend = (expenses || []).filter(c => getCategoryTotal(c) > 0);
-        if (catsWithSpend.length > 0) {
-            str += `\nКатегорії витрат за групами 50/30/20:\n`;
-            catsWithSpend.forEach(cat => {
-                const bucket = getCategoryBudgetBucket(cat);
-                str += `  - [${BUDGET_BUCKET_LABELS[bucket] || bucket}] ${cat.name}: ${formatMoney(getCategoryTotal(cat))} ₴\n`;
-            });
-        }
-
-        const monthlyNeedsForCushion = actuals.needs > 0 ? actuals.needs : amounts.needs;
-        const cushionBasis = actuals.needs > 0 ? 'фактичні потреби' : 'рекомендовані 50%';
-        const cushionTarget = monthlyNeedsForCushion * 6;
+        const essentialsMarked = hasEssentialCategories();
         const cushionActual = getCushionBalanceUah();
-        const cushionRemaining = Math.max(0, cushionTarget - cushionActual);
-        const cushionPctDone = cushionTarget > 0 ? ((cushionActual / cushionTarget) * 100).toFixed(1) : '0';
 
-        str += `\nПодушка безпеки (6 міс. потреб):\n`;
-        str += `  - База: ${cushionBasis} — ${formatMoney(monthlyNeedsForCushion)} ₴/міс\n`;
-        str += `  - Ціль: ${formatMoney(cushionTarget)} ₴\n`;
-        str += `  - Накопичено (конверти «Подушка»): ${formatMoney(cushionActual)} ₴\n`;
-        str += `  - Залишилось: ${formatMoney(cushionRemaining)} ₴ (${cushionPctDone}% виконано)\n`;
+        str += `\nПодушка безпеки (6 міс. обов'язкових витрат):\n`;
+        if (essentialsMarked) {
+            const cushionTarget = monthlyForCushion * 6;
+            const cushionRemaining = Math.max(0, cushionTarget - cushionActual);
+            const cushionPctDone = cushionTarget > 0 ? ((cushionActual / cushionTarget) * 100).toFixed(1) : '0';
+            str += `  - База: обов'язкові категорії цього місяця — ${formatMoney(monthlyForCushion)} ₴/міс\n`;
+            str += `  - Ціль: ${formatMoney(cushionTarget)} ₴\n`;
+            str += `  - Накопичено (конверти «Подушка»): ${formatMoney(cushionActual)} ₴\n`;
+            str += `  - Залишилось: ${formatMoney(cushionRemaining)} ₴ (${cushionPctDone}% виконано)\n`;
+        } else {
+            str += `  - Користувач ще не позначив обов'язкові категорії. НЕ рахуй ціль подушки від усіх витрат і НЕ підставляй % від доходу.\n`;
+            str += `  - Накопичено (конверти «Подушка»): ${formatMoney(cushionActual)} ₴\n`;
+            str += `  - Ціль: немає, поки не позначені обов'язкові витрати.\n`;
+        }
 
         const capitalTargetUsd = (fp.desiredMonthlyUsd || 0) * 12 * 25;
         const investmentJarsUah = getInvestmentJarsBalanceUah();
         const capitalCurrentUsd = (fp.brokerBalanceUsd || 0) + uahToUsd(investmentJarsUah);
-        const monthlyInvestUsd = uahToUsd(amounts.savings);
+        const monthlyInvestUsd = uahToUsd(saveRec);
         const yearsToCapital = calcYearsToCapital(capitalTargetUsd, capitalCurrentUsd, monthlyInvestUsd, fp.returnRatePct);
 
         str += `\nОсобистий капітал (правило ×25):\n`;
@@ -4599,7 +6072,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         str += `  - Накопичено: ${formatMoney(capitalCurrentUsd)} $ (брокер ${formatMoney(fp.brokerBalanceUsd || 0)} $ + інвест-конверти ≈${formatMoney(uahToUsd(investmentJarsUah))} $)\n`;
         if (currentExchangeRate > 0) str += `  - Ціль ≈ ${formatMoney(usdToUah(capitalTargetUsd))} ₴\n`;
         str += `  - Очікувана дохідність: ${fp.returnRatePct || 7}%/рік\n`;
-        str += `  - При 20% (${formatMoney(monthlyInvestUsd)} $/міс): ${formatYearsLabel(yearsToCapital)} до цілі\n`;
+        str += `  - При рекомендованому відкладанні (${formatMoney(monthlyInvestUsd)} $/міс): ${formatYearsLabel(yearsToCapital)} до цілі\n`;
 
         return str;
     }
@@ -4612,42 +6085,110 @@ function generatePayrollSparklineHTML(currentTotal) {
             return sum + (inc.currency === 'USD' ? amt * currentExchangeRate : amt);
         }, 0);
     }
+
+    /** Latest initialized month with income > 0, converted to USD. */
+    function getLatestPersonalIncomeUsd() {
+        const years = Object.keys(appData).map(Number).sort((a, b) => b - a);
+        for (const y of years) {
+            const months = Object.keys(appData[y] || {}).map(Number).sort((a, b) => b - a);
+            for (const m of months) {
+                if (!appData[y][m]?.initialized) continue;
+                const uah = getMonthIncomeUah(y, m);
+                if (uah > 0) {
+                    const usd = uahToUsd(uah);
+                    if (usd > 0) return usd;
+                }
+            }
+        }
+        return null;
+    }
     
     function openAiExportModal() {
-        document.getElementById('ai-export-modal').classList.add('active');
-        selectAiExportType('month');
-        document.getElementById('ai-copy-text').innerText = "Скопіювати промпт для ШІ";
+        launchAiAnalytics();
     }
 
     function closeAiExportModal(e) {
-        if (!e || e.target.id === 'ai-export-modal' || e.target.closest('.btn-close-modal')) {
-            document.getElementById('ai-export-modal').classList.remove('active');
+        closeAiChat(e);
+    }
+
+    function selectAiExportType() {
+        /* period chips removed — full history is always in context */
+    }
+
+    async function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.style.position = 'fixed';
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        document.execCommand('copy');
+        document.body.removeChild(area);
+    }
+
+    function flashAiButtonLabel(labelId, okText) {
+        const el = document.getElementById(labelId);
+        if (!el) return;
+        el.textContent = okText;
+        setTimeout(() => syncAiEntryButtons(), 1800);
+    }
+
+    async function launchAiAnalytics() {
+        if (hasLlmKey()) {
+            openAiChat({ starter: 'analytics' });
+            return;
+        }
+        try {
+            const prompt = await buildAnalyticsPrompt('all');
+            await copyTextToClipboard(prompt);
+            flashAiButtonLabel('ai-analytics-label', 'Промпт скопійовано');
+        } catch (e) {
+            console.error(e);
+            flashAiButtonLabel('ai-analytics-label', 'Не вдалося скопіювати');
         }
     }
 
-    function selectAiExportType(type) {
-        document.getElementById('ai-export-type').value = type;
-        document.getElementById('btn-ai-month').classList.toggle('active', type === 'month');
-        document.getElementById('btn-ai-all').classList.toggle('active', type === 'all');
+    async function launchAiGrowth() {
+        if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) {
+            openGrowthModal();
+            return;
+        }
+        if (hasLlmKey()) {
+            openAiChat({ starter: 'growth' });
+            return;
+        }
+        try {
+            const prompt = await buildGrowthPrompt('all');
+            if (!prompt) {
+                openGrowthModal();
+                return;
+            }
+            await copyTextToClipboard(prompt);
+            flashAiButtonLabel('ai-growth-run-label', 'Промпт скопійовано');
+        } catch (e) {
+            console.error(e);
+            flashAiButtonLabel('ai-growth-run-label', 'Не вдалося скопіювати');
+        }
     }
 
-    function generateAndCopyAiPrompt() {
-        const type = document.getElementById('ai-export-type').value;
-        const isBiz = currentUser && currentUser.account_type === 'business';
-        const profileTypeStr = isBiz ? 'Бізнес' : 'Особистий (фіз. особа)';
-        
-        let prompt = `Виступи в ролі професійного фінансового аналітика. Проаналізуй мої фінансові дані (Тип профілю: ${profileTypeStr}) та надай детальний звіт.\n`;
-        prompt += `Зверни увагу на співвідношення доходів і витрат, правило 50/30/20 (потреби / бажання / збереження), фінансову подушку (6 міс. потреб), цільовий особистий капітал (правило ×25), типи конвертів та швидкість погашення боргів. Оціни, наскільки фактичні витрати відповідають рекомендаціям. Надай 3-5 конкретних і практичних рекомендацій щодо оптимізації бюджету та збільшення вільного капіталу.\n\n`;
-        
+    async function buildAiSkryniaDataDump(opts = {}) {
+        if (!currentUser) return '';
+        const compact = Boolean(opts.compact);
+        const isBiz = currentUser.account_type === 'business';
+        await ensureExchangeRateForAi();
+        let prompt = generateAiFxSection();
+        prompt += generateAiNowSection();
+
         prompt += `### ПОТОЧНИЙ СТАН КАПІТАЛУ\n`;
-        
         const jars = globalData.jars[currentUser.id] || [];
         const totalJars = jars.reduce((sum, j) => sum + j.balance, 0);
         prompt += `- Всього накопичень: ${totalJars.toFixed(2)} ₴\n`;
         jars.forEach(j => {
-            const jarType = getJarType(j);
-            const typeLabel = jarType !== 'regular' ? ` [${JAR_TYPE_LABELS[jarType] || jarType}]` : '';
-            prompt += `  * ${j.name}${typeLabel}: ${j.balance} ₴ ${j.goal > 0 ? `(Ціль: ${j.goal} ₴)` : ''}\n`;
+            prompt += formatAiJarLine(j);
         });
 
         const debts = globalData.debts[currentUser.id] || [];
@@ -4662,63 +6203,416 @@ function generatePayrollSparklineHTML(currentTotal) {
 
         if (!isBiz) {
             prompt += generateAiFinancialPlanSection(getMonthIncomeUah(currentYear, currentMonth));
+            prompt += await buildAiYearTracksSection({ compact });
+            prompt += buildGrowthCourseSnapshot({ compact: true });
+        }
+
+        const years = Object.keys(appData).map(Number).sort((a,b) => a-b);
+        if (compact) {
+            prompt += `\n### РУХ КОШТІВ (знімок для чату)\n`;
+            prompt += `Поточний місяць — категорії без окремих статей (є ₴/міс, частка доходу, топ, за 10 років = ×120). Інші місяці — один рядок. Якщо нижче є блок «ДЕТАЛІЗАЦІЯ ПІД ПИТАННЯ» — рахуй саме його.\n`;
+            if (appData[currentYear]?.[currentMonth]?.initialized) {
+                prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz, { lineItems: false });
+            }
+            let others = '';
+            years.forEach(y => {
+                const months = Object.keys(appData[y] || {}).map(Number).sort((a,b) => a-b);
+                months.forEach(m => {
+                    if (!appData[y][m].initialized) return;
+                    if (y === currentYear && m === currentMonth) return;
+                    others += generateAiMonthOneLiner(y, m, isBiz);
+                });
+            });
+            if (others) prompt += `\nІнші ініціалізовані місяці:\n${others}`;
+            prompt += buildAiFocusDump(opts, isBiz);
+            return prompt;
         }
 
         prompt += `\n### РУХ КОШТІВ (CASH FLOW)\n`;
-
-        if (type === 'month') {
-            prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz);
-        } else {
-            const years = Object.keys(appData).map(Number).sort((a,b) => a-b);
-            years.forEach(y => {
-                const months = Object.keys(appData[y]).map(Number).sort((a,b) => a-b);
-                months.forEach(m => {
-                    if (appData[y][m].initialized) {
-                        prompt += generateAiDataForMonth(y, m, isBiz);
-                    }
-                });
+        prompt += `Нижче — усі ініціалізовані місяці. У категоріях: ₴/міс, частка доходу, місце, «за 10 років» (= місяць × 120). Якщо питають про конкретний період (останній місяць, квартал, рік) — рахуй лише відповідні блоки «ПЕРІОД». Блок «ПОТОЧНИЙ МІСЯЦЬ» — стан зараз; блоки «історія» — минуле.\n`;
+        years.forEach(y => {
+            const months = Object.keys(appData[y]).map(Number).sort((a,b) => a-b);
+            months.forEach(m => {
+                if (appData[y][m].initialized) {
+                    prompt += generateAiDataForMonth(y, m, isBiz);
+                }
             });
+        });
+        return prompt;
+    }
+
+    async function buildAnalyticsPrompt(_type = 'all') {
+        const isBiz = currentUser && currentUser.account_type === 'business';
+        const profileTypeStr = isBiz ? 'Бізнес' : 'Особистий (фіз. особа)';
+        let prompt = `Виступи в ролі професійного фінансового аналітика. Проаналізуй мої фінансові дані (Тип профілю: ${profileTypeStr}) та надай детальний звіт.\n`;
+        prompt += `Зверни увагу на співвідношення доходів і витрат, скільки рекомендовано відкласти цього місяця, фінансову подушку (6 × обов'язкові витрати; якщо позначок немає — не вигадуй ціль), цільовий особистий капітал (правило ×25), типи конвертів та швидкість погашення боргів.\n`;
+        if (!isBiz) {
+            prompt += `Окремо врахуй мої річні треки (життєві/робочі пріоритети) — активні, на паузі і заблоковані — і зв'яжи їх з грошима: що фінансує прогрес, що блокує, де дірки в бюджеті б'ють по цілях. Пауза/блокер не означає «ігноруй трек». Якщо є «ПОСЛІДОВНІСТЬ» — це порядок «що за чим»: не пропонуй наступний трек раніше попередника; паралельні можна вести одночасно.\n`;
         }
+        prompt += `Надай 3-5 конкретних і практичних рекомендацій щодо оптимізації бюджету та збільшення вільного капіталу. Легший крок — плюс, якщо закриває дірку; важчий теж ок, якщо він сильніший важіль. Не ріж життєво важливе лише заради «простіше». Категорії з міткою «обов'язкові» — база подушки в тактиці; не рекомендуй їх різати, поки є необов'язкові — якщо цифри не показують, що саме це правило шкодить курсу.\n`;
+        prompt += `ГОРИЗОНТ 10 РОКІВ: біля категорій є «за 10 років» (місяць × 120). Це капітал, замкнений у звичці, не прогноз інфляції. Мотивуй оптимізувати великі 10-річні потоки, не дрібниці. Якщо потік (оренда житла, таксі, підписки, доставка тощо) за 10 років уже порівнянний із купівлею активу — прямо сигналізуй підміну капіталу: оренда vs іпотека/своя квартира, таксі vs авто, щомісячна підписка vs рік. Не вигадуй ціни квартир і ставки іпотеки: порівняй із цифрами з дампу, назви порядок величини і скажи «перевір на ринку». Категорії [заощадження] не ріж — їхній 10-річний хвіст це капітал, не дірка.\n\n`;
+        prompt += `СТРУКТУРА ВІДПОВІДІ (обов'язково в такому порядку):\n`;
+        prompt += `1) HELICOPTER VIEW (коротко, 1 блок, без дрібних цифр у кожному абзаці): чи моя фінансова поведінка взагалі веде туди, куди я йду; де сліпа зона; що я переоцінюю; чи дивлюсь не туди — скажи прямо; запропонуй 1–2 альтернативні рамки / пріоритети на найближчі 90 днів; що свідомо ігнорувати. Правила Скрині (подушка 6×, капітал ×25, «не ріж обов'язкові») — робоча доктрина, не догма: якщо цифри показують, що правило шкодить курсу — скажи прямо тут, не ховай у тактиці.\n`;
+        prompt += `2) ТАКТИКА: детальний розбір цифр, рекомендація «скільки відкласти», подушка, капітал ×25, топ-3 категорії за 10 років (і підміна капіталу, якщо цифри це тримають), слабкі місця і конкретні поради.\n`;
+        prompt += `3) НА ПОДУМАТИ: спирайся лише на мою базу (фінанси + треки), не на інший всесвіт (інша країна / професія / життя, якого немає в даних). Альтернатива має бути сумісна з цією базою. Можна дати і легший, і сильніший шлях. % близькості до ідеалу — якщо корисно; не відмовся від альтернативи лише тому, що «курс ок».\n\n`;
 
-        prompt += `\nНа основі цих даних, напиши свій висновок. Окремо проаналізуй дотримання правила 50/30/20, стан подушки безпеки та прогрес до особистого капіталу (×25). Вкажи на слабкі місця та дай поради.`;
+        prompt += await buildAiSkryniaDataDump();
 
-        const btn = document.getElementById('btn-ai-copy');
-        const btnText = document.getElementById('ai-copy-text');
-        const originalBg = btn.style.background;
+        prompt += `\nНа основі цих даних, напиши висновок у двох рівнях.\n`;
+        prompt += `Спочатку — HELICOPTER VIEW: чи правильно я розподіляю гроші/увагу відносно пріоритетів; де головна стратегічна помилка; що змінити в фокусі на 90 днів.\n`;
+        prompt += `Потім — ТАКТИКА: рекомендація «скільки відкласти», стан подушки безпеки (лише з обов'язкових категорій), прогрес до особистого капіталу (×25) і що змінити в найбільших 10-річних потоках.`;
+        if (!isBiz) {
+            prompt += ` Зв'яжи висновки з річними треками: де витрати/борги підтримують активні треки, а де суперечать; які треки фінансово нереалістичні при поточному залишку. Заблоковані — повноцінні: для кожного чи блокер грошовий і як зняти (не пропускай). Пауза: чи коштує прогресу. Подушка/борги — обмеження, не вето на розблок важливого треку.`;
+        }
+        prompt += ` Вкажи на слабкі місця та дай поради. Наприкінці — НА ПОДУМАТИ: інший шлях має бути сумісний з цією базою, не з іншим всесвітом (легший або сильніший — обидва ок); не відмовся від альтернативи лише тому, що «курс ок».`;
 
-        const fallbackCopy = (text) => {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                btnText.innerText = "Успішно скопійовано!";
-                btn.style.background = 'linear-gradient(135deg, var(--sys-green), #1e702e)';
-            } catch (err) {
-                btnText.innerText = "Помилка копіювання";
-            }
-            document.body.removeChild(textArea);
-            setTimeout(() => { closeAiExportModal(); btnText.innerText = "Скопіювати промпт для ШІ"; btn.style.background = originalBg; }, 2000);
-        };
+        return prompt;
+    }
 
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(prompt).then(() => {
-                btnText.innerText = "Успішно скопійовано!";
-                btn.style.background = 'linear-gradient(135deg, var(--sys-green), #1e702e)';
-                setTimeout(() => { closeAiExportModal(); btnText.innerText = "Скопіювати промпт для ШІ"; btn.style.background = originalBg; }, 2000);
-            }).catch(() => fallbackCopy(prompt));
-        } else {
-            fallbackCopy(prompt);
+    function generateAiFxSection() {
+        if (currentExchangeRate > 0) {
+            const rate = Number(currentExchangeRate);
+            return (
+                `### КУРС ВАЛЮТ\n` +
+                `- USD/UAH: ${rate} (1 $ = ${formatMoney(rate)} ₴)\n\n`
+            );
+        }
+        return (
+            `### КУРС ВАЛЮТ\n` +
+            `Курс НБУ зараз недоступний. Не вигадуй курс і не бери його з інтернету.\n\n`
+        );
+    }
+
+    async function ensureExchangeRateForAi() {
+        if (!(currentExchangeRate > 0)) {
+            await fetchExchangeRate();
         }
     }
 
-    function generateAiDataForMonth(year, month, isBiz) {
-        const data = appData[year][month];
+    /** Anchor for the LLM: which «ПЕРІОД» block is now and which are history. */
+    function generateAiNowSection() {
+        const now = new Date();
+        const today = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+        const initialized = Boolean(appData[currentYear]?.[currentMonth]?.initialized);
+        let out = `### ЗАРАЗ\n`;
+        out += `- Сьогодні: ${today}\n`;
+        out += `- Поточний місяць: ${monthNames[currentMonth]} ${currentYear}${initialized ? '' : ' — ще не ініціалізований, витрат цього місяця немає'}\n`;
+        out += `Поточний стан = блок «ПОТОЧНИЙ МІСЯЦЬ». Блоки з міткою «історія» — минуле: не описуй витрату чи ціль як діючу, якщо її немає в поточному місяці. Якщо категорія була раніше, а тепер її немає — вона в рядку «Закрито / без витрат цього місяця».\n\n`;
+        return out;
+    }
+
+    /** @param {{ name: string, balance: number, goal?: number }} jar */
+    function formatAiJarLine(jar) {
+        const jarType = getJarType(jar);
+        const typeLabel = jarType !== 'regular' ? ` [${JAR_TYPE_LABELS[jarType] || jarType}]` : '';
+        const goal = parseFloat(jar.goal) || 0;
+        const balance = parseFloat(jar.balance) || 0;
+        if (!(goal > 0)) return `  * ${jar.name}${typeLabel}: ${jar.balance} ₴\n`;
+        const progress = Math.round((balance / goal) * 100);
+        const state = balance >= goal
+            ? 'досягнуто, ціль закрита (не пропонуй її як відкриту)'
+            : `виконано ${progress}%`;
+        return `  * ${jar.name}${typeLabel}: ${jar.balance} ₴ (Ціль: ${jar.goal} ₴ — ${state})\n`;
+    }
+
+    async function generateAndCopyAiPrompt() {
+        const prompt = await buildAnalyticsPrompt('all');
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(prompt);
+        }
+        return prompt;
+    }
+
+    /**
+     * @param {'month' | 'all' | string} exportType
+     * @returns {Promise<string>}
+     */
+    async function buildAiYearTracksSection(opts = {}) {
+        if (!currentUser || currentUser.account_type === 'business') return '';
+        try {
+            const live = getYearTracksDocSnapshot();
+            let tracksDoc = yearTracksDocHasTracks(live) ? live : null;
+            if (!tracksDoc) {
+                tracksDoc = await loadYearTracksForAiExport({
+                    apiUrl: API_URL,
+                    userId: currentUser.id,
+                    authenticated: true,
+                });
+            }
+            return buildYearTracksAiSection(tracksDoc, {
+                preferYear: currentYear,
+                compact: Boolean(opts.compact),
+            });
+        } catch (e) {
+            console.warn('Year tracks AI section skipped', e);
+            return '';
+        }
+    }
+
+    function yearTracksDocHasTracks(doc) {
+        const boards = doc?.boards;
+        if (!boards || typeof boards !== 'object') return false;
+        return Object.values(boards).some((board) => Array.isArray(board?.tracks) && board.tracks.length > 0);
+    }
+
+    function generateAiMonthOneLiner(year, month, isBiz) {
+        const data = appData[year]?.[month];
+        if (!data?.initialized) return '';
+        const income = getMonthIncomeUah(year, month);
+        let expenses = 0;
+        (data.expenses || []).forEach(cat => {
+            expenses += (cat.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        });
+        let extra = 0;
+        if (isBiz) {
+            if (data.invoices && data.invoices.length > 0) {
+                extra += data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+            } else if (data.cogs) {
+                extra += data.cogs.type === 'percent' ? income * (data.cogs.value / 100) : (parseFloat(data.cogs.value) || 0);
+            }
+            (data.payroll || []).forEach(emp => { extra += getEmployeeAccrued(emp); });
+        }
+        const spent = expenses + extra;
+        if (income === 0 && spent === 0) return '';
+        return `- ${monthNames[month]} ${year}: дохід ${income.toFixed(0)} ₴, витрати ${spent.toFixed(0)} ₴, ${isBiz ? 'прибуток' : 'залишок'} ${(income - spent).toFixed(0)} ₴\n`;
+    }
+
+    function getAiFocusCatalog() {
+        const names = new Set();
+        const initializedMonths = [];
+        const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
+        years.forEach((y) => {
+            Object.keys(appData[y] || {}).map(Number).sort((a, b) => a - b).forEach((m) => {
+                if (!appData[y][m]?.initialized) return;
+                initializedMonths.push({ year: y, month: m });
+                (appData[y][m].expenses || []).forEach((cat) => {
+                    if (cat.name) names.add(cat.name);
+                    (cat.items || []).forEach((item) => {
+                        if (item.name) names.add(item.name);
+                    });
+                });
+                (appData[y][m].incomes || []).forEach((inc) => {
+                    if (inc.name) names.add(inc.name);
+                });
+            });
+        });
+        const userId = currentUser?.id;
+        (globalData.jars[userId] || []).forEach((j) => {
+            if (j.name) names.add(j.name);
+        });
+        (globalData.debts[userId] || []).forEach((d) => {
+            if (d.name) names.add(d.name);
+        });
+        return {
+            currentYear,
+            currentMonth,
+            initializedMonths,
+            names: [...names],
+        };
+    }
+
+    function matchFocusName(hay, needles) {
+        if (!needles?.length) return true;
+        const h = String(hay || '').toLowerCase();
+        return needles.some((n) => {
+            const needle = String(n || '').toLowerCase();
+            if (!needle) return false;
+            const stem = needle.length >= 4 ? needle.slice(0, -1) : needle;
+            return h.includes(needle) || needle.includes(h) || (stem.length >= 3 && h.includes(stem));
+        });
+    }
+
+    function monthHasFocusNames(data, needles) {
+        if (!needles?.length) return true;
+        if ((data.incomes || []).some((inc) => matchFocusName(inc.name, needles))) return true;
+        return (data.expenses || []).some((cat) => {
+            if (matchFocusName(cat.name, needles)) return true;
+            return (cat.items || []).some((item) => matchFocusName(item.name, needles));
+        });
+    }
+
+    function findMonthsWithFocusNames(needles, cap = 3) {
+        const hits = [];
+        if (appData[currentYear]?.[currentMonth]?.initialized && monthHasFocusNames(appData[currentYear][currentMonth], needles)) {
+            hits.push({ year: currentYear, month: currentMonth });
+        }
+        const years = Object.keys(appData).map(Number).sort((a, b) => b - a);
+        for (const y of years) {
+            const months = Object.keys(appData[y] || {}).map(Number).sort((a, b) => b - a);
+            for (const m of months) {
+                if (!appData[y][m]?.initialized) continue;
+                if (y === currentYear && m === currentMonth) continue;
+                if (!monthHasFocusNames(appData[y][m], needles)) continue;
+                hits.push({ year: y, month: m });
+                if (hits.length >= cap) return hits;
+            }
+        }
+        return hits;
+    }
+
+    function findPastMonthCategory(expensesList, cat) {
+        if (!expensesList?.length || !cat) return null;
+        if (cat.items && cat.items.some((item) => item.debtId)) {
+            return expensesList.find((e) => e.items && e.items.some((item) => item.debtId)) || null;
+        }
+        if (cat.isSavings) {
+            return expensesList.find((e) => e.isSavings) || null;
+        }
+        const byId = expensesList.find((e) => sameId(e.id, cat.id));
+        if (byId) return byId;
+        const name = (cat.name || '').trim().toLowerCase();
+        if (!name) return null;
+        return expensesList.find((e) => (e.name || '').trim().toLowerCase() === name) || null;
+    }
+
+    function getPrevMonthCategoryTotal(year, month, cat) {
+        let y = year;
+        let m = month - 1;
+        if (m < 0) {
+            m = 11;
+            y -= 1;
+        }
+        const prev = appData[y]?.[m];
+        if (!prev?.initialized) return { kind: 'none' };
+        const pastCat = findPastMonthCategory(prev.expenses, cat);
+        if (!pastCat) return { kind: 'new' };
+        return { kind: 'cmp', total: getCategoryTotal(pastCat) };
+    }
+
+    function formatAiCategoryTrend(currentTotal, prev) {
+        if (prev.kind === 'none') return 'динаміка: немає попереднього місяця';
+        if (prev.kind === 'new' || ((prev.total || 0) === 0 && currentTotal > 0)) return 'динаміка: нова';
+        const prevTotal = prev.total || 0;
+        if (currentTotal > prevTotal) {
+            const pct = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : '100.0';
+            return `динаміка: ↑ +${pct}% (було ${prevTotal.toFixed(0)} ₴)`;
+        }
+        if (currentTotal < prevTotal) {
+            const pct = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : '100.0';
+            return `динаміка: ↓ −${pct}% (було ${prevTotal.toFixed(0)} ₴)`;
+        }
+        return 'динаміка: без змін';
+    }
+
+    function expenseRankMap(expenseList) {
+        const totals = (expenseList || [])
+            .map((c) => (c.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0))
+            .filter((t) => t > 0);
+        const unique = [...new Set(totals)].sort((a, b) => b - a);
+        return {
+            top1: unique[0] || -1,
+            top2: unique[1] || -1,
+            top3: unique[2] || -1,
+        };
+    }
+
+    function rankLabelForTotal(total, ranks) {
+        if (!(total > 0)) return '';
+        if (total === ranks.top1) return '1 місце';
+        if (total === ranks.top2) return '2 місце';
+        if (total === ranks.top3) return '3 місце';
+        return '';
+    }
+
+    function buildAiFocusDump(opts, isBiz) {
+        const months = Array.isArray(opts?.focusMonths)
+            ? opts.focusMonths
+                .map((m) => ({ year: Number(m.year), month: Number(m.month) }))
+                .filter((m) => Number.isFinite(m.year) && Number.isFinite(m.month) && m.month >= 0 && m.month <= 11)
+                .slice(0, 3)
+            : [];
+        const categories = Array.isArray(opts?.focusCategories)
+            ? opts.focusCategories.map((s) => String(s || '').trim()).filter(Boolean).slice(0, 6)
+            : [];
+        if (!months.length && !categories.length) return '';
+
+        let targets = months;
+        const onlyNames = months.length ? [] : categories;
+        if (!targets.length && categories.length) {
+            targets = findMonthsWithFocusNames(categories, 3);
+            if (!targets.length) targets = [{ year: currentYear, month: currentMonth }];
+        }
+
+        let out = `\n### ДЕТАЛІЗАЦІЯ ПІД ПИТАННЯ\n`;
+        out += `Повний розклад зі статтями. Якщо питають про цей період або категорію — рахуй цей блок, не однорядкові підсумки вище.\n`;
+        const seen = new Set();
+        for (const t of targets) {
+            const key = `${t.year}-${t.month}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            if (!appData[t.year]?.[t.month]?.initialized) continue;
+            out += generateAiDataForMonth(t.year, t.month, isBiz, {
+                lineItems: true,
+                onlyNames: onlyNames.length ? onlyNames : undefined,
+            });
+        }
+        return out;
+    }
+
+    /** @returns {'ПОТОЧНИЙ МІСЯЦЬ' | 'історія' | 'майбутній місяць'} */
+    function monthTimeLabel(year, month) {
+        const ord = year * 12 + month;
+        const now = currentYear * 12 + currentMonth;
+        if (ord === now) return 'ПОТОЧНИЙ МІСЯЦЬ';
+        return ord < now ? 'історія' : 'майбутній місяць';
+    }
+
+    /** Current month + last month with data: where «closed» still means «now». */
+    function isRecentAiMonth(year, month) {
+        const ord = year * 12 + month;
+        if (ord === currentYear * 12 + currentMonth) return true;
+        let latest = -1;
+        Object.keys(appData).forEach((y) => {
+            Object.keys(appData[y] || {}).forEach((m) => {
+                if (!appData[y][m]?.initialized) return;
+                const o = Number(y) * 12 + Number(m);
+                if (o > latest) latest = o;
+            });
+        });
+        return ord === latest;
+    }
+
+    /**
+     * Categories that had money last month and have none now — otherwise a closed
+     * expense just vanishes from the dump and the LLM keeps it alive.
+     */
+    function listClosedCategoriesVsPrev(year, month, data) {
+        let y = year;
+        let m = month - 1;
+        if (m < 0) {
+            m = 11;
+            y -= 1;
+        }
+        const prev = appData[y]?.[m];
+        if (!prev?.initialized) return [];
+        const out = [];
+        (prev.expenses || []).forEach((prevCat) => {
+            const prevTotal = (prevCat.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            if (!(prevTotal > 0)) return;
+            const nowCat = findPastMonthCategory(data.expenses || [], prevCat);
+            const nowTotal = nowCat
+                ? (nowCat.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
+                : 0;
+            if (nowTotal > 0) return;
+            out.push({
+                name: prevCat.name || 'Без назви',
+                prevTotal,
+                prevLabel: `${monthNames[m]} ${y}`,
+                gone: !nowCat,
+            });
+        });
+        return out;
+    }
+
+    function generateAiDataForMonth(year, month, isBiz, opts = {}) {
+        const data = appData[year]?.[month];
+        if (!data) return '';
+        const lineItems = opts.lineItems !== false;
+        const onlyNames = Array.isArray(opts.onlyNames) && opts.onlyNames.length ? opts.onlyNames : null;
+        if (onlyNames && !monthHasFocusNames(data, onlyNames)) return '';
         const monthName = monthNames[month];
-        let str = `\n==== ПЕРІОД: ${monthName} ${year} ====\n`;
+        let str = `\n==== ПЕРІОД: ${monthName} ${year} — ${monthTimeLabel(year, month)}${onlyNames ? ' (зріз під питання)' : ''} ====\n`;
+        if (onlyNames) str += `Зріз: ${onlyNames.join(', ')}\n`;
 
         let totalIncomeUah = 0;
         str += `Доходи:\n`;
@@ -4726,7 +6620,9 @@ function generatePayrollSparklineHTML(currentTotal) {
             data.incomes.forEach(inc => {
                 const amtUah = inc.currency === 'USD' ? (parseFloat(inc.amount) || 0) * currentExchangeRate : (parseFloat(inc.amount) || 0);
                 totalIncomeUah += amtUah;
-                str += `  - ${inc.name}: ${inc.amount} ${inc.currency}\n`;
+                if (!onlyNames || matchFocusName(inc.name, onlyNames)) {
+                    str += `  - ${inc.name}: ${inc.amount} ${inc.currency}\n`;
+                }
             });
         }
         str += `  Загалом дохід: ${totalIncomeUah.toFixed(2)} ₴\n`;
@@ -4734,7 +6630,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         let totalCogs = 0;
         let totalPayroll = 0;
         
-        if (isBiz) {
+        if (isBiz && !onlyNames) {
             str += `Собівартість / Закупівлі:\n`;
             if (data.invoices && data.invoices.length > 0) {
                 totalCogs = data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount)||0), 0);
@@ -4747,47 +6643,114 @@ function generatePayrollSparklineHTML(currentTotal) {
             if (data.payroll && data.payroll.length > 0) {
                 str += `Зарплатний фонд:\n`;
                 data.payroll.forEach(emp => {
-                    const accrued = ((parseFloat(emp.rate)||0) * (parseFloat(emp.hours)||0)) + (parseFloat(emp.bonus)||0) - (parseFloat(emp.penalty)||0);
-                    totalPayroll += accrued;
+                    totalPayroll += getEmployeeAccrued(emp);
                 });
                 str += `  - Всього нараховано ЗП: ${totalPayroll.toFixed(2)} ₴\n`;
             }
+        } else if (isBiz) {
+            if (data.invoices && data.invoices.length > 0) {
+                totalCogs = data.invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount)||0), 0);
+            } else if (data.cogs) {
+                totalCogs = data.cogs.type === 'percent' ? totalIncomeUah * (data.cogs.value / 100) : (parseFloat(data.cogs.value)||0);
+            }
+            (data.payroll || []).forEach(emp => {
+                totalPayroll += getEmployeeAccrued(emp);
+            });
         }
 
         let totalExpenses = 0;
+        let sliceExpenses = 0;
+        let essentialTotal = 0;
+        let optionalTotal = 0;
+        let essentialMarked = 0;
+        const ranks = expenseRankMap(data.expenses);
         str += `Витрати (Операційні / Особисті):\n`;
+        str += `  (поле «за 10 років» = місяць × 120, якщо звичка не зміниться; не інфляційний прогноз)\n`;
         if (data.expenses && data.expenses.length > 0) {
             data.expenses.forEach(cat => {
-                const catTotal = cat.items.reduce((sum, item) => sum + (parseFloat(item.amount)||0), 0);
+                const allItems = cat.items || [];
+                const catMatches = !onlyNames || matchFocusName(cat.name, onlyNames);
+                const items = onlyNames
+                    ? (catMatches ? allItems : allItems.filter((item) => matchFocusName(item.name, onlyNames)))
+                    : allItems;
+                const catTotal = allItems.reduce((sum, item) => sum + (parseFloat(item.amount)||0), 0);
+                const sliceTotal = items.reduce((sum, item) => sum + (parseFloat(item.amount)||0), 0);
+                const essential = !isBiz && isEssentialCategory(cat);
+                if (essential) essentialMarked += 1;
                 if (catTotal > 0) {
                     totalExpenses += catTotal;
-                    const bucketLabel = !isBiz ? `[${BUDGET_BUCKET_LABELS[getCategoryBudgetBucket(cat)] || '—'}] ` : '';
-                    str += `  - ${bucketLabel}Категорія "${cat.name}": ${catTotal.toFixed(2)} ₴\n`;
-                    cat.items.forEach(item => {
-                        str += `      * ${item.name}: ${item.amount} ₴\n`;
-                    });
+                    if (!isBiz) {
+                        if (essential) essentialTotal += catTotal;
+                        else if (!cat.isSavings) optionalTotal += catTotal;
+                    }
+                }
+                if (onlyNames && !items.length && !catMatches) return;
+                if (sliceTotal > 0 || (catMatches && catTotal > 0)) {
+                    sliceExpenses += onlyNames ? sliceTotal : catTotal;
+                    const shown = onlyNames ? sliceTotal : catTotal;
+                    const tag = isBiz
+                        ? ''
+                        : (cat.isSavings ? ' [заощадження]' : (essential ? ' [обов\'язкові]' : ' [не обов\'язкові]'));
+                    const rank = rankLabelForTotal(catTotal, ranks);
+                    const rankTag = rank ? ` [${rank}]` : '';
+                    const share = totalIncomeUah > 0
+                        ? `${((shown / totalIncomeUah) * 100).toFixed(1)}% доходу`
+                        : 'частка н/д';
+                    const cost10y = shown * 120;
+                    const trend = formatAiCategoryTrend(shown, getPrevMonthCategoryTotal(year, month, cat));
+                    const paidAll = items.length > 0 && items.every((item) => item.isPaid === true);
+                    const paidBit = paidAll ? ' | оплачено' : '';
+                    str += `  - Категорія "${cat.name}"${tag}${rankTag}: ${shown.toFixed(2)} ₴/міс | ${share} | ${cost10y.toFixed(0)} ₴ за 10 років | ${trend}${paidBit}\n`;
+                    if (lineItems) {
+                        items.forEach(item => {
+                            const paidMark = item.isPaid ? ' ✓' : '';
+                            str += `      * ${item.name}: ${item.amount} ₴${paidMark}\n`;
+                        });
+                    }
                 }
             });
+            if (!onlyNames) {
+                const top10y = (data.expenses || [])
+                    .map((c) => {
+                        const t = (c.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                        return { name: c.name, t, y10: t * 120, savings: Boolean(c.isSavings) };
+                    })
+                    .filter((x) => x.t > 0)
+                    .sort((a, b) => b.t - a.t)
+                    .slice(0, 3);
+                if (top10y.length) {
+                    str += `  Найбільші потоки за 10 років: ${top10y.map((x) => `${x.name} ${x.y10.toFixed(0)} ₴${x.savings ? ' (заощадження)' : ''}`).join('; ')}\n`;
+                }
+            }
+            if (!isBiz && !onlyNames) {
+                if (essentialMarked > 0) {
+                    str += `  Обов'язкові цього місяця: ${essentialTotal.toFixed(2)} ₴ (${essentialMarked} категорій позначено)\n`;
+                    str += `  Необов'язкові цього місяця: ${optionalTotal.toFixed(2)} ₴\n`;
+                } else {
+                    str += `  Обов'язкові категорії не позначені — не вигадуй базу подушки з усіх витрат.\n`;
+                }
+            }
         } else {
             str += `  - Немає витрат\n`;
         }
 
-        if (!isBiz && totalIncomeUah > 0) {
-            const amounts = calc502030(totalIncomeUah);
-            const actuals = get502030ActualsFromExpenses(data.expenses || []);
-            str += `Розподіл 50/30/20 за місяць:\n`;
-            RULE_502030_ITEMS.forEach(item => {
-                const rec = amounts[item.bucket];
-                const act = actuals[item.bucket];
-                const delta = act - rec;
-                str += `  - ${item.label} (${item.pct}%): рекомендовано ${rec.toFixed(2)} ₴, факт ${act.toFixed(2)} ₴`;
-                if (act > 0) str += ` (${delta > 0 ? '+' : ''}${delta.toFixed(2)} ₴)`;
-                str += `\n`;
-            });
+        if (!onlyNames && isRecentAiMonth(year, month)) {
+            const closed = listClosedCategoriesVsPrev(year, month, data);
+            if (closed.length) {
+                str += `  Закрито / без витрат цього місяця (0 ₴ — не рахуй як діючу витрату і не бери суму з минулих місяців):\n`;
+                closed.forEach((c) => {
+                    str += `    - "${c.name}": 0 ₴ (було ${c.prevTotal.toFixed(0)} ₴ у ${c.prevLabel}${c.gone ? ', категорію прибрано' : ''})\n`;
+                });
+            }
+        }
+
+        if (!isBiz && totalIncomeUah > 0 && !onlyNames) {
+            str += `Рекомендовано відкласти цього місяця: ${recommendedSaveUah(totalIncomeUah).toFixed(2)} ₴\n`;
         }
 
         const netProfit = totalIncomeUah - totalCogs - totalPayroll - totalExpenses;
         str += `Підсумок місяця:\n`;
+        if (onlyNames) str += `  - Зріз під питання: ${sliceExpenses.toFixed(2)} ₴\n`;
         str += `  - Всього витрачено (витрати + закупівлі + ЗП): ${(totalCogs + totalPayroll + totalExpenses).toFixed(2)} ₴\n`;
         str += `  - Чистий ${isBiz ? 'прибуток' : 'залишок'}: ${netProfit.toFixed(2)} ₴\n`;
         str += `===================================\n`;
@@ -4813,6 +6776,12 @@ function generatePayrollSparklineHTML(currentTotal) {
         }
     }
 
+    /** CSP-safe wrapper for data-action + data-pass-event. */
+    function toggleChoiceFromEl(event, isMultiple) {
+        const el = event?.target?.closest?.('[data-action]');
+        if (el) toggleChoice(el, isMultiple);
+    }
+
     function getChoiceValues(groupId) {
         const group = document.getElementById(groupId);
         if (!group) return '';
@@ -4822,36 +6791,15 @@ function generatePayrollSparklineHTML(currentTotal) {
 
     function setChoiceValues(groupId, valuesStr) {
         const group = document.getElementById(groupId);
-        if (!group || !valuesStr) return;
-        const values = valuesStr.split('|');
+        if (!group) return;
+        const values = valuesStr ? String(valuesStr).split('|') : [];
         group.querySelectorAll('.choice-item').forEach(item => {
             if (values.includes(item.dataset.value)) item.classList.add('selected');
             else item.classList.remove('selected');
         });
     }
 
-    function checkGrowthPromptButtonState() {
-        const btn = document.getElementById('btn-ai-growth-copy');
-        if (!btn) return;
-        if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) {
-            btn.style.opacity = '0.5';
-            btn.onclick = () => {
-                closeAiExportModal();
-                openGrowthModal();
-            };
-            document.getElementById('ai-growth-copy-text').innerText = "Спочатку заповніть анкету";
-        } else {
-            btn.style.opacity = '1';
-            btn.onclick = generateAndCopyGrowthPrompt;
-            document.getElementById('ai-growth-copy-text').innerText = "Промпт: Стратегія Росту";
-        }
-    }
-
-    const oldOpenAiModal = openAiExportModal;
-    openAiExportModal = function() {
-        oldOpenAiModal();
-        checkGrowthPromptButtonState();
-    };
+    function checkGrowthPromptButtonState() {}
 
     function showGrowthStep(step) {
         const progress = (step / totalGrowthSteps) * 100;
@@ -4861,6 +6809,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             document.getElementById(`growth-step-${i}`).style.display = 'none';
         }
         document.getElementById(`growth-step-${step}`).style.display = 'block';
+        if (step === totalGrowthSteps) paintGrowthFinalButton('save');
     }
 
     function nextGrowthStep(current) {
@@ -4884,7 +6833,9 @@ function generatePayrollSparklineHTML(currentTotal) {
             return;
         }
 
-        if (current === 4 && !getChoiceValues('growth-vector')) { return; }
+        if (current === 4 && !getChoiceValues('growth-vector-primary')) { return; }
+        if (current === 4 && !getChoiceValues('growth-mobility')) { return; }
+        if (current === 4 && !getChoiceValues('growth-market')) { return; }
 
         if (current < totalGrowthSteps) {
             currentGrowthStep++;
@@ -4905,20 +6856,38 @@ function generatePayrollSparklineHTML(currentTotal) {
         currentGrowthStep = 1;
         showGrowthStep(currentGrowthStep);
 
+        setChoiceValues('growth-age', '');
+        setChoiceValues('growth-vector-primary', '');
+        setChoiceValues('growth-vector-extra', '');
+        setChoiceValues('growth-mobility', '');
+        setChoiceValues('growth-market', '');
+        const lifeB = document.getElementById('growth-life-b');
+        if (lifeB) lifeB.value = '';
         if (currentUser && currentUser.growthProfile) {
             const gp = currentUser.growthProfile;
             document.getElementById('growth-job').value = gp.job || '';
             document.getElementById('growth-target-income').value = gp.targetIncome || '';
             document.getElementById('growth-skills').value = gp.skills || '';
             document.getElementById('growth-barrier').value = gp.barrier || '';
+            if (lifeB) lifeB.value = gp.lifeAtB || '';
             
+            if (gp.ageRange) setChoiceValues('growth-age', gp.ageRange);
             if (gp.incomeType) setChoiceValues('growth-income-type', gp.incomeType);
             if (gp.period) setChoiceValues('growth-period', gp.period);
-            if (gp.vector) setChoiceValues('growth-vector', gp.vector);
             if (gp.market) setChoiceValues('growth-market', gp.market);
             if (gp.time) setChoiceValues('growth-time', gp.time);
             if (gp.investment) setChoiceValues('growth-investment', gp.investment);
             if (gp.environment) setChoiceValues('growth-environment', gp.environment);
+            if (gp.mobility) setChoiceValues('growth-mobility', gp.mobility);
+
+            const migrated = migrateLegacyVectorIds(gp.vectorPrimary || gp.vector);
+            const primary = migrated[0] || '';
+            const extraFromNew = String(gp.vectorExtra || '').split('|').map((s) => s.trim()).filter(Boolean);
+            const extra = extraFromNew.length ? extraFromNew : migrated.slice(1);
+            if (primary) setChoiceValues('growth-vector-primary', primary);
+            if (extra.length) {
+                setChoiceValues('growth-vector-extra', extra.filter((id) => id !== primary).join('|'));
+            }
         }
     }
 
@@ -4937,13 +6906,33 @@ function generatePayrollSparklineHTML(currentTotal) {
             return;
         }
 
+        const finalBtn = document.getElementById('btn-growth-final');
+        if (finalBtn) finalBtn.disabled = true;
+
+        const primary = firstId(getChoiceValues('growth-vector-primary'));
+        const extra = getChoiceValues('growth-vector-extra')
+            .split('|')
+            .map((s) => s.trim())
+            .filter((id) => id && id !== primary)
+            .join('|');
+        const job = document.getElementById('growth-job').value;
+        const domain = inferDomainFromJob(job);
         const profile = {
-            job: document.getElementById('growth-job').value,
+            job,
+            domain,
+            roleFamily: inferRoleFamilyForProfile(job, domain),
+            level: inferLevelFromJob(job),
+            ageRange: getChoiceValues('growth-age'),
             incomeType: getChoiceValues('growth-income-type'),
             targetIncome: document.getElementById('growth-target-income').value,
+            lifeAtB: (document.getElementById('growth-life-b')?.value || '').trim(),
             period: getChoiceValues('growth-period'),
             skills: document.getElementById('growth-skills').value,
-            vector: getChoiceValues('growth-vector'),
+            vectorPrimary: primary,
+            vectorExtra: extra,
+            vector: [primary, extra].filter(Boolean).join('|'),
+            mobility: getChoiceValues('growth-mobility'),
+            operation: inferOperationFromJob(job),
             market: getChoiceValues('growth-market'),
             time: getChoiceValues('growth-time'),
             investment: getChoiceValues('growth-investment'),
@@ -4954,80 +6943,161 @@ function generatePayrollSparklineHTML(currentTotal) {
         currentUser.growthProfile = profile;
         
         try {
-            const token = localStorage.getItem('budget_auth_token');
-            const response = await fetch(`${API_URL}/api/profile`, { 
+            const response = await apiFetch('/api/profile', { 
                 method: 'POST', 
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
                 body: JSON.stringify({ userId: currentUser.id, growthProfile: profile }) 
             });
             if (!response.ok) {
                 let data = {};
                 try { data = await response.json(); } catch (e) {}
                 alert(`Не вдалося зберегти стратегію росту: ${data.error || 'помилка сервера'}`);
+                if (finalBtn) finalBtn.disabled = false;
                 return;
             }
         } catch (e) {
             console.error("Помилка збереження профілю", e);
             alert("Не вдалося зберегти стратегію росту через помилку з'єднання.");
+            if (finalBtn) finalBtn.disabled = false;
             return;
         }
         
-        closeGrowthModal();
-        openAiExportModal();
-        setTimeout(generateAndCopyGrowthPrompt, 300);
+        paintGrowthFinalButton('analyze');
+        try { syncAiEntryButtons(); } catch (e) {}
     }
 
-        function generateAndCopyGrowthPrompt() {
-        if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) return;
-        const gp = currentUser.growthProfile;
-        
-        // Беремо період з перемикача модалки (За місяць чи За весь час)
-        const type = document.getElementById('ai-export-type').value || 'month';
-        const isBiz = currentUser && currentUser.account_type === 'business';
-        
-        let prompt = `Виступи в ролі топового кар'єрного Executive-коуча та фінансового стратега.\n`;
-        prompt += `Моя мета: кардинально збільшити свій чистий дохід, оптимізувати поточні фінанси та отримати покроковий Roadmap (план дій).\n\n`;
-        
-        const formatAnswers = (str) => str ? str.split('|').join(', ') : '';
+    function paintGrowthFinalButton(mode) {
+        const btn = document.getElementById('btn-growth-final');
+        if (!btn) return;
+        btn.disabled = false;
+        if (mode === 'analyze') {
+            btn.textContent = 'Проаналізувати у ШІ';
+            btn.setAttribute('data-action', 'runGrowthAiFromModal');
+        } else {
+            btn.textContent = 'Зберегти';
+            btn.setAttribute('data-action', 'saveGrowthProfile');
+        }
+    }
 
-        prompt += `### ТОЧКА А (Хто я зараз)\n`;
-        prompt += `- Моя поточна роль / ніша: ${gp.job}\n`;
-        prompt += `- Джерела мого доходу: ${formatAnswers(gp.incomeType)}\n\n`;
+    function runGrowthAiFromModal() {
+        closeGrowthModal();
+        if (hasLlmKey()) openAiChat({ starter: 'growth' });
+        else void launchAiGrowth();
+    }
 
-        prompt += `### ТОЧКА Б (Куди я йду)\n`;
-        prompt += `- Цільовий чистий дохід: ${gp.targetIncome} на місяць\n`;
-        prompt += `- Дедлайн досягнення (мій горизонт): ${formatAnswers(gp.period)}\n`;
-        prompt += `- Головний фокус зростання (Вектори): ${formatAnswers(gp.vector)}\n`;
-        prompt += `- Цільовий ринок: ${formatAnswers(gp.market)}\n\n`;
+    function generateAndCopyGrowthPrompt() {
+        launchAiGrowth();
+    }
 
-        prompt += `### МІЙ АРСЕНАЛ (Суперсила та Ресурси)\n`;
-        prompt += `- Що я роблю краще за інших (Топ-навички): ${gp.skills}\n`;
-        prompt += `- Скільки часу можу приділяти розвитку: ${formatAnswers(gp.time)} на тиждень\n`;
-        prompt += `- Мій бюджет на розвиток: ${formatAnswers(gp.investment)}\n`;
-        prompt += `- Моє оточення зараз: ${formatAnswers(gp.environment)}\n\n`;
+    function formatGrowthAnswers(str) {
+        return str ? String(str).split('|').join(', ') : '';
+    }
 
-        prompt += `### ГОЛОВНИЙ БАР'ЄР (Саботаж)\n`;
-        prompt += `- Відверто про те, що мені заважає діяти прямо зараз: ${gp.barrier}\n\n`;
+    function buildGrowthCourseSnapshot(opts = {}) {
+        const gp = currentUser?.growthProfile;
+        if (!gp?.job) return '';
+        const compact = Boolean(opts.compact);
+        const includeMarket = Boolean(opts.includeMarket);
+        const migratedVectors = migrateLegacyVectorIds(gp.vectorPrimary || gp.vector);
+        const primaryVector = firstId(gp.vectorPrimary) || migratedVectors[0] || '';
+        const extraVectorIds = (gp.vectorExtra
+            ? String(gp.vectorExtra).split('|')
+            : migratedVectors.slice(1)
+        ).map((s) => s.trim()).filter((id) => id && id !== primaryVector);
 
-        // ==== ДОДАЄМО ПОВНУ ФІНАНСОВУ МАТЕМАТИКУ ====
-        prompt += `### МІЙ ФІНАНСОВИЙ ФУНДАМЕНТ (Тил)\n`;
-        
+        let out = `### КУРС ЖИТТЯ (анкета)\n`;
+        out += `- Точка А: ${gp.job}\n`;
+        if (gp.ageRange) out += `- Віковий діапазон: ${formatGrowthAnswers(gp.ageRange)}\n`;
+        if (gp.incomeType) out += `- Джерела доходу: ${formatGrowthAnswers(gp.incomeType)}\n`;
+        if (gp.mobility) out += `- Мобільність: ${mobilityLabel(firstId(gp.mobility))}\n`;
+        out += `- Точка Б (цільовий чистий дохід): ${gp.targetIncome || 'не вказано'}`;
+        if (gp.period) out += `, горизонт: ${formatGrowthAnswers(gp.period)}`;
+        out += `\n`;
+        if (gp.lifeAtB) out += `- Життя в точці Б: ${gp.lifeAtB}\n`;
+        out += `- Головний вектор: ${primaryVector ? `${vectorLabel(primaryVector)} [${primaryVector}]` : 'не вказано'}\n`;
+        out += `- Додаткові вектори: ${extraVectorIds.length ? extraVectorIds.map((id) => vectorLabel(id)).join(', ') : 'немає'}\n`;
+        if (gp.market) out += `- Цільовий ринок: ${formatGrowthAnswers(gp.market)}\n`;
+        if (compact) {
+            if (gp.skills) out += `- Навички: ${gp.skills}\n`;
+            if (gp.time) out += `- Час на розвиток: ${formatGrowthAnswers(gp.time)} / тиждень\n`;
+            if (gp.barrier) out += `- Бар'єр: ${gp.barrier}\n`;
+        } else {
+            out += `\n### МІЙ АРСЕНАЛ\n`;
+            out += `- Топ-навички: ${gp.skills || 'не вказано'}\n`;
+            out += `- Час на розвиток: ${formatGrowthAnswers(gp.time)} на тиждень\n`;
+            out += `- Бюджет на розвиток: ${formatGrowthAnswers(gp.investment)}\n`;
+            out += `- Оточення: ${formatGrowthAnswers(gp.environment)}\n\n`;
+            out += `### ГОЛОВНИЙ БАР'ЄР\n`;
+            out += `- ${gp.barrier || 'не вказано'}\n`;
+        }
+        if (includeMarket) {
+            const roleId = firstId(gp.roleFamily);
+            const levelId = firstId(gp.level);
+            if (getBand(roleId, levelId, 'ua')) {
+                out += `\n`;
+                out += buildMarketAiSection({
+                    roleFamily: roleId,
+                    level: levelId,
+                    market: gp.market,
+                    mobility: gp.mobility,
+                    domain: firstId(gp.domain),
+                    currentIncomeUsd: getLatestPersonalIncomeUsd(),
+                    targetIncomeUsd: parseUsdAmount(gp.targetIncome, currentExchangeRate),
+                    jobTitle: gp.job,
+                });
+                out += `Бенди зарплат — стеля гри, не курс замість головного вектора і не дозвіл змінити роль лише бо інша ближча до точки Б.\n`;
+            } else {
+                out += `\nРинок: у внутрішній таблиці немає бенду для цієї посади. Не вигадуй зарплати. Стелю оцінюй з каси, навичок, вектора і точки Б.\n`;
+            }
+        }
+        out += `\n`;
+        return out;
+    }
+
+    function debtRemainingToUah(debt) {
+        const remaining = getHistoricalDebtBalance(debt.id, currentYear, currentMonth);
+        if (debt.currency === 'USD') {
+            if (!(currentExchangeRate > 0)) return { uah: 0, usdUnconverted: remaining };
+            return { uah: remaining * currentExchangeRate, usdUnconverted: 0 };
+        }
+        return { uah: remaining, usdUnconverted: 0 };
+    }
+
+    /** Capital + full cash flow for growth. Finance dump stays separate. */
+    function buildGrowthCashDump(isBiz) {
         const jars = globalData.jars[currentUser.id] || [];
         const totalJars = jars.reduce((sum, j) => sum + j.balance, 0);
-        prompt += `- Всього накопичень: ${totalJars.toFixed(2)} ₴\n`;
-        jars.forEach(j => {
-            const jarType = getJarType(j);
-            const typeLabel = jarType !== 'regular' ? ` [${JAR_TYPE_LABELS[jarType] || jarType}]` : '';
-            prompt += `  * ${j.name}${typeLabel}: ${j.balance} ₴ ${j.goal > 0 ? `(Ціль: ${j.goal} ₴)` : ''}\n`;
-        });
-
         const debts = globalData.debts[currentUser.id] || [];
-        const activeDebts = debts.filter(d => !d.is_archived || d.is_archived === 0);
+        const activeDebts = debts.filter((d) => !d.is_archived || d.is_archived === 0);
+
+        let debtUah = 0;
+        let usdUnconverted = 0;
+        activeDebts.forEach((d) => {
+            const part = debtRemainingToUah(d);
+            debtUah += part.uah;
+            usdUnconverted += part.usdUnconverted;
+        });
+        const netUah = totalJars - debtUah;
+
+        let prompt = generateAiFxSection();
+        prompt += generateAiNowSection();
+        prompt += `### ПОТОЧНИЙ СТАН КАПІТАЛУ\n`;
+        prompt += `- Всього накопичень: ${totalJars.toFixed(2)} ₴\n`;
+        jars.forEach((j) => {
+            prompt += formatAiJarLine(j);
+        });
+        prompt += `- Всього боргів (у ₴): ${debtUah.toFixed(2)} ₴\n`;
+        if (usdUnconverted > 0) {
+            prompt += `- USD-борги без курсу: ${usdUnconverted.toFixed(2)} $ — не включені в чистий капітал. Не вигадуй курс.\n`;
+            prompt += `- Чистий капітал (накопичення − борги в ₴, без неконвертованих $): ${netUah.toFixed(2)} ₴\n`;
+        } else {
+            prompt += `- Чистий капітал (накопичення − борги): ${netUah.toFixed(2)} ₴\n`;
+        }
+
         if (activeDebts.length > 0) {
-            prompt += `\n- АКТИВНІ БОРГОВІ ЗОБОВ'ЯЗАННЯ:\n`;
-            activeDebts.forEach(d => {
+            prompt += `\n### АКТИВНІ БОРГОВІ ЗОБОВ'ЯЗАННЯ\n`;
+            activeDebts.forEach((d) => {
                 const remaining = getHistoricalDebtBalance(d.id, currentYear, currentMonth);
-                prompt += `  * ${d.name}: Залишок ${remaining.toFixed(2)} ${d.currency} із загальної суми ${d.total_amount} ${d.currency} (Ставка: ${d.interest_rate}% / міс)\n`;
+                prompt += `- ${d.name}: Залишок ${remaining.toFixed(2)} ${d.currency} із загальної суми ${d.total_amount} ${d.currency} (Ставка: ${d.interest_rate}% / міс)\n`;
             });
         }
 
@@ -5036,58 +7106,934 @@ function generatePayrollSparklineHTML(currentTotal) {
         }
 
         prompt += `\n### РУХ КОШТІВ (CASH FLOW)\n`;
-        if (type === 'month') {
-            prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz);
-        } else {
-            const years = Object.keys(appData).map(Number).sort((a,b) => a-b);
-            years.forEach(y => {
-                const months = Object.keys(appData[y]).map(Number).sort((a,b) => a-b);
-                months.forEach(m => {
-                    if (appData[y][m].initialized) {
-                        prompt += generateAiDataForMonth(y, m, isBiz);
-                    }
-                });
+        prompt += `Нижче — усі ініціалізовані місяці. У категоріях: ₴/міс, частка доходу, місце, «за 10 років» (= місяць × 120). Якщо питають про конкретний період (останній місяць, квартал, рік) — рахуй лише відповідні блоки «ПЕРІОД». Блок «ПОТОЧНИЙ МІСЯЦЬ» — стан зараз; блоки «історія» — минуле.\n`;
+        const years = Object.keys(appData).map(Number).sort((a, b) => a - b);
+        years.forEach((y) => {
+            const months = Object.keys(appData[y] || {}).map(Number).sort((a, b) => a - b);
+            months.forEach((m) => {
+                if (appData[y][m]?.initialized) {
+                    prompt += generateAiDataForMonth(y, m, isBiz);
+                }
             });
+        });
+        return prompt;
+    }
+
+    async function buildGrowthPrompt(_type = 'all') {
+        if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) return;
+        const isBiz = currentUser && currentUser.account_type === 'business';
+
+        let prompt = `Виступи в ролі стратега росту MySkrynia. Це НЕ фінансовий звіт.\n`;
+        prompt += `Фінансовий звіт відповідає: «чи каса здорова / скільки відкласти / що різати». Ти відповідаєш: «чи цей курс (точка Б, вектор, треки) оплатний і досяжний». Каса — доказ для курсу, не фінальний продукт. Не закінчуй висновком касира («відклади N ₴», гаси цей банк першим, типи конвертів), якщо це не знімає блокер і не відкриває точку Б.\n`;
+        prompt += `Спочатку розбери касу на рівні фінансового звіту (чистий капітал, потік, подушка, борги, ×25, конверти), потім скажи, що ці цифри означають для точки Б і треків. Не згортайся лише до кар'єрного чекліста.\n`;
+        prompt += `Опирайся на анкету (точка А своїми словами, головний вектор, мобільність, ринок) і на цифри каси. Гео, remote, релокейт і мову — лише з анкети та з треків/навичок. Немає в даних — не пропонуй як основний шлях. Бенди зарплат, якщо є — довідка про стелю, не новий курс.\n`;
+        prompt += `Поточна роль у точці А — де я зараз, не пункт призначення. Головний вектор — курс; додаткові не підміняють його. Не згортай точку Б на поточного роботодавця.\n`;
+        if (!isBiz) {
+            prompt += `Якщо нижче є «РІЧНІ ТРЕКИ» — читай статуси треків і стадій (Очікує / В процесі / Готово). Не вигадуй треки. Стадія не «Готово» — етап не пройшов, навіть якщо в касі вже є частина суми. Заблоковані — частина карти: як розблокувати. «НЕ РОБИТИ» — не головний курс, але назви ціну відмови, якщо ріже точку Б.\n`;
+        }
+        prompt += `Якщо вказано віковий діапазон — це горизонт, не ярлик «пізно» / «ризикуй, бо молодий».\n`;
+        prompt += `У дампі категорій є «за 10 років». Якщо споживання (оренда, таксі, сервіси) замикає капітал, якого вистачило б на актив або на точку Б — назви це в HELICOPTER. [заощадження] не вважати діркою. Ціни ринку і ставки іпотеки не вигадуй.\n\n`;
+        prompt += `СТРУКТУРА ВІДПОВІДІ (обов'язково в такому порядку):\n`;
+        prompt += `1) HELICOPTER VIEW (коротко, 1 блок, без дрібних цифр у кожному абзаці): чи каса фінансує точку Б (не «чи каса здорова» окремо); що я переоцінюю в цифрах і в курсі; чи дивлюсь не туди. Яка стеля цієї гри (бенди — довідка). Чи точка Б живе в іншій грі. Якщо чек / горизонт / каса не сумісні — що здаємо. 1–2 рамки на 90 днів для курсу. Одна сліпа зона. Правила Скрині (подушка 6×, капітал ×25, «не ріж обов'язкові») — робоча доктрина, не догма: якщо вони б'ються з точкою Б і цифри це показують — скажи прямо тут.\n`;
+        prompt += `2) ТАКТИКА: (а) короткий розбір каси як доказ — чистий капітал, потік, скільки рекомендовано відкласти vs що було, подушка, ×25, борги (тіло vs %); без рекомендацій касира як головної цілі. (б) каса vs точка Б: які статті годують активні треки, які суперечать; які треки фінансово нереалістичні при поточному залишку; бар'єр.`;
+        if (!isBiz) {
+            prompt += ` По КОЖНОМУ заблокованому треку — чи блокер валідний і як зняти (грошовий чи ні); паузу не ігноруй. Подушка/борги — обмеження, не вето на розблок важливого треку.`;
+        }
+        prompt += ` Не ріж обов'язкові, поки є необов'язкові — якщо HELICOPTER не показав, що саме це правило шкодить точці Б. (в) 3–5 важелів шляху до точки Б (легший — плюс, якщо закриває дірку каси, що ріже курс; важчий ок, якщо сильніший). Потім 3 кроки на 48 годин — не замість цифр і не замість важелів.\n`;
+        prompt += `3) НА ПОДУМАТИ: інший курс до точки Б (або інша досяжна точка Б), сумісний з цією касою, навичками і мобільністю — не інший всесвіт. Легший і сильніший шлях ок. Обов'язково, якщо курс хибний або точка Б вище стелі. Не підміняй це фінансовим планом «ріж статтю / клади в подушку», якщо це не змінює курс.\n\n`;
+
+        await ensureExchangeRateForAi();
+        prompt += buildGrowthCashDump(isBiz);
+        prompt += `\n`;
+        prompt += buildGrowthCourseSnapshot({ includeMarket: true });
+
+        if (!isBiz) {
+            prompt += await buildAiYearTracksSection();
+            prompt += `\n`;
         }
 
-        prompt += `ВИМОГИ ДО ВІДПОВІДІ:\n`;
-        prompt += `1. Не пиши воду і банальності. Дій як наставник, що бере $1000/год.\n`;
-        prompt += `2. Проаналізуй мої витрати та борги. Якщо там є "дірки", які заважають мені інвестувати в ріст — прямо вкажи на них.\n`;
-        prompt += `3. Проаналізуй мій бар'єр і дай жорстку, але дієву пораду, як його пробити.\n`;
-        prompt += `4. Запропонуй конкретні моделі монетизації моїх навичок згідно з обраним вектором росту.\n`;
-        prompt += `5. Побудуй Roadmap розбитий на ключові етапи.\n`;
-        prompt += `6. Дай мені 3 задачі (Action steps) на найближчі 48 годин.\n`;
-        prompt += `7. Врахуй фінансовий план (50/30/20, подушка 6 міс., капітал ×25): не пропонуй ризиковані кроки, поки подушка не закрита; вкажи, які категорії витрат порушують баланс.\n`;
+        prompt += `\nНа основі цих даних, напиши висновок стратега росту, не фінансового звіту.\n`;
+        prompt += `Спочатку — HELICOPTER VIEW: чи курс веде в точку Б; чи каса його фінансує; яка стеля; що здаємо; фокус курсу на 90 днів.\n`;
+        prompt += `Потім — ТАКТИКА: каса як обмеження і доказ, треки, бар'єр, важелі до точки Б, 3 кроки на 48 годин.`;
+        if (!isBiz) {
+            prompt += ` По КОЖНОМУ заблокованому треку — чи блокер валідний і як зняти; паузу не ігноруй.`;
+        }
+        prompt += ` Наприкінці — НА ПОДУМАТИ: інший шлях до точки Б, сумісний з цією базою; не відмовся від альтернативи лише тому, що «курс ок».`;
 
-        const btn = document.getElementById('btn-ai-growth-copy');
-        const btnText = document.getElementById('ai-growth-copy-text');
-        const originalBg = btn.style.background;
+        return prompt;
+    }
 
-        const fallbackCopy = (text) => {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                btnText.innerText = "Успішно скопійовано!";
-                btn.style.background = 'linear-gradient(135deg, var(--sys-green), #1e702e)';
-            } catch (err) {}
-            document.body.removeChild(textArea);
-            setTimeout(() => { closeAiExportModal(); btnText.innerText = "Промпт: Стратегія Росту"; btn.style.background = originalBg; }, 2000);
+// Session bridge for isolated modules (family-tree, year-tracks). Finance state stays in this file.
+    window.__getBudgetSession = function () {
+        return {
+            userId: currentUser?.id,
+            name: currentUser?.name,
+            surname: currentUser?.surname,
+            accountType: currentUser?.account_type,
+            // Cookie session — modules use credentials:include, not a JS-readable token.
+            authenticated: Boolean(currentUser?.id),
+            apiUrl: API_URL,
         };
+    };
 
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(prompt).then(() => {
-                btnText.innerText = "Успішно скопійовано!";
-                btn.style.background = 'linear-gradient(135deg, var(--sys-green), #1e702e)';
-                setTimeout(() => { closeAiExportModal(); btnText.innerText = "Промпт: Стратегія Росту"; btn.style.background = originalBg; }, 2000);
-            }).catch(() => fallbackCopy(prompt));
-        } else {
-            fallbackCopy(prompt);
+    // When tracks/tree overlays close, return switcher state to budget.
+    window.__onSkryniaOverlayClosed = function () {
+        if (suppressSkryniaCloseHook || !currentUser) return;
+        if (currentSkryniaModule === 'budget') {
+            updateSkryniaSwitcherUI();
+            return;
         }
+        persistSkryniaModule('budget');
+        updateSkryniaSwitcherUI();
+    };
+
+    function serenityOverlayEl() {
+        return document.getElementById('serenity-overlay');
+    }
+
+    function serenityAvatarEl() {
+        return document.getElementById('nav-avatar');
+    }
+
+    function openSerenityEasterEgg() {
+        const overlay = serenityOverlayEl();
+        const avatar = serenityAvatarEl();
+        if (!overlay) return;
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('serenity-open');
+        if (avatar) avatar.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeSerenityEasterEgg() {
+        const overlay = serenityOverlayEl();
+        const avatar = serenityAvatarEl();
+        if (!overlay?.classList.contains('active')) return;
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('serenity-open');
+        if (avatar) avatar.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleSerenityEasterEgg() {
+        const overlay = serenityOverlayEl();
+        if (overlay?.classList.contains('active')) closeSerenityEasterEgg();
+        else openSerenityEasterEgg();
+    }
+
+    function selectedAccountIds() {
+        const ids = Array.isArray(monobankLink?.accountIds) ? monobankLink.accountIds.filter(Boolean) : [];
+        if (ids.length) return ids;
+        return monobankLink?.accountId ? [monobankLink.accountId] : [];
+    }
+
+    function cardCountLabel(count) {
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        if (mod10 === 1 && mod100 !== 11) return `${count} картка`;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} картки`;
+        return `${count} карток`;
+    }
+
+    function renderMonobankButton() {
+        const btn = document.getElementById('btn-monobank');
+        const manage = document.getElementById('btn-monobank-manage');
+        if (!btn) return;
+        const connected = Boolean(monobankLink?.connected);
+        const selected = selectedAccountIds();
+        const imported = new Set(monobankLink?.importedAccountIds || []);
+        const pending = selected.filter((id) => !imported.has(id));
+        let label = 'Підключити Монобанк';
+        if (monoQueue) label = 'Підтягуємо…';
+        else if (monobankBusy) label = 'Завантаження…';
+        else if (connected && pending.length && pending.length < selected.length) label = 'Продовжити';
+        else if (connected) label = 'Підтягнути з Моно';
+        btn.textContent = label;
+        btn.disabled = monobankBusy || Boolean(monoQueue);
+        if (manage) manage.hidden = !connected;
+    }
+
+    function syncMonobankModal() {
+        const status = document.getElementById('mono-status-text');
+        const connectBlock = document.getElementById('mono-connect-block');
+        const disconnectBtn = document.getElementById('btn-monobank-disconnect');
+        if (!status) return;
+        if (monobankLink?.connected) {
+            const ids = selectedAccountIds();
+            const cards = ids.length > 1 ? cardCountLabel(ids.length) : monobankLink.maskedPan;
+            const who = [monobankLink.clientName, cards].filter(Boolean).join(' · ');
+            status.textContent = who ? `Підключено: ${who}` : 'Підключено';
+            if (connectBlock) connectBlock.hidden = true;
+            if (disconnectBtn) disconnectBtn.hidden = false;
+        } else {
+            status.textContent = 'Токен зберігається лише для цього профілю і не повертається в браузер.';
+            if (connectBlock) connectBlock.hidden = false;
+            if (disconnectBtn) disconnectBtn.hidden = true;
+            renderMonobankCards([]);
+        }
+    }
+
+    async function refreshMonobankStatus() {
+        if (!currentUser) {
+            monobankLink = null;
+            renderMonobankButton();
+            return;
+        }
+        try {
+            const response = await apiFetch(`/api/monobank/status?userId=${encodeURIComponent(currentUser.id)}&year=${currentYear}&month=${currentMonth + 1}`);
+            const data = await response.json();
+            if (response.ok && data.connected) {
+                const previousAccounts = monobankLink?.accounts;
+                monobankLink = {
+                    connected: true,
+                    clientName: data.clientName || '',
+                    maskedPan: data.maskedPan || '',
+                    accountId: data.accountId || '',
+                    accountIds: Array.isArray(data.accountIds) ? data.accountIds : [],
+                    importedAccountIds: Array.isArray(data.importedAccountIds) ? data.importedAccountIds : [],
+                    accounts: previousAccounts,
+                };
+            } else if (response.ok) {
+                monobankLink = null;
+            }
+        } catch {
+            /* keep the last known connection if the status request failed */
+        }
+        renderMonobankButton();
+        syncMonobankModal();
+    }
+
+    function openMonobankModal() {
+        const err = document.getElementById('mono-form-error');
+        if (err) err.textContent = '';
+        const input = document.getElementById('mono-token-input');
+        if (input) input.value = '';
+        syncMonobankModal();
+        document.getElementById('monobank-modal')?.classList.add('active');
+        if (monobankLink?.connected) loadMonobankAccounts();
+    }
+
+    function closeMonobankModal(event) {
+        if (event && event.target?.id !== 'monobank-modal' && !event.target?.closest?.('.btn-close-modal')) return;
+        document.getElementById('monobank-modal')?.classList.remove('active');
+    }
+
+    function mergeMonobankCard(year, monthIndex, accountId, incoming) {
+        if (!appData[year]) appData[year] = {};
+        if (!appData[year][monthIndex]) appData[year][monthIndex] = { initialized: true, incomes: [], expenses: [] };
+        const bucket = appData[year][monthIndex];
+        const list = bucket.expenses || [];
+        const manual = list.filter((cat) => cat?.source !== 'monobank');
+        const legacyAccountId = monobankLink?.accountId || accountId;
+        const dropItem = (item) => item?.accountId === accountId || (!item?.accountId && accountId === legacyAccountId);
+        const byName = new Map();
+        list.filter((cat) => cat?.source === 'monobank').forEach((cat) => {
+            const items = (cat.items || []).filter((item) => !dropItem(item));
+            if (items.length) byName.set(cat.name, { ...cat, items });
+        });
+        (incoming || []).forEach((cat) => {
+            const items = (cat.items || []).map((item) => ({
+                id: item.monoId || item.id || newId(),
+                name: item.name || 'Операція',
+                amount: Number(item.amount) || 0,
+                isPaid: true,
+                monoId: item.monoId || item.id,
+                accountId,
+                time: item.time,
+            }));
+            if (!items.length) return;
+            const old = byName.get(cat.name);
+            if (old) old.items = [...old.items, ...items];
+            else byName.set(cat.name, {
+                id: cat.id || newId(),
+                name: cat.name,
+                source: 'monobank',
+                isEssential: false,
+                items,
+            });
+        });
+        bucket.expenses = [...manual, ...byName.values()];
+        if (year === currentYear && monthIndex === currentMonth) {
+            expenses = bucket.expenses;
+            renderExpenses();
+            updateAll();
+        }
+    }
+
+    function mergeMonobankIncomes(year, monthIndex, accountId, incoming) {
+        if (!appData[year]) appData[year] = {};
+        if (!appData[year][monthIndex]) appData[year][monthIndex] = { initialized: true, incomes: [], expenses: [] };
+        const bucket = appData[year][monthIndex];
+        const kept = (bucket.incomes || []).filter((inc) => !(inc?.source === 'monobank' && inc.accountId === accountId));
+        const added = (incoming || []).map((item) => ({
+            id: item.monoId || item.id || newId(),
+            name: item.name || 'Дохід',
+            amount: Number(item.amount) || 0,
+            currency: 'UAH',
+            source: 'monobank',
+            monoId: item.monoId || item.id,
+            accountId,
+            time: item.time,
+        }));
+        bucket.incomes = [...kept, ...added];
+        if (year === currentYear && monthIndex === currentMonth) {
+            const editing = document.getElementById('incomes-container')?.contains(document.activeElement);
+            if (!editing) {
+                renderIncomes();
+                convertCurrency();
+            }
+        }
+    }
+
+    const MONO_SYNC_TEXT = 'Синхронізація карток';
+    const MONO_SYNC_DONE = 'Синхронізацію завершено';
+
+    function showMonoQueue(text, progress) {
+        const el = document.getElementById('mono-queue');
+        const label = document.getElementById('mono-queue-text');
+        const bar = document.getElementById('mono-queue-bar');
+        if (!el || !label) return;
+        if (text) {
+            label.textContent = text;
+            el.classList.toggle('is-done', text === MONO_SYNC_DONE);
+        }
+        if (bar && typeof progress === 'number') {
+            const value = Math.max(0, Math.min(1, progress));
+            const floor = monoQueue && typeof monoQueue.progress === 'number' ? monoQueue.progress : 0;
+            const next = Math.max(floor, value);
+            if (monoQueue) monoQueue.progress = next;
+            bar.style.transform = `scaleX(${next})`;
+        }
+        el.hidden = false;
+        el.classList.add('active');
+    }
+
+    function hideMonoQueue() {
+        const el = document.getElementById('mono-queue');
+        const bar = document.getElementById('mono-queue-bar');
+        if (!el) return;
+        el.classList.remove('active', 'is-done');
+        el.hidden = true;
+        if (bar) bar.style.transform = 'scaleX(0)';
+    }
+
+    function failMonoQueue(text) {
+        showMonoQueue(text);
+        const gen = monoQueueGen;
+        if (monoQueue?.timer) clearTimeout(monoQueue.timer);
+        monoQueue = null;
+        monobankBusy = false;
+        renderMonobankButton();
+        if (monobankLink?.accounts) renderMonobankCards(monobankLink.accounts);
+        setTimeout(() => {
+            if (gen === monoQueueGen) hideMonoQueue();
+        }, 4000);
+    }
+
+    function showMonoSnack(event) {
+        const host = document.getElementById('mono-snacks');
+        if (!host) return;
+        const card = document.createElement('div');
+        card.className = 'mono-snack';
+        card.setAttribute('role', 'status');
+
+        const icon = document.createElement('div');
+        icon.className = 'mono-snack-icon';
+        icon.textContent = 'm';
+
+        const body = document.createElement('div');
+        body.className = 'mono-snack-body';
+        const head = document.createElement('div');
+        head.className = 'mono-snack-head';
+        const app = document.createElement('span');
+        app.textContent = 'monobank';
+        const when = document.createElement('span');
+        when.className = 'mono-snack-time';
+        when.textContent = 'зараз';
+        head.append(app, when);
+
+        const text = document.createElement('div');
+        text.className = 'mono-snack-text';
+        const sum = document.createElement('span');
+        const income = event?.kind === 'income';
+        sum.className = income ? 'mono-snack-amount is-income' : 'mono-snack-amount';
+        sum.textContent = `${income ? '+' : '−'}${formatMoney(Number(event?.amount) || 0)} ₴`;
+        const name = document.createElement('span');
+        name.className = 'mono-snack-name';
+        name.textContent = event?.name || 'Операція';
+        text.append(sum, name);
+
+        body.append(head, text);
+        const place = document.createElement('div');
+        place.className = 'mono-snack-category';
+        place.textContent = income
+            ? 'У джерела доходу'
+            : (event?.categoryName ? `У категорію «${event.categoryName}»` : '');
+        if (place.textContent) body.append(place);
+
+        card.append(icon, body);
+        const close = () => {
+            if (card.classList.contains('leaving')) return;
+            card.classList.add('leaving');
+            setTimeout(() => card.remove(), 260);
+        };
+        card.addEventListener('click', close);
+        host.prepend(card);
+        while (host.children.length > 3) host.lastElementChild.remove();
+        let timer = setTimeout(close, 7000);
+        card.addEventListener('mouseenter', () => clearTimeout(timer));
+        card.addEventListener('mouseleave', () => {
+            timer = setTimeout(close, 2500);
+        });
+    }
+
+    function appendLocalMonoEvent(year, monthIndex, event) {
+        if (!event?.monoId || !appData[year]?.[monthIndex]) return false;
+        const bucket = appData[year][monthIndex];
+        const list = bucket.expenses || [];
+        const key = `${event.accountId || ''}:${event.monoId}`;
+        const exists = list.some((category) =>
+            (category.items || []).some((item) => `${item.accountId || ''}:${item.monoId || item.id || ''}` === key)
+        );
+        if (exists) return false;
+        const item = {
+            id: event.monoId,
+            monoId: event.monoId,
+            accountId: event.accountId,
+            name: event.name || 'Операція',
+            amount: Number(event.amount) || 0,
+            isPaid: true,
+            time: event.time,
+        };
+        let category = list.find((entry) => entry?.source === 'monobank' && entry.name === event.categoryName);
+        if (!category) {
+            category = { id: newId(), name: event.categoryName || 'Інше', source: 'monobank', isEssential: false, items: [] };
+            list.push(category);
+        }
+        if (!Array.isArray(category.items)) category.items = [];
+        category.items.push(item);
+        bucket.expenses = list;
+        if (year === currentYear && monthIndex === currentMonth) {
+            expenses = list;
+            const modalOpen = document.getElementById('category-modal')?.classList.contains('active');
+            const editing = modalOpen || document.getElementById('expenses-list')?.contains(document.activeElement);
+            if (!editing) {
+                renderExpenses();
+                updateAll();
+            } else {
+                syncCategoryLimitState(category);
+            }
+        }
+        return true;
+    }
+
+    function appendLocalMonoIncome(year, monthIndex, event) {
+        if (!event?.monoId || !appData[year]?.[monthIndex]) return false;
+        const bucket = appData[year][monthIndex];
+        const list = bucket.incomes || [];
+        const key = `${event.accountId || ''}:${event.monoId}`;
+        const exists = list.some((inc) => `${inc.accountId || ''}:${inc.monoId || ''}` === key);
+        if (exists) return false;
+        list.push({
+            id: event.monoId,
+            monoId: event.monoId,
+            accountId: event.accountId,
+            name: event.name || 'Дохід',
+            amount: Number(event.amount) || 0,
+            currency: 'UAH',
+            source: 'monobank',
+            time: event.time,
+        });
+        bucket.incomes = list;
+        if (year === currentYear && monthIndex === currentMonth) {
+            const editing = document.getElementById('incomes-container')?.contains(document.activeElement);
+            if (!editing) {
+                renderIncomes();
+                convertCurrency();
+            }
+        }
+        return true;
+    }
+
+    async function pullMonoLive() {
+        if (!currentUser || !monobankLink?.connected || monoQueue) return;
+        const monthData = appData[currentYear]?.[currentMonth];
+        if (!monthData?.initialized) return;
+        try {
+            const response = await apiFetch(
+                `/api/monobank/live?userId=${encodeURIComponent(currentUser.id)}&year=${currentYear}&month=${currentMonth}`
+            );
+            if (response.status === 401) return;
+            const data = await response.json().catch(() => ({}));
+            const events = Array.isArray(data.events) ? data.events : [];
+            if (!events.length) return;
+            events.forEach((event) => {
+                if (event.kind === 'income') appendLocalMonoIncome(currentYear, currentMonth, event);
+                else appendLocalMonoEvent(currentYear, currentMonth, event);
+                showMonoSnack(event);
+            });
+            if (typeof data.serverTime === 'number' && appData[currentYear]?.[currentMonth]) {
+                appData[currentYear][currentMonth].monoSyncedAt = data.serverTime;
+            }
+            await apiFetch('/api/monobank/live/ack', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    events: events.map((event) => ({ accountId: event.accountId, monoId: event.monoId })),
+                }),
+            });
+        } catch {
+            /* the next poll retries */
+        }
+    }
+
+    function startMonoLiveWatch() {
+        if (!startMonoLiveWatch.listening) {
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') pullMonoLive();
+            });
+            startMonoLiveWatch.listening = true;
+        }
+        if (monoLiveTimer) clearInterval(monoLiveTimer);
+        monoLiveTimer = setInterval(() => {
+            if (document.visibilityState === 'visible') pullMonoLive();
+        }, 30000);
+        pullMonoLive();
+    }
+
+    function stopMonoLiveWatch() {
+        if (monoLiveTimer) clearInterval(monoLiveTimer);
+        monoLiveTimer = null;
+        document.getElementById('mono-snacks')?.replaceChildren();
+    }
+
+    function stopMonoQueue() {
+        monoQueueGen += 1;
+        if (monoQueue?.timer) clearTimeout(monoQueue.timer);
+        monoQueue = null;
+        monobankBusy = false;
+        hideMonoQueue();
+        renderMonobankButton();
+        if (monobankLink?.accounts) renderMonobankCards(monobankLink.accounts);
+    }
+
+    function waitMonoProgress(seconds, from, to, text = MONO_SYNC_TEXT) {
+        const start = Date.now();
+        const span = Math.max(1, seconds) * 1000;
+        showMonoQueue(text, from);
+        return new Promise((resolve) => {
+            const tick = () => {
+                if (!monoQueue) return resolve(false);
+                const t = Math.min(1, (Date.now() - start) / span);
+                showMonoQueue(null, from + (to - from) * t);
+                if (t >= 1) return resolve(true);
+                monoQueue.timer = setTimeout(tick, 100);
+            };
+            tick();
+        });
+    }
+
+    async function persistMonoMonth(year, monthIndex) {
+        if (year === currentYear && monthIndex === currentMonth) await saveData(true);
+        else await enqueueSave(year, monthIndex);
+    }
+
+    async function runMonoQueue(year, monthIndex, accountIds) {
+        const gen = ++monoQueueGen;
+        if (monoQueue?.timer) clearTimeout(monoQueue.timer);
+        monoQueue = { year, monthIndex, accountIds, index: 0, timer: null, progress: 0 };
+        monobankBusy = true;
+        renderMonobankButton();
+        if (monobankLink?.accounts) renderMonobankCards(monobankLink.accounts);
+        const total = accountIds.length;
+        const still = () => monoQueue && gen === monoQueueGen;
+        showMonoQueue(MONO_SYNC_TEXT, 0);
+
+        while (still() && monoQueue.index < total) {
+            const accountId = monoQueue.accountIds[monoQueue.index];
+            showMonoQueue(MONO_SYNC_TEXT, monoQueue.index / total);
+            let data = {};
+            let response;
+            try {
+                response = await apiFetch('/api/monobank/import', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        year,
+                        month: monthIndex + 1,
+                        accountId,
+                    }),
+                });
+                data = await response.json().catch(() => ({}));
+            } catch {
+                if (!still()) return;
+                failMonoQueue("Не вдалося з'єднатися із сервером.");
+                return;
+            }
+            if (!still()) return;
+            if (response.status === 401) {
+                stopMonoQueue();
+                logout();
+                return;
+            }
+            if (response.status === 429) {
+                const wait = Math.max(1, Number(data.retryAfter) || 60);
+                const from = monoQueue.index / total;
+                const ready = await waitMonoProgress(wait, from, from + 0.85 / total);
+                if (!ready) return;
+                continue;
+            }
+            if (!response.ok) {
+                failMonoQueue(data.error || 'Не вдалося підтягнути виписку');
+                return;
+            }
+
+            const pulledId = data.accountId || accountId;
+            mergeMonobankCard(year, monthIndex, pulledId, data.categories || []);
+            mergeMonobankIncomes(year, monthIndex, pulledId, data.incomes || []);
+            await persistMonoMonth(year, monthIndex);
+            if (!still()) return;
+            if (year === currentYear && monthIndex === currentMonth && monobankLink) {
+                const imported = new Set(monobankLink.importedAccountIds || []);
+                imported.add(pulledId);
+                monobankLink.importedAccountIds = [...imported];
+            }
+            monoQueue.index += 1;
+            if (monoQueue.index < total) {
+                const done = monoQueue.index;
+                const wait = Math.max(1, Number(data.retryAfter) || 60);
+                const ready = await waitMonoProgress(wait, done / total, (done + 1) / total);
+                if (!ready) return;
+            } else {
+                const ready = await waitMonoProgress(3, 1, 1, MONO_SYNC_DONE);
+                if (!ready) return;
+            }
+        }
+        if (!still()) return;
+        if (monoQueue?.timer) clearTimeout(monoQueue.timer);
+        monoQueue = null;
+        monobankBusy = false;
+        hideMonoQueue();
+        renderMonobankButton();
+        if (monobankLink?.accounts) renderMonobankCards(monobankLink.accounts);
+    }
+
+    function onMonobankClick() {
+        if (!currentUser || monobankBusy || monoQueue) return;
+        const monthData = appData[currentYear]?.[currentMonth];
+        if (!monthData?.initialized) return;
+        if (!monobankLink?.connected) {
+            openMonobankModal();
+            return;
+        }
+        const selected = selectedAccountIds();
+        if (!selected.length) {
+            openMonobankModal();
+            const err = document.getElementById('mono-cards-error');
+            if (err) err.textContent = 'Оберіть хоча б одну картку';
+            return;
+        }
+        const imported = new Set(monobankLink.importedAccountIds || []);
+        const pending = selected.filter((id) => !imported.has(id));
+        runMonoQueue(currentYear, currentMonth, pending.length ? pending : selected);
+    }
+
+    async function connectMonobank() {
+        if (!currentUser || monobankBusy) return;
+        const input = document.getElementById('mono-token-input');
+        const err = document.getElementById('mono-form-error');
+        const token = (input?.value || '').trim();
+        if (!token) {
+            if (err) err.textContent = 'Вставте токен з api.monobank.ua';
+            return;
+        }
+        if (err) err.textContent = '';
+        monobankBusy = true;
+        renderMonobankButton();
+        try {
+            const response = await apiFetch('/api/monobank/connect', {
+                method: 'POST',
+                body: JSON.stringify({ userId: currentUser.id, token }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+            if (!response.ok) {
+                if (err) err.textContent = data.error || 'Не вдалося підключити Монобанк';
+                return;
+            }
+            if (input) input.value = '';
+            monobankLink = {
+                connected: true,
+                clientName: data.clientName || '',
+                maskedPan: data.maskedPan || '',
+                accountId: data.accountId || '',
+                accountIds: Array.isArray(data.accountIds) ? data.accountIds : (data.accountId ? [data.accountId] : []),
+                importedAccountIds: [],
+                accounts: data.accounts || [],
+            };
+            renderMonobankCards(data.accounts || []);
+            syncMonobankModal();
+            renderMonobankButton();
+        } catch {
+            if (err) err.textContent = "Не вдалося з'єднатися із сервером.";
+        } finally {
+            monobankBusy = false;
+            renderMonobankButton();
+        }
+    }
+
+    function renderMonobankCards(accounts) {
+        const block = document.getElementById('mono-cards-block');
+        const list = document.getElementById('mono-card-list');
+        if (!block || !list) return;
+        if (!accounts?.length) {
+            block.hidden = true;
+            list.innerHTML = '';
+            return;
+        }
+        block.hidden = false;
+        const selectedIds = new Set(selectedAccountIds());
+        const locked = Boolean(monoQueue);
+        list.innerHTML = accounts.map((account) => {
+            const selected = selectedIds.has(account.id);
+            return `<button type="button" class="mono-card-option${selected ? ' is-selected' : ''}" data-action="toggleMonobankAccount" data-args="${escapeAttr(JSON.stringify([account.id]))}" ${locked ? 'disabled' : ''}>
+                <span>${escapeHtml(account.label || account.maskedPan || 'Картка')}</span>
+                <span>${selected ? 'Обрано' : ''}</span>
+            </button>`;
+        }).join('');
+    }
+
+    async function loadMonobankAccounts() {
+        if (!currentUser || !monobankLink?.connected) return;
+        if (monobankLink.accounts?.length) {
+            renderMonobankCards(monobankLink.accounts);
+            return;
+        }
+        const err = document.getElementById('mono-cards-error');
+        if (err) err.textContent = '';
+        try {
+            const response = await apiFetch(`/api/monobank/accounts?userId=${encodeURIComponent(currentUser.id)}`);
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+            if (!response.ok) {
+                if (err) err.textContent = data.error || 'Не вдалося отримати картки';
+                return;
+            }
+            if (Array.isArray(data.accountIds) && data.accountIds.length) monobankLink.accountIds = data.accountIds;
+            if (data.accountId) monobankLink.accountId = data.accountId;
+            monobankLink.accounts = data.accounts || [];
+            syncMonobankModal();
+            renderMonobankCards(monobankLink.accounts);
+        } catch {
+            if (err) err.textContent = "Не вдалося з'єднатися із сервером.";
+        }
+    }
+
+    async function toggleMonobankAccount(accountId) {
+        if (!currentUser || !accountId || !monobankLink || monoQueue) return;
+        const err = document.getElementById('mono-cards-error');
+        if (err) err.textContent = '';
+        const current = selectedAccountIds();
+        const next = current.includes(accountId)
+            ? current.filter((id) => id !== accountId)
+            : [...current, accountId];
+        if (!next.length) {
+            if (err) err.textContent = 'Залиште хоча б одну картку';
+            return;
+        }
+        try {
+            const response = await apiFetch('/api/monobank/account', {
+                method: 'POST',
+                body: JSON.stringify({ userId: currentUser.id, accountIds: next }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+            if (!response.ok) {
+                if (err) err.textContent = data.error || 'Не вдалося змінити картки';
+                return;
+            }
+            monobankLink.accountIds = Array.isArray(data.accountIds) ? data.accountIds : next;
+            monobankLink.accountId = data.accountId || monobankLink.accountIds[0] || '';
+            monobankLink.maskedPan = data.maskedPan || monobankLink.maskedPan;
+            syncMonobankModal();
+            renderMonobankCards(monobankLink.accounts || []);
+            renderMonobankButton();
+        } catch {
+            if (err) err.textContent = "Не вдалося з'єднатися із сервером.";
+        }
+    }
+
+    function disconnectMonobank() {
+        if (!currentUser) return;
+        showConfirm('Відключити Монобанк', 'Токен буде видалено з цього профілю. Уже імпортовані категорії залишаться.', async () => {
+            try {
+                const response = await apiFetch('/api/monobank/connect', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ userId: currentUser.id }),
+                });
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    alert(data.error || 'Не вдалося відключити Монобанк');
+                    return;
+                }
+                monobankLink = null;
+                stopMonoQueue();
+                syncMonobankModal();
+                renderMonobankButton();
+                closeMonobankModal();
+            } catch {
+                alert("Не вдалося з'єднатися із сервером.");
+            }
+        }, { confirm: 'Відключити', cancel: 'Назад' });
+    }
+
+    let telegramStatusTimer = null;
+    let telegramLinkCode = '';
+
+    function stopTelegramStatusPoll() {
+        if (!telegramStatusTimer) return;
+        clearInterval(telegramStatusTimer);
+        telegramStatusTimer = null;
+    }
+
+    function closeTelegramModal(event) {
+        if (event && event.target?.id !== 'telegram-modal' && !event.target?.closest?.('.btn-close-modal')) return;
+        stopTelegramStatusPoll();
+        document.getElementById('telegram-modal')?.classList.remove('active');
+    }
+
+    async function refreshTelegramModal() {
+        const status = document.getElementById('telegram-status-text');
+        const error = document.getElementById('telegram-form-error');
+        const connect = document.getElementById('btn-telegram-connect');
+        const disconnect = document.getElementById('btn-telegram-disconnect');
+        const codeBlock = document.getElementById('telegram-code-block');
+        const codeEl = document.getElementById('telegram-link-code');
+        if (!status || !currentUser) return;
+        if (error) error.textContent = '';
+        try {
+            const response = await apiFetch(`/api/telegram/status?userId=${encodeURIComponent(currentUser.id)}`);
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+            telegramLinkCode = data.code || '';
+            if (codeEl) codeEl.textContent = telegramLinkCode || '—';
+            if (codeBlock) codeBlock.hidden = !telegramLinkCode;
+            if (!data.configured) {
+                status.textContent = 'Бот ще не налаштований на сервері. Ліміти на картках уже працюють, сповіщення ввімкнуться після підключення бота.';
+                if (connect) connect.hidden = true;
+                if (disconnect) disconnect.hidden = true;
+                return;
+            }
+            if (connect) connect.hidden = false;
+            if (data.connected) {
+                status.textContent = 'Підключено. Бот напише один раз, коли категорія вперше вийде за ліміт.';
+                if (disconnect) disconnect.hidden = false;
+                stopTelegramStatusPoll();
+                return;
+            }
+            status.textContent = 'Відкрийте бота, натисніть «Старт» і надішліть код нижче.';
+            if (disconnect) disconnect.hidden = true;
+        } catch {
+            if (error) error.textContent = "Не вдалося з'єднатися із сервером.";
+        }
+    }
+
+    async function copyTelegramLinkCode() {
+        if (!telegramLinkCode) return;
+        const button = document.getElementById('btn-telegram-copy');
+        try {
+            await navigator.clipboard.writeText(telegramLinkCode);
+            if (button) {
+                const previous = button.textContent;
+                button.textContent = 'Скопійовано';
+                setTimeout(() => {
+                    if (button.textContent === 'Скопійовано') button.textContent = previous;
+                }, 1500);
+            }
+        } catch {
+            const error = document.getElementById('telegram-form-error');
+            if (error) error.textContent = 'Не вдалося скопіювати код';
+        }
+    }
+
+    function openTelegramModal() {
+        if (!currentUser) return;
+        document.getElementById('telegram-modal')?.classList.add('active');
+        refreshTelegramModal();
+        stopTelegramStatusPoll();
+        telegramStatusTimer = setInterval(refreshTelegramModal, 2000);
+        setTimeout(stopTelegramStatusPoll, 60000);
+    }
+
+    async function connectTelegram() {
+        if (!currentUser) return;
+        const error = document.getElementById('telegram-form-error');
+        if (error) error.textContent = '';
+        try {
+            const response = await apiFetch('/api/telegram/connect', {
+                method: 'POST',
+                body: JSON.stringify({ userId: currentUser.id }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+            if (!response.ok || !data.url) {
+                if (error) error.textContent = data.error || 'Не вдалося відкрити бота';
+                return;
+            }
+            if (data.code) {
+                telegramLinkCode = data.code;
+                const codeEl = document.getElementById('telegram-link-code');
+                const codeBlock = document.getElementById('telegram-code-block');
+                if (codeEl) codeEl.textContent = data.code;
+                if (codeBlock) codeBlock.hidden = false;
+            }
+            window.open(data.url, '_blank', 'noopener');
+        } catch {
+            if (error) error.textContent = "Не вдалося з'єднатися із сервером.";
+        }
+    }
+
+    function disconnectTelegram() {
+        if (!currentUser) return;
+        showConfirm('Відключити Telegram', 'Бот більше не писатиме про ліміти цього профілю.', async () => {
+            try {
+                const response = await apiFetch('/api/telegram/connect', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ userId: currentUser.id }),
+                });
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    alert(data.error || 'Не вдалося відключити Telegram');
+                    return;
+                }
+                refreshTelegramModal();
+            } catch {
+                alert("Не вдалося з'єднатися із сервером.");
+            }
+        }, { confirm: 'Відключити', cancel: 'Назад' });
     }
 
 // Inline HTML handlers (onclick/onload) need window globals in ES modules.
@@ -5118,13 +8064,20 @@ Object.assign(window, {
   closeGrowthModal,
   closeInvoicesModal,
   closeModal,
+  closeTelegramModal,
+  closeMonobankModal,
   closeNewSupplierModal,
   closePayDebtModal,
   closePayrollModal,
   closeProfileSwitcher,
   closeScheduleModal,
+  closeSerenityEasterEgg,
+  closeSkryniaSwitcher,
   closeTransferModal,
   confirmAddSupplier,
+  connectMonobank,
+  connectTelegram,
+  copyTelegramLinkCode,
   convertCurrency,
   copyAccountToClipboard,
   createNewDebt,
@@ -5135,8 +8088,13 @@ Object.assign(window, {
   deleteEnvelope,
   deleteIncome,
   deleteInvoice,
+  setInvoicePayment,
+  updateInvoiceAmount,
   deleteProfile,
   deleteSubItem,
+  undoLastDelete,
+  disconnectMonobank,
+  disconnectTelegram,
   enqueueSave,
   escapeAttr,
   escapeHtml,
@@ -5146,6 +8104,7 @@ Object.assign(window, {
   fetchAvailableProfiles,
   fetchExchangeRate,
   filterSuppliers,
+  filterInvoicesByAmount,
   flushSaveToServer,
   formatMoney,
   formatNumberShort,
@@ -5179,6 +8138,11 @@ Object.assign(window, {
   getLastInitializedData,
   getMonthIncomeUah,
   getTop3SubItems,
+  handlePayrollDragEnd,
+  handlePayrollDragLeave,
+  handlePayrollDragOver,
+  handlePayrollDragStart,
+  handlePayrollDrop,
   handleScheduleDragEnd,
   handleScheduleDragLeave,
   handleScheduleDragOver,
@@ -5186,6 +8150,7 @@ Object.assign(window, {
   handleScheduleDrop,
   hardDeleteDebt,
   hideCreateProfile,
+  hideSkryniaHub,
   init,
   initChart,
   initNewJarTypeDropdown,
@@ -5197,19 +8162,52 @@ Object.assign(window, {
   logout,
   newId,
   nextGrowthStep,
+  onMonobankClick,
   openAiExportModal,
+  launchAiAnalytics,
+  launchAiGrowth,
+  launchAiAgent,
+  openAiChat,
+  closeAiChat,
+  toggleAiChatExpand,
+  sendAiChatMessage,
+  sendAiSuggestion,
+  toggleMonobankAccount,
+  stopAiChat,
+  startAiBriefing,
+  resetAiChat,
+  copyLastAiPrompt,
+  openLlmSettings,
+  closeLlmSettings,
+  saveLlmSettingsFromForm,
+  clearLlmSettingsFromForm,
+  selectLlmProvider,
+  selectLlmModel,
+  syncAiEntryButtons,
   openAnalyticsModal,
   openChangelogModal,
   openDebtsModal,
   openEmployeeModal,
   openEnvelopesModal,
+  openFamilyTree,
+  openSkryniaModule,
+  openYearTracks,
+  closeFamilyTree,
+  closeYearTracks,
+  closeRunway,
+  openRunway,
   openGrowthModal,
   openInvoicesModal,
   handleExpenseCardClick,
   openModal,
+  openMonobankModal,
+  openTelegramModal,
   openNewSupplierModal,
+  openEditSupplierModal,
+  deleteSupplier,
   openPayrollModal,
   openScheduleModal,
+  openSerenityEasterEgg,
   openTransferModal,
   payDebt,
   performLogin,
@@ -5232,9 +8230,13 @@ Object.assign(window, {
   saveData,
   saveDataToServer,
   saveEmployee,
+  selectEmpPayType,
+  downloadPayrollPdfForEmployee,
   saveFinancialPlan,
   saveGlobalData,
   saveGrowthProfile,
+  paintGrowthFinalButton,
+  runGrowthAiFromModal,
   scheduleSaveToServer,
   selectAiExportType,
   selectCOGSType,
@@ -5242,12 +8244,14 @@ Object.assign(window, {
   selectCurrency,
   selectDebtCurrency,
   selectInvoicePayment,
+  selectIncomeCurrency,
   selectJarTypeDropdown,
   selectMonth,
   selectNewJarType,
   selectProfileType,
   selectSupplier,
   selectTransferJar,
+  sanitizeOtpInput,
   sendAuthOtp,
   setCategoryBudgetBucket,
   setChoiceValues,
@@ -5259,30 +8263,42 @@ Object.assign(window, {
   showCreateProfileFromAuth,
   showError,
   showGrowthStep,
+  showSkryniaHub,
   startOtpCountdown,
   switchInvoiceTab,
   switchProfile,
   syncGlobalDebtBalance,
   toggleChoice,
+  toggleChoiceFromEl,
+  toggleCategoryEssential,
   toggleEmployeePaid,
   toggleFinancialPlanSettings,
   togglePaidStatus,
   toggleProfileSwitcher,
   toggleRule502030Details,
   toggleSchedulePaid,
+  toggleSkryniaSwitcher,
+  toggleSerenityEasterEgg,
   toggleSupplierDropdown,
   uahToUsd,
   updateAll,
   updateBusinessHours,
   updateCOGS,
+  previewCategoryLimit,
+  updateCategoryLimit,
   updateCategoryName,
   updateChart,
   updateDebtsDisplay,
+  updateDebtRemaining,
+  updateDebtTotal,
   updateFinancialPlanField,
   updateGlobalScheduleRemaining,
   updateIncome,
+  updateJarBalance,
+  updateJarGoal,
   updateMainJarBalance,
   updateProfileSwitcherUI,
+  updateSkryniaSwitcherUI,
   updateSavingsDisplay,
   updateScheduleAmount,
   updateSubItemAmount,

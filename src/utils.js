@@ -41,6 +41,22 @@ export function formatMoney(amount) {
     });
 }
 
+/** Calendar days in a 0-based month. */
+export function countDaysInMonth(year, month) {
+    return new Date(year, month + 1, 0).getDate();
+}
+
+/** Monday–Friday days in a 0-based month. */
+export function countWeekdaysInMonth(year, month) {
+    const days = countDaysInMonth(year, month);
+    let count = 0;
+    for (let day = 1; day <= days; day++) {
+        const dow = new Date(year, month, day).getDay();
+        if (dow !== 0 && dow !== 6) count++;
+    }
+    return count;
+}
+
 export function formatNumberShort(num) {
     if (num === 0) return '0.00';
     if (num >= 1000000) return formatMoney(num / 1000000) + ' млн';
