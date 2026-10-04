@@ -7828,7 +7828,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             subtitle.textContent = 'Куди йдуть покупки цього магазину';
             const seen = monoRulesSummary().find((row) => row.key === picker.match);
             context.innerHTML = seen
-                ? `<div class="mr-context">${seen.count} ${pluralUk(seen.count, 'покупка', 'покупки', 'покупок')} · ${formatMoney(seen.total)} ₴. Покупки поточного місяця й нові підуть у вибрану категорію.</div>`
+                ? `<div class="mr-context">Цього місяця: ${seen.count} ${pluralUk(seen.count, 'покупка', 'покупки', 'покупок')} · ${formatMoney(seen.total)} ₴. Вони й нові покупки підуть у вибрану категорію.</div>`
                 : '';
             remember.hidden = true;
             submit.textContent = 'Зберегти';
@@ -7929,21 +7929,12 @@ function generatePayrollSparklineHTML(currentTotal) {
 
     // ---------- Rules screen: MCC types and codes → own categories ----------
 
+    /** Stores of the running month only: earlier months are history and never re-routed. */
     function monoRulesSummary() {
-        const running = runningMonth();
-        const months = [];
-        Object.keys(appData).forEach((year) => {
-            Object.keys(appData[year] || {}).forEach((month) => {
-                const bucket = appData[year][month];
-                if (!bucket?.initialized) return;
-                months.push({
-                    expenses: bucket.expenses,
-                    ignored: bucket.monoIgnored,
-                    running: Number(year) === running.year && Number(month) === running.month,
-                });
-            });
-        });
-        return summarizeMerchants(months);
+        const { year, month } = runningMonth();
+        const bucket = appData[year]?.[month];
+        if (!bucket?.initialized) return [];
+        return summarizeMerchants([{ expenses: bucket.expenses, ignored: bucket.monoIgnored, running: true }]);
     }
 
     async function openMonoRules() {
@@ -8010,21 +8001,21 @@ function generatePayrollSparklineHTML(currentTotal) {
         } else if (!rows.length) {
             body.innerHTML = `
                 <div class="mr-empty">
-                    <div class="mr-empty-title">Ще немає покупок з Монобанку</div>
-                    Підтягніть виписку — тут з’являться магазини, і ви вирішите, у які категорії йдуть їхні покупки.
+                    <div class="mr-empty-title">Цього місяця ще немає покупок з Монобанку</div>
+                    Щойно з’являться покупки цього місяця, тут буде список магазинів — і ви вирішите, у які категорії йдуть їхні покупки.
                 </div>`;
         } else if (!visible.length) {
             body.innerHTML = '<div class="mr-empty">Нічого не знайдено</div>';
         } else {
             const needs = (row) => row.unassigned > 0 && !rules.has(row.key);
             body.innerHTML = `
-                <p class="mr-section-hint">Призначте категорію магазину — його покупки поточного місяця й нові підуть туди. Минулі місяці не змінюються. Новий магазин спершу з’явиться в «Нерозподілене».</p>
+                <p class="mr-section-hint">Магазини з покупками цього місяця. Призначте категорію — покупки магазину в цьому місяці й нові підуть туди. Новий магазин спершу з’явиться в «Нерозподілене».</p>
                 ${visible.map((row) => `
                     <div class="mr-group${needs(row) ? ' needs-attention' : ''}">
                         <div class="mr-group-row">
                             <div class="mr-group-info">
                                 <div class="mr-group-name"><span class="mr-merchant-name">${escapeHtml(row.name)}</span>${needs(row) ? `<span class="mr-badge">${row.unassigned} без категорії</span>` : ''}</div>
-                                ${row.count ? `<div class="mr-group-meta tabular">${row.count} ${pluralUk(row.count, 'покупка', 'покупки', 'покупок')} · ${formatMoney(row.total)} ₴</div>` : ''}
+                                <div class="mr-group-meta tabular">${row.count ? `${row.count} ${pluralUk(row.count, 'покупка', 'покупки', 'покупок')} · ${formatMoney(row.total)} ₴` : 'цього місяця покупок ще не було'}</div>
                             </div>
                             ${monoRuleChip(row.key, row.name, rules.get(row.key))}
                         </div>
