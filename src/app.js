@@ -7268,11 +7268,22 @@ function generatePayrollSparklineHTML(currentTotal) {
         }
 
         if (!onlyNames && isRecentAiMonth(year, month)) {
-            const closed = listClosedCategoriesVsPrev(year, month, data);
+            const listed = listClosedCategoriesVsPrev(year, month, data);
+            // Early in the running month rent is simply not paid yet: only a removed category is closed.
+            const now = new Date();
+            const running = year === now.getFullYear() && month === now.getMonth();
+            const waiting = running ? listed.filter((c) => !c.gone) : [];
+            const closed = running ? listed.filter((c) => c.gone) : listed;
             if (closed.length) {
                 str += `  Закрито / без витрат цього місяця (0 ₴ — не рахуй як діючу витрату і не бери суму з минулих місяців):\n`;
                 closed.forEach((c) => {
                     str += `    - "${c.name}": 0 ₴ (було ${c.prevTotal.toFixed(0)} ₴ у ${c.prevLabel}${c.gone ? ', категорію прибрано' : ''})\n`;
+                });
+            }
+            if (waiting.length) {
+                str += `  Поки без витрат цього місяця (місяць триває, ${now.getDate()}-й день — це не означає, що статтю закрито):\n`;
+                waiting.forEach((c) => {
+                    str += `    - "${c.name}" (у ${c.prevLabel} було ${c.prevTotal.toFixed(0)} ₴)\n`;
                 });
             }
         }
@@ -7472,6 +7483,8 @@ function generatePayrollSparklineHTML(currentTotal) {
             environment: getChoiceValues('growth-environment'),
             barrier: document.getElementById('growth-barrier').value,
             financialPlan: (currentUser.growthProfile && currentUser.growthProfile.financialPlan) || getFinancialPlan(),
+            // Lets the AI see how old the answers are (a stale profile once kept a sold business «running»).
+            updatedAt: new Date().toISOString(),
         };
         currentUser.growthProfile = profile;
         
@@ -7537,7 +7550,12 @@ function generatePayrollSparklineHTML(currentTotal) {
             : migratedVectors.slice(1)
         ).map((s) => s.trim()).filter((id) => id && id !== primaryVector);
 
-        let out = `### КУРС ЖИТТЯ (анкета)\n`;
+        const updated = gp.updatedAt ? new Date(gp.updatedAt) : null;
+        const ageMonths = updated && !Number.isNaN(updated.getTime())
+            ? Math.max(0, Math.round((Date.now() - updated.getTime()) / (30.4 * 24 * 3600 * 1000)))
+            : null;
+        let out = `### АНКЕТА (${ageMonths === null ? 'дата оновлення невідома' : `оновлено ${updated.toLocaleDateString('uk-UA')}${ageMonths >= 1 ? `, ${ageMonths} міс. тому` : ''}`})\n`;
+        if (ageMonths === null || ageMonths >= 3) out += `Анкета може бути застарілою: якщо факт важливий для висновку — спершу перевір його з треками.\n`;
         out += `- Точка А: ${gp.job}\n`;
         if (gp.ageRange) out += `- Віковий діапазон: ${formatGrowthAnswers(gp.ageRange)}\n`;
         if (gp.incomeType) out += `- Джерела доходу: ${formatGrowthAnswers(gp.incomeType)}\n`;
@@ -7554,13 +7572,10 @@ function generatePayrollSparklineHTML(currentTotal) {
             if (gp.time) out += `- Час на розвиток: ${formatGrowthAnswers(gp.time)} / тиждень\n`;
             if (gp.barrier) out += `- Бар'єр: ${gp.barrier}\n`;
         } else {
-            out += `\n### МІЙ АРСЕНАЛ\n`;
-            out += `- Топ-навички: ${gp.skills || 'не вказано'}\n`;
-            out += `- Час на розвиток: ${formatGrowthAnswers(gp.time)} на тиждень\n`;
-            out += `- Бюджет на розвиток: ${formatGrowthAnswers(gp.investment)}\n`;
-            out += `- Оточення: ${formatGrowthAnswers(gp.environment)}\n\n`;
-            out += `### ГОЛОВНИЙ БАР'ЄР\n`;
-            out += `- ${gp.barrier || 'не вказано'}\n`;
+            out += `- Навички і про себе: ${gp.skills || 'не вказано'}\n`;
+            out += `- Час на розвиток: ${formatGrowthAnswers(gp.time)} на тиждень; бюджет: ${formatGrowthAnswers(gp.investment)}\n`;
+            out += `- Оточення: ${formatGrowthAnswers(gp.environment)}\n`;
+            out += `- Головна перешкода: ${gp.barrier || 'не вказано'}\n`;
         }
         if (includeMarket) {
             const roleId = firstId(gp.roleFamily);
@@ -7573,11 +7588,12 @@ function generatePayrollSparklineHTML(currentTotal) {
                     market: gp.market,
                     mobility: gp.mobility,
                     domain: firstId(gp.domain),
-                    currentIncomeUsd: getLatestPersonalIncomeUsd(),
+                    // Same income the growth metrics use (complete months), so the model sees one number.
+                    currentIncomeUsd: Number.isFinite(opts.currentIncomeUsd) ? opts.currentIncomeUsd : getLatestPersonalIncomeUsd(),
                     targetIncomeUsd: parseUsdAmount(gp.targetIncome, currentExchangeRate),
                     jobTitle: gp.job,
                 });
-                out += `Бенди зарплат — стеля гри, не курс замість головного вектора і не дозвіл змінити роль лише бо інша ближча до точки Б.\n`;
+                out += `Зарплати з таблиці — орієнтир можливої стелі, не нова ціль і не привід міняти головний напрям.\n`;
             } else {
                 out += `\nРинок: у внутрішній таблиці немає бенду для цієї посади. Не вигадуй зарплати. Стелю оцінюй з каси, навичок, вектора і точки Б.\n`;
             }
@@ -7595,105 +7611,143 @@ function generatePayrollSparklineHTML(currentTotal) {
         return { uah: remaining, usdUnconverted: 0 };
     }
 
-    /** Capital summary + current month for growth; the full capital review is «Аналіз капіталу». */
-    function buildGrowthCashDump(isBiz) {
+    /** Horizon of the growth answers in months (lower bound for ranges). */
+    function growthHorizonMonths(period) {
+        const text = formatGrowthAnswers(period) || String(period || '');
+        const months = text.match(/(\d+)\s*міс/);
+        if (months) return Number(months[1]);
+        const years = text.match(/(\d+)(?:\s*[-–]\s*\d+)?\s*рок/);
+        return years ? Number(years[1]) * 12 : null;
+    }
+
+    /**
+     * Money in a few lines for the growth strategist, over complete months (the running month is
+     * incomplete early on). The full review is «Аналіз капіталу».
+     */
+    function growthMoneySummary(isBiz) {
         const jars = globalData.jars[currentUser.id] || [];
-        const totalJars = jars.reduce((sum, j) => sum + j.balance, 0);
-        const debts = globalData.debts[currentUser.id] || [];
-        const activeDebts = debts.filter((d) => !d.is_archived || d.is_archived === 0);
-
+        const debts = (globalData.debts[currentUser.id] || []).filter((d) => !d.is_archived || d.is_archived === 0);
+        const fp = getFinancialPlan();
+        const jarsTotal = jars.reduce((sum, j) => sum + (parseFloat(j.balance) || 0), 0);
+        const brokerUsd = isBiz ? 0 : (parseFloat(fp.brokerBalanceUsd) || 0);
+        const brokerUah = brokerUsd > 0 && currentExchangeRate > 0 ? brokerUsd * currentExchangeRate : 0;
         let debtUah = 0;
-        let usdUnconverted = 0;
-        activeDebts.forEach((d) => {
-            const part = debtRemainingToUah(d);
-            debtUah += part.uah;
-            usdUnconverted += part.usdUnconverted;
-        });
-        const netUah = totalJars - debtUah;
+        debts.forEach((d) => { debtUah += debtRemainingToUah(d).uah; });
 
-        let prompt = generateAiFxSection();
-        prompt += generateAiNowSection();
-        prompt += `### ПОТОЧНИЙ СТАН КАПІТАЛУ\n`;
-        prompt += `- Всього накопичень: ${totalJars.toFixed(2)} ₴\n`;
-        jars.forEach((j) => {
-            prompt += formatAiJarLine(j);
-        });
-        prompt += `- Всього боргів (у ₴): ${debtUah.toFixed(2)} ₴\n`;
-        if (usdUnconverted > 0) {
-            prompt += `- USD-борги без курсу: ${usdUnconverted.toFixed(2)} $ — не включені в чистий капітал. Не вигадуй курс.\n`;
-            prompt += `- Чистий капітал (накопичення − борги в ₴, без неконвертованих $): ${netUah.toFixed(2)} ₴\n`;
+        const today = new Date();
+        const flows = initializedMonthsAsc()
+            .map(({ y, m }) => ({ y, m, ...capitalFlowForMonth(y, m, isBiz) }))
+            .filter((f) => f.income > 0 || f.consumption > 0);
+        const complete = flows.filter((f) => !(f.y === today.getFullYear() && f.m === today.getMonth()));
+        const recent = (complete.length ? complete : flows).slice(-3);
+        const incomeAvg = avgOf(recent.map((f) => f.income));
+        const freeAvg = avgOf(recent.map((f) => f.free));
+        const toEnvelopesAvg = avgOf(recent.map((f) => f.toEnvelopes));
+        const saved = recent.reduce((sum, f) => sum + f.toEnvelopes + f.debtPaid, 0);
+        const incomeSum = recent.reduce((sum, f) => sum + f.income, 0);
+        const essentialList = recent.map((f) => monthlyCushionBaseUah(0, appData[f.y][f.m].expenses)).filter((v) => v > 0);
+        const essentialAvg = avgOf(essentialList);
+        const cushion = getCushionBalanceUah();
+
+        // Biggest spending lines on average, the same category joined across months by its key.
+        const byKey = new Map();
+        recent.forEach((f) => (appData[f.y][f.m].expenses || []).forEach((cat) => {
+            if (isUnassigned(cat) || isLedgerCategory(cat)) return;
+            const key = categoryKey(cat);
+            const row = byKey.get(key) || { name: cat.name || 'Без назви', total: 0 };
+            row.total += getCategoryTotal(cat);
+            byKey.set(key, row);
+        }));
+        const top = [...byKey.values()].sort((a, b) => b.total - a.total).slice(0, 3)
+            .map((row) => `${row.name} ${formatMoney(row.total / Math.max(1, recent.length))} ₴`);
+
+        const window = complete.length ? `за ${recent.length} повні міс.` : 'лише поточний неповний місяць';
+        let text = `### ГРОШІ КОРОТКО (пораховано Скринею, ${window}; детально — «Аналіз капіталу»)\n`;
+        text += `- Чистий капітал: ${formatMoney(jarsTotal + brokerUah - debtUah)} ₴ (конверти ${formatMoney(jarsTotal)} ₴${brokerUah ? `, брокер ${formatMoney(brokerUah)} ₴` : ''}, борги ${formatMoney(debtUah)} ₴)\n`;
+        if (recent.length) {
+            text += `- Середній дохід: ${formatMoney(incomeAvg)} ₴/міс; вільний залишок: ${formatMoney(freeAvg)} ₴/міс; норма заощаджень ${pctOf(saved, incomeSum)}\n`;
+        }
+        text += essentialAvg > 0
+            ? `- Подушка: ${formatMoney(cushion)} ₴ — вистачить на ${(cushion / essentialAvg).toFixed(1)} міс. обов'язкових витрат (норма 6)\n`
+            : `- Подушка: ${formatMoney(cushion)} ₴ (обов'язкові витрати не позначені — у місяцях не рахуй)\n`;
+        if (top.length) text += `- Найбільші витрати в середньому: ${top.join(', ')}\n`;
+        return { text, incomeAvg, toEnvelopesAvg, months: recent.length };
+    }
+
+    /** The numbers a growth verdict rests on: gap to point B, ×25 at the real pace, time and budget. */
+    function growthMetrics(money, activeTracks) {
+        const gp = currentUser.growthProfile || {};
+        const fp = getFinancialPlan();
+        let out = `### РОЗРИВ ДО ЦІЛІ (пораховано Скринею — не перераховуй)\n`;
+        const target = parseUsdAmount(gp.targetIncome, currentExchangeRate);
+        const incomeUsd = money.incomeAvg > 0 ? uahToUsd(money.incomeAvg) : 0;
+        const horizon = growthHorizonMonths(gp.period);
+        if (incomeUsd > 0) out += `- Дохід зараз: ≈ ${formatMoney(incomeUsd)} $/міс (${formatMoney(money.incomeAvg)} ₴)\n`;
+        if (target > 0 && incomeUsd > 0) {
+            const ratio = target / incomeUsd;
+            out += `- Ціль: ${formatMoney(target)} $/міс — це ×${ratio.toFixed(1)} до нинішнього доходу (+${formatMoney(Math.max(0, target - incomeUsd))} $/міс)`;
+            if (horizon) {
+                const monthly = ratio > 1 ? (Math.pow(ratio, 1 / horizon) - 1) * 100 : 0;
+                out += `; за ${horizon} міс. потрібно рости ≈ ${monthly.toFixed(1)}% щомісяця`;
+            }
+            out += `\n`;
+        } else if (target > 0) {
+            out += `- Ціль: ${formatMoney(target)} $/міс; поточний дохід невідомий — розрив не рахуй\n`;
         } else {
-            prompt += `- Чистий капітал (накопичення − борги): ${netUah.toFixed(2)} ₴\n`;
+            out += `- Ціль у доларах не вказана — розрив не рахуй\n`;
         }
-
-        if (activeDebts.length > 0) {
-            prompt += `\n### АКТИВНІ БОРГОВІ ЗОБОВ'ЯЗАННЯ\n`;
-            activeDebts.forEach((d) => {
-                prompt += formatAiDebtLine(d);
-            });
+        const desired = parseFloat(fp.desiredMonthlyUsd) || 0;
+        if (desired > 0) {
+            const capitalTarget = desired * 12 * 25;
+            const capitalNow = (parseFloat(fp.brokerBalanceUsd) || 0) + uahToUsd(getInvestmentJarsBalanceUah());
+            const realYears = calcYearsToCapital(capitalTarget, capitalNow, uahToUsd(money.toEnvelopesAvg), fp.returnRatePct);
+            const normYears = calcYearsToCapital(capitalTarget, capitalNow, uahToUsd(recommendedSaveUah(money.incomeAvg)), fp.returnRatePct);
+            out += `- Капітал ×25 на ${formatMoney(desired)} $/міс = ${formatMoney(capitalTarget)} $; зараз ${formatMoney(capitalNow)} $. `;
+            out += `При фактичних відкладаннях (≈ ${formatMoney(uahToUsd(money.toEnvelopesAvg))} $/міс): ${formatYearsLabel(realYears)}; при нормі 20% доходу: ${formatYearsLabel(normYears)}\n`;
         }
-
-        if (!isBiz) {
-            prompt += generateAiFinancialPlanSection(getMonthIncomeUah(currentYear, currentMonth));
+        const hours = Number((formatGrowthAnswers(gp.time) || '').match(/\d+/)?.[0]) || 0;
+        if (gp.time) {
+            out += `- Час на розвиток: ${formatGrowthAnswers(gp.time)} на тиждень`;
+            out += activeTracks > 0 && hours > 0 ? `; активних треків ${activeTracks} → ≈ ${(hours / activeTracks).toFixed(1)} год на трек\n` : `\n`;
         }
-
-        prompt += `\n### КАСА КОРОТКО\n`;
-        prompt += `Поточний місяць — категорії («за 10 років» = місяць × 120); інші місяці — одним рядком.\n`;
-        if (appData[currentYear]?.[currentMonth]?.initialized) {
-            prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz, { lineItems: false });
+        const budgetPct = Number((formatGrowthAnswers(gp.investment) || '').match(/(\d+)\s*%/)?.[1]) || 0;
+        if (budgetPct > 0 && money.incomeAvg > 0) {
+            out += `- Бюджет на розвиток: до ${budgetPct}% доходу ≈ ${formatMoney((money.incomeAvg * budgetPct) / 100)} ₴/міс\n`;
         }
-        let others = '';
-        Object.keys(appData).map(Number).sort((a, b) => a - b).forEach((y) => {
-            Object.keys(appData[y] || {}).map(Number).sort((a, b) => a - b).forEach((m) => {
-                if (y === currentYear && m === currentMonth) return;
-                others += generateAiMonthOneLiner(y, m, isBiz);
-            });
-        });
-        if (others) prompt += `\nІнші місяці:\n${others}`;
-        return prompt;
+        return out;
     }
 
     async function buildGrowthPrompt(_type = 'all') {
         if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) return;
         const isBiz = currentUser && currentUser.account_type === 'business';
 
-        let prompt = `Виступи в ролі стратега росту MySkrynia. Це НЕ аналіз капіталу.\n`;
-        prompt += `«Аналіз капіталу» відповідає: «чи каса здорова / скільки відкласти / що різати». Ти відповідаєш: «чи цей курс (точка Б, вектор, треки) оплатний і досяжний». Каса — доказ для курсу, не фінальний продукт. Не закінчуй висновком касира («відклади N ₴», гаси цей банк першим, типи конвертів), якщо це не знімає блокер і не відкриває точку Б.\n`;
-        prompt += `Касу бери коротко — як доказ для курсу (чистий капітал, вільний потік, подушка, ×25, борги). Детальний розбір капіталу — окрема кнопка «Аналіз капіталу»: не повторюй його. Не згортайся лише до кар'єрного чекліста.\n`;
-        prompt += `Опирайся на анкету (точка А своїми словами, головний вектор, мобільність, ринок) і на цифри каси. Анкету могли не оновити: якщо вона суперечить завершеному треку (наприклад, «бізнес працює», а трек «Продано» завершено) — вір треку і порадь оновити анкету. Гео, remote, релокейт і мову — лише з анкети та з треків/навичок. Немає в даних — не пропонуй як основний шлях. Бенди зарплат, якщо є — довідка про стелю, не новий курс.\n`;
-        prompt += `Поточна роль у точці А — де я зараз, не пункт призначення. Головний вектор — курс; додаткові не підміняють його. Не згортай точку Б на поточного роботодавця.\n`;
-        if (!isBiz) {
-            prompt += `Якщо нижче є «РІЧНІ ТРЕКИ» — читай статуси треків і стадій (Очікує / В процесі / Готово). Не вигадуй треки. Стадія не «Готово» — етап не пройшов, навіть якщо в касі вже є частина суми. Заблоковані — частина карти: як розблокувати. «НЕ РОБИТИ» — не головний курс, але назви ціну відмови, якщо ріже точку Б.\n`;
-        }
-        prompt += `Якщо вказано віковий діапазон — це горизонт, не ярлик «пізно» / «ризикуй, бо молодий».\n`;
-        prompt += `У дампі категорій є «за 10 років». Якщо споживання (оренда, таксі, сервіси) замикає капітал, якого вистачило б на актив або на точку Б — назви це в HELICOPTER. [заощадження] не вважати діркою. Ціни ринку і ставки іпотеки не вигадуй.\n\n`;
-        prompt += `СТРУКТУРА ВІДПОВІДІ (обов'язково в такому порядку):\n`;
-        prompt += `1) HELICOPTER VIEW (коротко, 1 блок, без дрібних цифр у кожному абзаці): чи каса фінансує точку Б (не «чи каса здорова» окремо); що я переоцінюю в цифрах і в курсі; чи дивлюсь не туди. Яка стеля цієї гри (бенди — довідка). Чи точка Б живе в іншій грі. Якщо чек / горизонт / каса не сумісні — що здаємо. 1–2 рамки на 90 днів для курсу. Одна сліпа зона. Правила Скрині (подушка 6×, капітал ×25, «не ріж обов'язкові») — робоча доктрина, не догма: якщо вони б'ються з точкою Б і цифри це показують — скажи прямо тут.\n`;
-        prompt += `2) ТАКТИКА: (а) каса як доказ — 3–5 рядків: чистий капітал, вільний потік, подушка, ×25, борги; без рекомендацій касира як головної цілі. (б) каса vs точка Б: які статті годують активні треки, які суперечать; які треки фінансово нереалістичні при поточному залишку; бар'єр.`;
-        if (!isBiz) {
-            prompt += ` По КОЖНОМУ заблокованому треку — чи блокер валідний і як зняти (грошовий чи ні); паузу не ігноруй. Подушка/борги — обмеження, не вето на розблок важливого треку.`;
-        }
-        prompt += ` Не ріж обов'язкові, поки є необов'язкові — якщо HELICOPTER не показав, що саме це правило шкодить точці Б. (в) 3–5 важелів шляху до точки Б (легший — плюс, якщо закриває дірку каси, що ріже курс; важчий ок, якщо сильніший). Потім 3 кроки на 48 годин — не замість цифр і не замість важелів.\n`;
-        prompt += `3) НА ПОДУМАТИ: інший курс до точки Б (або інша досяжна точка Б), сумісний з цією касою, навичками і мобільністю — не інший всесвіт. Легший і сильніший шлях ок. Обов'язково, якщо курс хибний або точка Б вище стелі. Не підміняй це фінансовим планом «ріж статтю / клади в подушку», якщо це не змінює курс.\n\n`;
+        let prompt = `Виступи як мій стратег росту. Питання одне: чи реально дійти до моєї цілі за вказаний горизонт і що найсильніше мене до неї наближає.\n`;
+        prompt += `Спирайся на анкету, ${isBiz ? '' : 'треки, '}ринок і короткі цифри нижче. Блоки «пораховано Скринею» — бери як є, не перераховуй. Детальний розбір грошей — окремий «Аналіз капіталу», не повторюй його.\n`;
+        prompt += `Правила: завершений трек новіший за анкету — вір треку; гео, remote і релокацію пропонуй, лише якщо вони є в анкеті чи треках; поточна роль — де я зараз, не ціль; вік — горизонт, не ярлик; зарплати — лише з блоку ринку.\n`;
+        prompt += `Пиши простими словами, як наставник: коротко, без таблиць і без внутрішніх слів («каса», «гра», «стеля», «бенд», «вектор», «точка А/Б» — кажи «гроші», «ціль», «зараз»).\n\n`;
+        prompt += `СТРУКТУРА (саме ці заголовки, кожен обов'язковий; якщо нема що сказати — один рядок):\n`;
+        prompt += `## HELICOPTER VIEW — 3 пункти: вердикт (досяжно чи ні за цей горизонт — з цифрою розриву), головна причина, головна ставка на 90 днів.\n`;
+        prompt += `## ТАКТИКА — план на 90 днів: до 3 кроків, у кожного вимірюваний результат і скільки годин та грошей на тиждень він забирає (з урахуванням мого часу й бюджету на розвиток); перший крок — що зробити цього тижня.${isBiz ? '' : ' Треки — лише заблоковані й ризикові, по рядку: чи перешкода реальна і як її зняти.'}\n`;
+        prompt += `## НА ПОДУМАТИ — сильніша чи реалістичніша альтернатива одним абзацом, лише якщо ціль нереальна або є явно кращий шлях; інакше один рядок, чому альтернатива не потрібна.\n\n`;
 
         await ensureExchangeRateForAi();
-        prompt += buildGrowthCashDump(isBiz);
-        prompt += `\n`;
-        prompt += buildGrowthCourseSnapshot({ includeMarket: true });
+        prompt += generateAiFxSection();
+        prompt += generateAiNowSection();
+        const money = growthMoneySummary(isBiz);
 
+        let tracksSection = '';
+        let activeTracks = 0;
         if (!isBiz) {
-            prompt += await buildAiYearTracksSection();
-            prompt += `\n`;
+            tracksSection = await buildAiYearTracksSection({ compact: true });
+            activeTracks = (tracksSection.match(/^Трек: .*\n  Статус: (Активний|Заблокований|Заблоковано)/gm) || []).length;
         }
-
-        prompt += `\nНа основі цих даних, напиши висновок стратега росту, не фінансового звіту.\n`;
-        prompt += `Спочатку — HELICOPTER VIEW: чи курс веде в точку Б; чи каса його фінансує; яка стеля; що здаємо; фокус курсу на 90 днів.\n`;
-        prompt += `Потім — ТАКТИКА: каса як обмеження і доказ, треки, бар'єр, важелі до точки Б, 3 кроки на 48 годин.`;
-        if (!isBiz) {
-            prompt += ` По КОЖНОМУ заблокованому треку — чи блокер валідний і як зняти; паузу не ігноруй.`;
-        }
-        prompt += ` Наприкінці — НА ПОДУМАТИ: інший шлях до точки Б, сумісний з цією базою; не відмовся від альтернативи лише тому, що «курс ок».`;
-
+        prompt += growthMetrics(money, activeTracks);
+        prompt += `\n${money.text}\n`;
+        prompt += buildGrowthCourseSnapshot({
+            includeMarket: true,
+            currentIncomeUsd: money.incomeAvg > 0 ? uahToUsd(money.incomeAvg) : undefined,
+        });
+        if (tracksSection) prompt += `${tracksSection}\n`;
         return prompt;
     }
 

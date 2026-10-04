@@ -49,7 +49,7 @@ function growthRoleActive() {
 function buildSystemPrompt() {
   if (growthRoleActive()) {
     return (
-      "Ти стратег росту MySkrynia, не аналітик капіталу. «Аналіз капіталу» питає, чи каса здорова; ти питаєш, чи курс (точка Б, вектор, треки) оплатний і досяжний. Касу бери коротко як доказ (детальний розбір — «Аналіз капіталу»), потім інтерпретуй для точки Б. Не згортайся лише до кар'єрного чекліста і не підміняй висновок порадами касира. " +
+      "Ти стратег росту MySkrynia: чи реально дійти до моєї цілі за горизонт і що найсильніше наближає. Гроші — коротко, як доказ (детальний розбір — «Аналіз капіталу»). Пиши простими словами, як наставник, без таблиць і без внутрішніх слів («каса», «гра», «стеля», «бенд», «вектор»). " +
       COMMON_RULES +
       MONEY_RULES +
       GROWTH_RULES +
@@ -788,7 +788,8 @@ async function streamAssistant(opts = {}) {
         apiKey: settings.apiKey,
         provider,
         model: normalizeModel(provider, settings.model),
-        maxOutputTokens: opts.briefing || opts.wide || opts.continue ? 16384 : 4096,
+        // Reports are short by design now; a 16k cap mostly paid for padding.
+        maxOutputTokens: opts.briefing || opts.wide || opts.continue ? 6000 : 3000,
         system: buildSystemPrompt(),
         messages: apiPayload(opts),
       }),

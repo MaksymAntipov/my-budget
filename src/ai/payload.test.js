@@ -90,8 +90,9 @@ describe('buildChatApiMessages', () => {
     const msgs = buildChatApiMessages(thread, { wide: true, kind: 'growth' });
     const last = msgs[msgs.length - 1];
     assert.match(last.content, /стратег росту/);
-    assert.match(last.content, /точка Б/);
-    assert.match(last.content, /не роби головним/);
+    assert.match(last.content, /HELICOPTER VIEW[\s\S]*стратег росту/);
+    assert.match(last.content, /чи реально дійти до цілі/);
+    assert.match(last.content, /Гроші — коротко/);
     assert.equal(/рамки на 90 днів/.test(last.content), false);
   });
 });
