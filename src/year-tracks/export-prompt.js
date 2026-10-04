@@ -69,7 +69,7 @@ export function buildYearTracksAiSection(doc, opts = {}) {
     const dropped = tracks.filter((t) => t?.status === 'dropped');
 
     let block = `Рік: ${year}\n`;
-    block += `Коротко: ${counts.active} активних / ${counts.paused} на паузі / ${counts.blocked} заблоковано / ${counts.done} реалізовано`;
+    block += `Коротко: ${counts.active} активних / ${counts.paused} на паузі / ${counts.blocked} заблоковано / ${counts.done} завершено`;
     if (counts.plain) block += ` / ${counts.plain} без мітки`;
     if (counts.dropped) block += ` / ${counts.dropped} не робити`;
     block += `\n`;
@@ -99,6 +99,7 @@ export function buildYearTracksAiSection(doc, opts = {}) {
 
   let out = `\n### РІЧНІ ТРЕКИ (пріоритети, не фінанси)\n`;
   out += `Стадії (Очікує / В процесі / Готово) — єдине джерело, чи крок закритий. Не пиши що етап «пройшов», якщо стадія не «Готово». Каса (частина ЗП, платіж) стадію не закриває.\n`;
+  out += `Завершений трек — свіжіший факт, ніж анкета росту: якщо анкета («точка А») каже інше (наприклад, бізнес ще працює, а трек «Продано» завершено) — довіряй треку, розбіжність назви одним рядком і порадь оновити анкету.\n`;
   if (opts.compact) {
     out += `Короткий список статусів, зв'язків і стадій.\n\n`;
   } else {
@@ -147,7 +148,7 @@ function formatStatusIndex(tracks) {
   s += `- Активні: ${groups.active.join(', ') || 'немає'}\n`;
   s += `- На паузі: ${groups.paused.join(', ') || 'немає'}\n`;
   s += `- Заблоковано: ${groups.blocked.join(', ') || 'немає'}\n`;
-  s += `- Реалізовано: ${groups.done.join(', ') || 'немає'}\n`;
+  s += `- Завершено: ${groups.done.join(', ') || 'немає'}\n`;
   if (groups.plain.length) s += `- Без мітки: ${groups.plain.join(', ')}\n`;
   return s;
 }
@@ -211,7 +212,16 @@ function formatTrack(track, predName = '') {
     : `  Після: немає (паралельний)\n`;
 
   if (status === 'done') {
-    return `\nТрек: «${name}»\n  Статус: Реалізовано\n${afterLine}`;
+    // The stages say what was finished («Продано»): without them the name alone reads as «still running».
+    let done = `\nТрек: «${name}»\n  Статус: Завершено — це вже факт, не пропонуй робити знову\n${afterLine}`;
+    if (workStages.length) {
+      done += `  Що зроблено:\n`;
+      workStages.forEach((s) => {
+        const st = s.status === 'doing' || s.status === 'done' ? s.status : 'todo';
+        done += `    - ${stageTitle(s)} — ${STAGE_STATUS_LABELS[st]}\n`;
+      });
+    }
+    return done;
   }
 
   let lines = `\nТрек: «${name}»\n  Статус: ${statusLabel}\n`;

@@ -83,3 +83,24 @@ describe('buildYearTracksAiSection stages', () => {
     assert.equal(/Деталі стадій — лише в кнопці/.test(text), false);
   });
 });
+
+describe('buildYearTracksAiSection finished tracks', () => {
+  it('shows what a finished track did, so «Продано» is not lost', () => {
+    const cafe = createTrack({
+      id: 'cafe',
+      status: 'done',
+      stages: [
+        createStage({ title: 'Кофейня «Brooklyn hub»' }),
+        createStage({ title: 'Виставлено на продаж', status: 'done' }),
+        createStage({ title: 'Продано', status: 'done' }),
+      ],
+    });
+    const doc = setBoard(emptyDoc(), 2026, { year: 2026, tracks: [cafe] });
+    const text = buildYearTracksAiSection(doc, { years: [2026] });
+    assert.match(text, /Трек: «Кофейня «Brooklyn hub»»\n  Статус: Завершено/);
+    assert.match(text, /Що зроблено:\n    - Виставлено на продаж — Готово\n    - Продано — Готово/);
+    assert.match(text, /- Завершено: «Кофейня «Brooklyn hub»»/);
+    assert.match(text, /довіряй треку/);
+    assert.doesNotMatch(text, /Реалізовано/);
+  });
+});
