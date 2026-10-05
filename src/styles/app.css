@@ -1652,6 +1652,16 @@
         .expense-limit-chip:hover .limit-alt, .expense-limit-chip.show-alt .limit-alt { display: inline; }
         .expense-card-pro.is-over-limit .expense-limit-chip { border-color: rgba(255, 69, 58, 0.45); }
 
+        /* «Ліміти» under the spending plan: share of income the limits already plan */
+        .limit-plan[hidden] { display: none; }
+        .limit-plan-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 15px; font-weight: 700; color: var(--text-primary); }
+        .limit-plan-head span:last-child { color: var(--sys-blue); }
+        .limit-plan-bar { height: 10px; border-radius: 5px; background: rgba(255,255,255,0.08); overflow: hidden; }
+        .limit-plan-fill { height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, var(--sys-blue), #5e5ce6); transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .limit-plan-text { color: var(--text-secondary); font-size: 13px; font-weight: 600; }
+        .limit-plan.is-over .limit-plan-head span:last-child, .limit-plan.is-over .limit-plan-text { color: #ff453a; }
+        .limit-plan.is-over .limit-plan-fill { background: #ff453a; }
+
         /* Limit editor in the category modal */
         .limit-editor {
             margin: 0 0 16px;

@@ -3252,6 +3252,42 @@ function getHistoricalIncome(year, month) {
         return Number.isFinite(num) && num > 0 ? num : 0;
     }
 
+    /** «Ліміти»: how much of the month's income the category limits already plan, and what is free. */
+    function renderLimitPlan() {
+        const box = document.getElementById('limit-plan');
+        if (!box) return;
+        const limited = (expenses || []).filter((cat) => !isUnassigned(cat) && !isLedgerCategory(cat) && categoryLimitMode(cat) !== 'none');
+        box.hidden = !limited.length;
+        if (!limited.length) return;
+        const income = getMonthIncomeUah(currentYear, currentMonth);
+        const fixed = limited.filter((cat) => categoryLimitMode(cat) === 'fixed').reduce((sum, cat) => sum + Number(cat.limit), 0);
+        const pct = limited.filter((cat) => categoryLimitMode(cat) === 'percent').reduce((sum, cat) => sum + Number(cat.limitPct), 0);
+        const pctEl = document.getElementById('limit-plan-pct');
+        const fill = document.getElementById('limit-plan-fill');
+        const text = document.getElementById('limit-plan-text');
+        const bar = box.querySelector('.limit-plan-bar');
+        if (!(income > 0)) {
+            // Money has not come in yet: show the plan in the units it is set in.
+            const parts = [fixed > 0 ? formatLimitMoney(fixed) : '', pct > 0 ? `${formatLimitPercent(pct)} доходу` : ''].filter(Boolean);
+            pctEl.textContent = '';
+            fill.style.width = '0%';
+            bar.setAttribute('aria-valuenow', '0');
+            box.classList.remove('is-over');
+            text.textContent = `Розплановано ${parts.join(' + ')} · дохід ще не внесено`;
+            return;
+        }
+        const planned = fixed + (income * pct) / 100;
+        const share = (planned / income) * 100;
+        const free = income - planned;
+        pctEl.textContent = `${formatLimitPercent(share)} доходу`;
+        fill.style.width = `${Math.min(100, share)}%`;
+        bar.setAttribute('aria-valuenow', String(Math.round(share)));
+        box.classList.toggle('is-over', free < -0.005);
+        text.textContent = free >= -0.005
+            ? `Розплановано ${formatLimitMoney(planned)} · вільно ${formatLimitMoney(free)}`
+            : `Розплановано ${formatLimitMoney(planned)} · більше за дохід на ${formatLimitMoney(-free)}`;
+    }
+
     /** Sets (or clears, with 0) a category limit as ₴ or as % of the month's income. */
     function applyCategoryLimit(category, mode, value) {
         delete category.limitType;
@@ -3876,6 +3912,7 @@ let payrollAccruedTotal = 0;
 
         // Percent limits follow income: refresh every card's label and over-limit state.
         expenses.forEach((exp) => syncCategoryLimitState(exp));
+        renderLimitPlan();
         if (document.getElementById('category-modal')?.classList.contains('active')) renderModalLimit();
 
         updateChart();

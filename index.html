@@ -245,6 +245,17 @@
                         <div class="cf-row"><span style="font-weight: 700; color: var(--text-primary);">Залишок до оплати:</span> <span class="cf-val" id="cf-left" style="color: var(--sys-red); font-size: 16px;">0.00 ₴</span></div>
                     </div>
 
+                    <div id="limit-plan" class="cashflow-box limit-plan" hidden>
+                        <div class="limit-plan-head">
+                            <span>Ліміти</span>
+                            <span id="limit-plan-pct" class="tabular"></span>
+                        </div>
+                        <div class="limit-plan-bar" role="progressbar" aria-label="Скільки доходу розплановано лімітами" aria-valuemin="0" aria-valuemax="100">
+                            <div id="limit-plan-fill" class="limit-plan-fill"></div>
+                        </div>
+                        <div id="limit-plan-text" class="limit-plan-text tabular"></div>
+                    </div>
+
                     <div id="recon-box" class="cashflow-box" style="display: none; background: rgba(0,0,0,0.4); border: 1px dashed rgba(255,255,255,0.15);">
                         <div style="font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Звірка</div>
                         <div class="cf-row"><span>Теоретичний залишок:</span> <span class="cf-val" id="recon-theoretical">0.00 ₴</span></div>
