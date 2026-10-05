@@ -1311,6 +1311,7 @@ async function flushSaveToServer(year, month) {
         const currentMonthData = appData[year]?.[month] || {};
         // Rules point at category keys; every own category needs one before the server sees it.
         ensureCategoryKeys(currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []), newId);
+        syncPercentLimits(currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []), getMonthIncomeUah(year, month));
         const jars = globalData.jars[currentUser.id] || [];
         const debtsLoaded = Array.isArray(globalData.debts[currentUser.id]);
         const suppliersLoaded = Array.isArray(globalData.suppliers[currentUser.id]);
@@ -2545,20 +2546,78 @@ function convertCurrency() {
         return (category.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
     }
 
-    function categoryLimitNumber(category) {
+    /** 'percent' (of the month's income), 'fixed' (₴) or 'none'. */
+    function categoryLimitMode(category) {
+        if (category?.limitType === 'percent' && Number(category.limitPct) > 0) return 'percent';
         const limit = Number(category?.limit);
-        return Number.isFinite(limit) && limit > 0 ? limit : 0;
+        return Number.isFinite(limit) && limit > 0 ? 'fixed' : 'none';
+    }
+
+    /** The cap in ₴. A percent limit follows the month's income: 0 ₴ while there is no income. */
+    function categoryLimitNumber(category, incomeUah = getMonthIncomeUah(currentYear, currentMonth)) {
+        const mode = categoryLimitMode(category);
+        if (mode === 'percent') return roundMoney((Math.max(0, incomeUah) * Number(category.limitPct)) / 100);
+        if (mode === 'fixed') return Number(category.limit);
+        return 0;
     }
 
     function categoryIsOverLimit(category) {
-        const limit = categoryLimitNumber(category);
-        return limit > 0 && getCategoryTotal(category) > limit;
+        if (categoryLimitMode(category) === 'none') return false;
+        return getCategoryTotal(category) > categoryLimitNumber(category);
+    }
+
+    /** Stores each percent limit's current ₴ value, so the server's limit alerts need no exchange rate. */
+    function syncPercentLimits(list, incomeUah) {
+        (list || []).forEach((category) => {
+            if (categoryLimitMode(category) === 'percent') category.limit = categoryLimitNumber(category, incomeUah);
+        });
+    }
+
+    function formatLimitMoney(value) {
+        return `${formatMoney(value).replace(/,00$/, '')} ₴`;
+    }
+
+    function formatLimitPercent(value) {
+        return `${String(Math.round(value * 10) / 10).replace('.', ',')}%`;
+    }
+
+    /** Card label for a limit, plus the other unit shown on hover (tap on phones). */
+    function categoryLimitLabels(category) {
+        const mode = categoryLimitMode(category);
+        if (mode === 'none') return null;
+        const income = getMonthIncomeUah(currentYear, currentMonth);
+        const amount = categoryLimitNumber(category, income);
+        if (mode === 'percent') {
+            return {
+                main: `Ліміт ${formatLimitPercent(Number(category.limitPct))} доходу`,
+                alt: income > 0 ? `≈ ${formatLimitMoney(amount)}` : 'дохід не внесено — 0 ₴',
+            };
+        }
+        return {
+            main: `Ліміт ${formatLimitMoney(amount)}`,
+            alt: income > 0 ? `≈ ${formatLimitPercent((amount / income) * 100)} доходу` : 'дохід ще не внесено',
+        };
+    }
+
+    function limitChipHtml(category) {
+        const labels = categoryLimitLabels(category);
+        if (!labels) return '<span class="expense-limit-chip is-empty">Без ліміту</span>';
+        return `<button type="button" class="expense-limit-chip" data-action="toggleLimitView" data-pass-event="1" title="${escapeHtml(labels.alt)}" aria-label="${escapeHtml(`${labels.main}, ${labels.alt}`)}">`
+            + `<span class="limit-main">${escapeHtml(labels.main)}</span><span class="limit-alt">${escapeHtml(labels.alt)}</span></button>`;
+    }
+
+    /** Phones have no hover: a tap flips the label between ₴ and %. */
+    function toggleLimitView(event) {
+        event?.stopPropagation?.();
+        event?.target?.closest?.('.expense-limit-chip')?.classList.toggle('show-alt');
     }
 
     function syncCategoryLimitState(category) {
         if (!category) return;
         const card = document.querySelector(`.expense-card-pro[data-category-id="${CSS.escape(String(category.id))}"]`);
         if (!card) return;
+        const chip = card.querySelector('.expense-limit-chip');
+        if (chip) chip.outerHTML = limitChipHtml(category);
         const over = categoryIsOverLimit(category);
         card.classList.toggle('is-over-limit', over);
         let note = card.querySelector('.expense-limit-over');
@@ -3105,7 +3164,6 @@ function getHistoricalIncome(year, month) {
                 : '';
 
             const overLimit = categoryIsOverLimit(exp);
-            const limitValue = categoryLimitNumber(exp);
             const div = document.createElement('div');
             div.className = `expense-card-pro ${rankClass} ${paidCardClass}${overLimit ? ' is-over-limit' : ''}`;
             div.dataset.categoryId = String(exp.id);
@@ -3119,11 +3177,7 @@ function getHistoricalIncome(year, month) {
                                 <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" placeholder="Назва категорії" data-input-action="updateCategoryName" data-args="${escapeAttr(JSON.stringify([exp.id]))}" data-stop-propagation="1" style="${isSavingsClass}">
                             </div>
                             ${essentialCheckHtml}
-                            <label class="expense-limit" data-stop-propagation="1">
-                                <span>Ліміт</span>
-                                <input class="expense-limit-input" type="number" min="0" step="1" inputmode="decimal" value="${limitValue ? limitValue : ''}" placeholder="Без ліміту" data-input-action="previewCategoryLimit" data-change-action="updateCategoryLimit" data-args="${escapeAttr(JSON.stringify([exp.id]))}" data-stop-propagation="1">
-                                <span>₴</span>
-                            </label>
+                            ${isLedgerCategory(exp) ? '' : limitChipHtml(exp)}
                             ${overLimit ? '<div class="expense-limit-over">Вийшли за ліміт</div>' : ''}
                         </div>
                         <div class="expense-pro-trend">
@@ -3198,18 +3252,112 @@ function getHistoricalIncome(year, month) {
         return Number.isFinite(num) && num > 0 ? num : 0;
     }
 
-    function previewCategoryLimit(id, val) {
-        const cat = findExpenseById(id);
-        if (!cat) return;
-        syncCategoryLimitState({ ...cat, limit: limitFromInput(val) });
+    /** Sets (or clears, with 0) a category limit as ₴ or as % of the month's income. */
+    function applyCategoryLimit(category, mode, value) {
+        delete category.limitType;
+        delete category.limitPct;
+        category.limit = 0;
+        if (!(value > 0)) return;
+        if (mode === 'percent') {
+            category.limitType = 'percent';
+            category.limitPct = Math.min(999, Math.round(value * 10) / 10);
+            category.limit = categoryLimitNumber(category);
+        } else {
+            category.limit = roundMoney(value);
+        }
     }
 
-    function updateCategoryLimit(id, val) {
-        const cat = findExpenseById(id);
-        if (!cat) return;
-        cat.limit = limitFromInput(val);
+    function modalLimitHint(category) {
+        const mode = categoryLimitMode(category);
+        const income = getMonthIncomeUah(currentYear, currentMonth);
+        const spent = getCategoryTotal(category);
+        if (mode === 'none') return income > 0 ? `Дохід місяця ${formatLimitMoney(income)}` : 'Дохід цього місяця ще не внесено';
+        const amount = categoryLimitNumber(category, income);
+        const share = mode === 'percent'
+            ? (income > 0 ? `≈ ${formatLimitMoney(amount)}` : 'дохід не внесено — ліміт 0 ₴')
+            : (income > 0 ? `≈ ${formatLimitPercent((amount / income) * 100)} доходу` : 'дохід ще не внесено');
+        const left = amount - spent;
+        return `${share} · ${left >= 0 ? `залишилось ${formatLimitMoney(left)}` : `перевищено на ${formatLimitMoney(-left)}`}`;
+    }
+
+    function renderModalLimit() {
+        const box = document.getElementById('modal-limit');
+        const category = findExpenseById(activeCategoryId);
+        if (!box) return;
+        const editable = Boolean(category) && !isUnassigned(category) && !isLedgerCategory(category);
+        box.hidden = !editable;
+        if (!editable) return;
+        const mode = categoryLimitMode(category);
+        // The editor's choice wins (openModal resets it to the saved mode).
+        const shown = box.dataset.mode || (mode === 'none' ? 'fixed' : mode);
+        box.dataset.mode = shown;
+        box.querySelectorAll('.limit-mode-btn').forEach((btn) => {
+            const active = btn.dataset.mode === shown;
+            btn.classList.toggle('is-active', active);
+            btn.setAttribute('aria-checked', String(active));
+        });
+        const input = document.getElementById('modal-limit-input');
+        if (document.activeElement !== input) {
+            input.value = mode === shown ? String(mode === 'percent' ? category.limitPct : category.limit) : '';
+        }
+        input.placeholder = shown === 'percent' ? 'Напр. 10' : 'Без ліміту';
+        input.step = shown === 'percent' ? '0.1' : '1';
+        document.getElementById('modal-limit-unit').textContent = shown === 'percent' ? '% доходу' : '₴';
+        document.getElementById('modal-limit-clear').hidden = mode === 'none';
+        document.getElementById('modal-limit-hint').textContent = modalLimitHint(category);
+        box.classList.toggle('is-over', categoryIsOverLimit(category));
+    }
+
+    function previewModalLimit(val) {
+        const category = findExpenseById(activeCategoryId);
+        const box = document.getElementById('modal-limit');
+        if (!category || !box) return;
+        const draft = { ...category };
+        applyCategoryLimit(draft, box.dataset.mode, limitFromInput(val));
+        document.getElementById('modal-limit-hint').textContent = modalLimitHint(draft);
+        box.classList.toggle('is-over', categoryIsOverLimit(draft));
+        syncCategoryLimitState(draft);
+    }
+
+    function saveModalLimit(val) {
+        const category = findExpenseById(activeCategoryId);
+        const box = document.getElementById('modal-limit');
+        if (!category || !box) return;
+        applyCategoryLimit(category, box.dataset.mode, limitFromInput(val));
         saveData();
-        syncCategoryLimitState(cat);
+        syncCategoryLimitState(category);
+        renderModalLimit();
+    }
+
+    /** Switching ₴ ↔ % keeps the same cap in ₴ when the month has income. */
+    function setLimitMode(mode) {
+        const category = findExpenseById(activeCategoryId);
+        const box = document.getElementById('modal-limit');
+        if (!category || !box || box.dataset.mode === mode) return;
+        box.dataset.mode = mode;
+        const income = getMonthIncomeUah(currentYear, currentMonth);
+        // Without income a ₴ cap has no % equivalent: keep it until the user types a percent.
+        if (categoryLimitMode(category) !== 'none' && (mode === 'fixed' || income > 0)) {
+            const amount = categoryLimitNumber(category, income);
+            applyCategoryLimit(category, mode, mode === 'percent' ? (amount / income) * 100 : amount);
+            saveData();
+            syncCategoryLimitState(category);
+        }
+        const input = document.getElementById('modal-limit-input');
+        const now = categoryLimitMode(category);
+        input.value = now === mode ? String(now === 'percent' ? category.limitPct : category.limit) : '';
+        renderModalLimit();
+        input.focus();
+    }
+
+    function clearModalLimit() {
+        const category = findExpenseById(activeCategoryId);
+        if (!category) return;
+        applyCategoryLimit(category, 'fixed', 0);
+        document.getElementById('modal-limit-input').value = '';
+        saveData();
+        syncCategoryLimitState(category);
+        renderModalLimit();
     }
 
     function toggleCategoryEssential(categoryId, checked) {
@@ -3240,6 +3388,9 @@ function getHistoricalIncome(year, month) {
         if (hint) hint.hidden = !inbox;
         const addItem = document.getElementById('modal-add-subitem');
         if (addItem) addItem.hidden = inbox;
+        const limitBox = document.getElementById('modal-limit');
+        if (limitBox) delete limitBox.dataset.mode;
+        renderModalLimit();
         renderModalItems();
         document.getElementById('category-modal').classList.add('active');
     }
@@ -3423,6 +3574,7 @@ function getHistoricalIncome(year, month) {
                 updateDebtsDisplay();
             }
             document.getElementById('modal-category-total').innerText = formatMoney(getCategoryTotal(category));
+            renderModalLimit();
             updateTopSubItemBadges(category);
             syncCategoryLimitState(category);
             saveData();
@@ -3721,6 +3873,10 @@ let payrollAccruedTotal = 0;
             const catPercent = displayIncomeUah > 0 ? ((getCategoryTotal(exp) / displayIncomeUah) * 100).toFixed(1) : 0;
             if (percentElements[index]) percentElements[index].innerText = catPercent + '%';
         });
+
+        // Percent limits follow income: refresh every card's label and over-limit state.
+        expenses.forEach((exp) => syncCategoryLimitState(exp));
+        if (document.getElementById('category-modal')?.classList.contains('active')) renderModalLimit();
 
         updateChart();
     }
@@ -9558,8 +9714,11 @@ const uiActions = {
   updateAll,
   updateBusinessHours,
   updateCOGS,
-  previewCategoryLimit,
-  updateCategoryLimit,
+  toggleLimitView,
+  previewModalLimit,
+  saveModalLimit,
+  setLimitMode,
+  clearModalLimit,
   updateCategoryName,
   updateChart,
   updateDebtsDisplay,

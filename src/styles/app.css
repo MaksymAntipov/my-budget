@@ -1628,34 +1628,88 @@
             border-color: rgba(255, 69, 58, 0.85);
             box-shadow: 0 4px 16px rgba(255, 69, 58, 0.2);
         }
-        .expense-limit {
+        /* Read-only limit label on the card; hover (tap on phones) shows the other unit. */
+        .expense-limit-chip {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
             margin-top: 8px;
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .expense-limit-input {
-            width: 108px;
-            height: 28px;
-            padding: 0 8px;
+            padding: 4px 10px;
             border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.12);
-            background: rgba(0,0,0,0.25);
-            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-secondary);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            cursor: default;
+            white-space: nowrap;
+        }
+        button.expense-limit-chip { cursor: pointer; color: var(--text-primary); }
+        .expense-limit-chip.is-empty { border-color: transparent; background: none; padding-left: 0; font-weight: 600; color: var(--text-tertiary); }
+        .expense-limit-chip .limit-alt { display: none; color: var(--sys-blue); }
+        .expense-limit-chip:hover .limit-main, .expense-limit-chip.show-alt .limit-main { display: none; }
+        .expense-limit-chip:hover .limit-alt, .expense-limit-chip.show-alt .limit-alt { display: inline; }
+        .expense-card-pro.is-over-limit .expense-limit-chip { border-color: rgba(255, 69, 58, 0.45); }
+
+        /* Limit editor in the category modal */
+        .limit-editor {
+            margin: 0 0 16px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: rgba(0,0,0,0.22);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .limit-editor[hidden] { display: none; }
+        .limit-editor.is-over { border-color: rgba(255, 69, 58, 0.5); background: rgba(255, 69, 58, 0.08); }
+        .limit-editor-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+        .limit-editor-title { font-size: 14px; font-weight: 700; color: var(--text-secondary); }
+        .limit-mode { display: inline-flex; padding: 3px; border-radius: 10px; background: rgba(255,255,255,0.06); }
+        .limit-mode-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 8px;
+            background: none;
+            color: var(--text-secondary);
             font: inherit;
             font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .limit-mode-btn.is-active { background: var(--sys-blue); color: #fff; }
+        .limit-mode-btn:focus-visible, .limit-editor-clear:focus-visible, .expense-limit-chip:focus-visible { outline: 2px solid var(--sys-blue); outline-offset: 2px; }
+        .limit-editor-row { display: flex; align-items: center; gap: 10px; }
+        .limit-editor-input {
+            flex: 1;
+            min-width: 0;
+            height: 46px;
+            padding: 0 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font: inherit;
+            font-size: 18px;
+            font-weight: 700;
             font-variant-numeric: tabular-nums;
         }
-        .expense-limit-input:focus {
-            outline: none;
-            border-color: rgba(10, 132, 255, 0.7);
+        .limit-editor-input:focus { outline: none; border-color: var(--sys-blue); }
+        .limit-editor-unit { color: var(--text-secondary); font-size: 14px; font-weight: 700; white-space: nowrap; }
+        .limit-editor-clear {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-tertiary);
+            cursor: pointer;
+            flex-shrink: 0;
         }
-        .expense-card-pro.is-over-limit .expense-limit-input {
-            border-color: rgba(255, 69, 58, 0.45);
-        }
+        .limit-editor-clear[hidden] { display: none; }
+        .limit-editor-clear:hover { color: var(--sys-red); }
+        .limit-editor-hint { margin: 8px 0 0; color: var(--text-secondary); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .limit-editor.is-over .limit-editor-hint { color: #ff453a; }
         .expense-limit-over {
             margin-top: 6px;
             color: #ff453a;

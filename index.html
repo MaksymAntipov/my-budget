@@ -331,6 +331,21 @@
             <button class="btn-close-modal" data-action="closeModal">✕</button>
         </div>
         <p id="modal-category-hint" class="mr-modal-hint" hidden>Натисніть стрілку біля покупки, щоб перенести її у свою категорію. Можна запам’ятати продавця — наступні покупки підуть туди самі.</p>
+        <div id="modal-limit" class="limit-editor" hidden>
+            <div class="limit-editor-head">
+                <span class="limit-editor-title">Ліміт на місяць</span>
+                <div class="limit-mode" role="radiogroup" aria-label="Тип ліміту">
+                    <button type="button" class="limit-mode-btn" role="radio" data-mode="fixed" data-action="setLimitMode" data-args='["fixed"]'>₴ сума</button>
+                    <button type="button" class="limit-mode-btn" role="radio" data-mode="percent" data-action="setLimitMode" data-args='["percent"]'>% доходу</button>
+                </div>
+            </div>
+            <div class="limit-editor-row">
+                <input type="number" id="modal-limit-input" class="limit-editor-input" min="0" inputmode="decimal" placeholder="Без ліміту" aria-label="Ліміт" data-input-action="previewModalLimit" data-change-action="saveModalLimit">
+                <span id="modal-limit-unit" class="limit-editor-unit">₴</span>
+                <button type="button" id="modal-limit-clear" class="limit-editor-clear" data-action="clearModalLimit" title="Прибрати ліміт" aria-label="Прибрати ліміт" hidden>✕</button>
+            </div>
+            <p id="modal-limit-hint" class="limit-editor-hint"></p>
+        </div>
         <div id="modal-subitems-list" class="modal-items-container"></div>
         <button id="modal-add-subitem" class="btn-add" style="margin-top:0; margin-bottom: 24px;" data-action="addSubItem">+ Додати статтю витрат</button>
         <button class="btn-modal-done" data-action="closeModal">Готово</button>
