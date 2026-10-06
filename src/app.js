@@ -192,6 +192,8 @@ import {
         tree: 'Сімейне дерево',
     };
     let currentSkryniaModule = 'budget';
+    // Modules beyond the budget the server opened for this account (/api/data → modules).
+    let extraModules = [];
     let suppressSkryniaCloseHook = false;
 
     function persistViewedPeriod() {
@@ -391,6 +393,7 @@ function loadAuthStats() { /* /api/stats removed */ }
             buildGrowthPrompt,
             getAiFocusCatalog,
             hasGrowthProfile: () => Boolean(currentUser?.growthProfile?.job),
+            hasTracks: hasTracksModule,
             openGrowthModal,
         });
     }
@@ -759,16 +762,16 @@ async function fetchAvailableProfiles() {
         return !(currentUser && currentUser.account_type === 'business');
     }
 
+    /** «Мої треки» is open to this account, so the AI may read and suggest tracks. */
+    function hasTracksModule() {
+        return getSkryniaModules().some((m) => m.id === 'tracks');
+    }
+
     function getSkryniaModules() {
-        if (isPersonalSkrynia()) {
-            return [
-                { id: 'budget', label: SKRYNIA_MODULE_LABELS.budget },
-                { id: 'tracks', label: SKRYNIA_MODULE_LABELS.tracks },
-                { id: 'runway', label: SKRYNIA_MODULE_LABELS.runway },
-                { id: 'tree', label: SKRYNIA_MODULE_LABELS.tree },
-            ];
-        }
-        return [{ id: 'budget', label: SKRYNIA_MODULE_LABELS.budget }];
+        const ids = isPersonalSkrynia()
+            ? ['budget', ...['tracks', 'runway', 'tree'].filter((id) => extraModules.includes(id))]
+            : ['budget'];
+        return ids.map((id) => ({ id, label: SKRYNIA_MODULE_LABELS[id] }));
     }
 
     function readLastSkryniaModule() {
@@ -843,9 +846,9 @@ async function fetchAvailableProfiles() {
     }
 
     function syncSkryniaHubCards() {
-        const personal = isPersonalSkrynia();
+        const allowed = getSkryniaModules().map((m) => m.id);
         document.querySelectorAll('#skrynia-hub-cards [data-module]').forEach((el) => {
-            el.style.display = personal ? '' : 'none';
+            el.style.display = allowed.includes(el.dataset.module) ? '' : 'none';
         });
 
         const userEl = document.getElementById('skrynia-hub-user');
@@ -857,6 +860,11 @@ async function fetchAvailableProfiles() {
 
     function showSkryniaHub() {
         if (!currentUser) return;
+        // Nothing to choose from: the budget is the whole Skrynia.
+        if (getSkryniaModules().length < 2) {
+            openSkryniaModule('budget');
+            return;
+        }
         closeSkryniaSwitcher();
         closeProfileSwitcher();
         suppressSkryniaCloseHook = true;
@@ -943,7 +951,7 @@ async function performLogin(user, { openHub = false } = {}) {
         updateSkryniaSwitcherUI();
         hydrateAiChat();
 
-        if (isPersonalSkrynia() && openHub) {
+        if (openHub && getSkryniaModules().length > 1) {
             showSkryniaHub();
             return;
         }
@@ -1062,6 +1070,7 @@ async function performLogin(user, { openHub = false } = {}) {
             }
 
             dataVersion = Number(data.dataVersion) || 0;
+            extraModules = Array.isArray(data.modules) ? data.modules : [];
             if (!globalData.jars) globalData.jars = {};
             // Older saves may hold string or drifted amounts; keep jars as rounded numbers.
             globalData.jars[userId] = (data.jars || []).map((jar) => ({
@@ -1383,6 +1392,7 @@ function logout() {
         currentUser = null;
         dataLoadedFor = null;
         dataVersion = 0;
+        extraModules = [];
         pendingSaves.clear();
         clearSaveFailure();
         hideSaveStatus();
@@ -7032,7 +7042,7 @@ function generatePayrollSparklineHTML(currentTotal) {
      * @returns {Promise<string>}
      */
     async function buildAiYearTracksSection(opts = {}) {
-        if (!currentUser || currentUser.account_type === 'business') return '';
+        if (!currentUser || !hasTracksModule()) return '';
         try {
             const live = getYearTracksDocSnapshot();
             let tracksDoc = yearTracksDocHasTracks(live) ? live : null;
@@ -7891,14 +7901,15 @@ function generatePayrollSparklineHTML(currentTotal) {
     async function buildGrowthPrompt(_type = 'all') {
         if (!currentUser || !currentUser.growthProfile || !currentUser.growthProfile.job) return;
         const isBiz = currentUser && currentUser.account_type === 'business';
+        const tracks = hasTracksModule();
 
         let prompt = `Виступи як мій стратег росту. Питання одне: чи реально дійти до моєї цілі за вказаний горизонт і що найсильніше мене до неї наближає.\n`;
-        prompt += `Спирайся на анкету, ${isBiz ? '' : 'треки, '}ринок і короткі цифри нижче. Блоки «пораховано Скринею» — бери як є, не перераховуй. Детальний розбір грошей — окремий «Аналіз капіталу», не повторюй його.\n`;
-        prompt += `Правила: завершений трек новіший за анкету — вір треку; гео, remote і релокацію пропонуй, лише якщо вони є в анкеті чи треках; поточна роль — де я зараз, не ціль; вік — горизонт, не ярлик; зарплати — лише з блоку ринку.\n`;
+        prompt += `Спирайся на анкету, ${tracks ? 'треки, ' : ''}ринок і короткі цифри нижче. Блоки «пораховано Скринею» — бери як є, не перераховуй. Детальний розбір грошей — окремий «Аналіз капіталу», не повторюй його.\n`;
+        prompt += `Правила: ${tracks ? 'завершений трек новіший за анкету — вір треку; гео, remote і релокацію пропонуй, лише якщо вони є в анкеті чи треках' : 'гео, remote і релокацію пропонуй, лише якщо вони є в анкеті'}; поточна роль — де я зараз, не ціль; вік — горизонт, не ярлик; зарплати — лише з блоку ринку.\n`;
         prompt += `Пиши простими словами, як наставник: коротко, без таблиць і без внутрішніх слів («каса», «гра», «стеля», «бенд», «вектор», «точка А/Б» — кажи «гроші», «ціль», «зараз»).\n\n`;
         prompt += `СТРУКТУРА (саме ці заголовки, кожен обов'язковий; якщо нема що сказати — один рядок):\n`;
         prompt += `## HELICOPTER VIEW — 3 пункти: вердикт (досяжно чи ні за цей горизонт — з цифрою розриву), головна причина, головна ставка на 90 днів.\n`;
-        prompt += `## ТАКТИКА — план на 90 днів: до 3 кроків, у кожного вимірюваний результат і скільки годин та грошей на тиждень він забирає (з урахуванням мого часу й бюджету на розвиток); перший крок — що зробити цього тижня.${isBiz ? '' : ' Треки — лише заблоковані й ризикові, по рядку: чи перешкода реальна і як її зняти.'}\n`;
+        prompt += `## ТАКТИКА — план на 90 днів: до 3 кроків, у кожного вимірюваний результат і скільки годин та грошей на тиждень він забирає (з урахуванням мого часу й бюджету на розвиток); перший крок — що зробити цього тижня.${tracks ? ' Треки — лише заблоковані й ризикові, по рядку: чи перешкода реальна і як її зняти.' : ''}\n`;
         prompt += `## НА ПОДУМАТИ — сильніша чи реалістичніша альтернатива одним абзацом, лише якщо ціль нереальна або є явно кращий шлях; інакше один рядок, чому альтернатива не потрібна.\n\n`;
 
         await ensureExchangeRateForAi();

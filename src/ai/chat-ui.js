@@ -38,6 +38,13 @@ const MONEY_RULES =
 // Only the growth strategist reads tracks, the growth profile and geography.
 const GROWTH_RULES =
   " Не вигадуй роботодавців, ринки, треки чи курс. Стадії трека (Очікує / В процесі / Готово) — чи крок закритий; каса не закриває стадію. Гео, remote, релокейт і мову — лише з анкети та треків.";
+// The same for accounts without «Мої треки»: the model must not send them to a module they do not see.
+const GROWTH_RULES_NO_TRACKS =
+  " Не вигадуй роботодавців, ринки чи курс. Треків у Скрині немає — не згадуй і не пропонуй їх. Гео, remote, релокейт і мову — лише з анкети.";
+
+function hasTracks() {
+  return deps?.hasTracks ? Boolean(deps.hasTracks()) : true;
+}
 
 const SYSTEM_CLOSE =
   " Наприкінці звичайної відповіді (не повного звіту) додай блок НАСТУПНІ ПИТАННЯ: рівно 3 короткі уточнення з дефісом, без пояснень.";
@@ -52,7 +59,7 @@ function buildSystemPrompt() {
       "Ти стратег росту MySkrynia: чи реально дійти до моєї цілі за горизонт і що найсильніше наближає. Гроші — коротко, як доказ (детальний розбір — «Аналіз капіталу»). Пиши простими словами, як наставник, без таблиць і без внутрішніх слів («каса», «гра», «стеля», «бенд», «вектор»). " +
       COMMON_RULES +
       MONEY_RULES +
-      GROWTH_RULES +
+      (hasTracks() ? GROWTH_RULES : GROWTH_RULES_NO_TRACKS) +
       " Повний звіт HELICOPTER VIEW / ТАКТИКА / НА ПОДУМАТИ — якщо просили стратегію росту, натиснули цю кнопку, або просять погляд збоку / чи курс хибний." +
       SYSTEM_CLOSE
     );
@@ -74,6 +81,7 @@ function buildSystemPrompt() {
  *   buildGrowthPrompt: (type: string) => Promise<string>,
  *   getAiFocusCatalog: () => { currentYear: number, currentMonth: number, initializedMonths: Array<{year:number, month:number}>, names: string[] },
  *   hasGrowthProfile: () => boolean,
+ *   hasTracks?: () => boolean,
  *   openGrowthModal: () => void,
  * }} */
 let deps = null;
@@ -722,6 +730,7 @@ function renderSuggestChips(m, index) {
         kind: lastBriefingKind || briefingKindFromThread(thread),
         lastQuestion: lastUser?.content,
         parsed: thread.find((x) => x.kind === 'context')?.focus,
+        tracks: hasTracks(),
       });
   if (!chips.length) return '';
   return `<div class="ai-chat-suggest">${chips
@@ -738,7 +747,9 @@ function localSkryniaReply(text) {
     return 'Гаразд. Якщо буде конкретне питання по цифрах Скрині — напишіть.';
   }
   if (/в мережі|в сети|погугл|з інтернету|из интернета|search (the )?web|загугли/i.test(s)) {
-    return 'Ні. Скриня не ходить в інтернет і не підтягує тривалість курсів із сайтів. Якщо строк є в треку — відповім по ньому; якщо немає — допишіть у трек.';
+    return hasTracks()
+      ? 'Ні. Скриня не ходить в інтернет і не підтягує тривалість курсів із сайтів. Якщо строк є в треку — відповім по ньому; якщо немає — допишіть у трек.'
+      : 'Ні. Скриня не ходить в інтернет і відповідає лише за вашими даними в Скрині.';
   }
   return null;
 }

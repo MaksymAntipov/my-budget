@@ -243,14 +243,15 @@ function similar(a, b) {
   return Boolean(x && y && x === y);
 }
 
-export function defaultSuggestions({ kind, lastQuestion, parsed } = {}) {
+export function defaultSuggestions({ kind, lastQuestion, parsed, tracks = true } = {}) {
   const growth = kind === 'growth';
-  const pool = [...(growth ? GROWTH_CHIPS : ANALYTICS_CHIPS)];
+  // Without «Мої треки» the chips never ask about tracks.
+  const pool = (growth ? GROWTH_CHIPS : ANALYTICS_CHIPS).filter((chip) => tracks || !/трек/i.test(chip));
   const q = String(lastQuestion || '');
   if (/подушк/i.test(q)) pool.unshift('Скільки ще треба до подушки?');
   if (/борг/i.test(q)) pool.unshift('Який борг гасити першим?');
   if (/відклас|заощад/i.test(q)) pool.unshift('Куди класти відкладене — подушка чи інвестиції?');
-  if (/трек/i.test(q)) pool.unshift('Який трек фінансувати першим?');
+  if (tracks && /трек/i.test(q)) pool.unshift('Який трек фінансувати першим?');
   if (parsed?.months?.length && !growth) {
     pool.unshift('Порівняй цей період з попереднім місяцем');
   }

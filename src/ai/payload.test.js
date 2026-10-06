@@ -164,6 +164,14 @@ describe('defaultSuggestions', () => {
     assert.equal(chips.includes('Чи каса фінансує точку Б?'), true);
     assert.equal(chips.includes('Скільки відкласти цього місяця?'), false);
   });
+
+  it('never mentions tracks to an account without «Мої треки»', () => {
+    for (const kind of ['analytics', 'growth']) {
+      const chips = defaultSuggestions({ kind, lastQuestion: 'а що з треком?', tracks: false });
+      assert.equal(chips.length, 4);
+      assert.equal(chips.some((chip) => /трек/i.test(chip)), false);
+    }
+  });
 });
 
 describe('capital report', () => {
