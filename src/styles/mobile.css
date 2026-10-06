@@ -316,8 +316,10 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .flow-bar-empty { font-size: 14px; color: var(--text-tertiary); padding: 8px 0; }
 
 /* ---------- Modals: bottom sheets on phones, centred cards on tablets ---------- */
+/* Full-screen modules (tracks, family tree, runway) keep their own layout. */
 .is-compact .modal-overlay { align-items: flex-end; }
-.is-compact .modal-content {
+.is-compact :is(#year-tracks-modal, #family-tree-modal, #runway-modal) { align-items: stretch; }
+.is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) {
     width: 100% !important;
     max-width: none !important;
     max-height: calc(100dvh - 24px) !important;
@@ -330,8 +332,8 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
     overflow-y: auto;
     overscroll-behavior: contain;
 }
-.is-compact .modal-overlay.active .modal-content { transform: translateY(0); }
-.is-compact .modal-content::before {
+.is-compact .modal-overlay.active .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) { transform: none; }
+.is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content)::before {
     content: '';
     display: block;
     flex-shrink: 0;
@@ -358,9 +360,21 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
     cursor: pointer;
 }
 
+/* The AI chat is taller than a form; expanded it takes the whole screen. */
+.is-compact .ai-chat-overlay .ai-chat-panel { height: calc(100dvh - 48px); margin: 0; }
+.is-compact .ai-chat-overlay.is-expanded .ai-chat-panel {
+    height: 100dvh;
+    max-height: none !important;
+    border-radius: 0 !important;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+}
+.is-compact .ai-chat-overlay.is-expanded .ai-chat-panel::before { display: none; }
+
 @media (min-width: 700px) {
     .is-compact .modal-overlay { align-items: center; }
-    .is-compact .modal-content {
+    .is-compact .ai-chat-overlay { align-items: flex-end; }
+    .is-compact .ai-chat-overlay .ai-chat-panel { height: min(80dvh, 900px); margin-bottom: 16px; }
+    .is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) {
         width: calc(100% - 48px) !important;
         max-width: 560px !important;
         max-height: min(88dvh, 900px) !important;
@@ -370,7 +384,39 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
         transform: scale(0.96) translateY(16px);
     }
     .is-compact .modal-content.modal-wide { max-width: 640px !important; }
-    .is-compact .modal-content::before { display: none; }
+    .is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content)::before { display: none; }
+    .is-compact .ai-chat-overlay.is-expanded .ai-chat-panel { width: 100% !important; max-width: none !important; height: 100dvh; margin: 0; }
+}
+
+/* ---------- Notifications: Monobank «push», sync progress, save status, undo ---------- */
+.is-compact .mono-snacks,
+.is-compact .mono-queue,
+.is-compact .save-status {
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    margin: 0 auto;
+    transform: none;
+}
+.is-compact .save-status { justify-content: space-between; }
+.is-compact .undo-toast {
+    left: 12px;
+    right: 12px;
+    min-width: 0;
+    max-width: none;
+    margin: 0 auto;
+    transform: translateY(16px);
+}
+.is-compact .undo-toast.active { transform: translateY(0); }
+@media (min-width: 700px) {
+    .is-compact .mono-snacks,
+    .is-compact .mono-queue,
+    .is-compact .save-status,
+    .is-compact .undo-toast { width: min(420px, calc(100vw - 24px)); }
+    .is-compact .mono-snacks,
+    .is-compact .mono-queue { left: auto; right: 16px; }
 }
 
 .is-compact .modal-items-container { overflow: visible; flex: none; padding-right: 0; }
@@ -386,3 +432,7 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .is-compact .limit-mode-btn { min-height: 40px; padding: 0 14px; }
 .is-compact .undo-toast-btn { min-height: 40px; padding: 0 12px; }
 .is-compact .undo-toast { bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 12px); }
+
+/* A sync in progress and a new purchase can show at once: the purchase goes under the sync card. */
+body:has(.mono-queue.active:not([hidden])) .mono-snacks { top: 112px; }
+.is-compact body:has(.mono-queue.active:not([hidden])) .mono-snacks { top: calc(env(safe-area-inset-top, 0px) + 104px); }

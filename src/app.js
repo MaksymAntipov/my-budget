@@ -5101,7 +5101,7 @@ let cogsAmount = 0;
                     colors: colors,
                     nodePadding: 24,
                     width: 12,
-                    label: { color: '#ffffff', fontSize: 13, bold: true, fontName: '-apple-system' }
+                    label: { color: '#ffffff', fontSize: 13, bold: true, fontName: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }
                 },
                 link: {
                     colorMode: 'gradient',
@@ -5228,7 +5228,7 @@ let cogsAmount = 0;
                             usePointStyle: true, 
                             padding: 20,
                             boxWidth: 12, 
-                            font: {family: '-apple-system', size: 14, weight: '600'},
+                            font: {size: 14, weight: '600'},
                             color: '#a1a1a6'
                         } 
                     }, 
@@ -5253,7 +5253,7 @@ let cogsAmount = 0;
                 scales: { 
                     x: { 
                         grid: { display: false }, 
-                        ticks: { font: { size: 13, family: '-apple-system', weight: '600' }, color: '#a1a1a6', padding: 10 } 
+                        ticks: { font: { size: 13, weight: '600' }, color: '#a1a1a6', padding: 10 } 
                     }, 
                     y: { 
                         type: 'linear', 
@@ -5261,7 +5261,7 @@ let cogsAmount = 0;
                         grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false }, 
                         ticks: { 
                             color: '#a1a1a6', 
-                            font: { size: 13, family: '-apple-system', weight: '500' }, 
+                            font: { size: 13, weight: '500' }, 
                             padding: 10,
                             callback: function(value) { 
                                 if (value >= 1000000 || value <= -1000000) return formatMoney(value / 1000000) + 'M'; 
