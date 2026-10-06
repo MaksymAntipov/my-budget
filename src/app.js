@@ -115,8 +115,7 @@ import {
             date: "Серпень 2026",
             version: "v1.3.0",
             changes: [
-                "ШІ-чат у Скрині: власний API-ключ (Gemini, OpenAI, Anthropic, OpenRouter) замість копіювання промпта.",
-                "Стратегія росту підходить для будь-якої сфери, не лише IT."
+                "ШІ-чат у Скрині: власний API-ключ (Gemini, OpenAI, Anthropic, OpenRouter) замість копіювання промпта."
             ]
         },
         {
