@@ -1008,7 +1008,7 @@ async function performLogin(user, { openHub = false } = {}) {
         const badge = document.getElementById('account-type-badge');
         const canSwitch = availableProfiles.some(p => String(p.id) !== String(currentUser?.id)) || Boolean(missingProfileType());
         badge.style.display = 'inline-flex';
-        badge.innerHTML = (isBiz ? 'Бізнес' : 'Фіз. особа') + (canSwitch ? ' <span style="opacity:0.7;font-size:9px;">▾</span>' : '');
+        badge.innerHTML = (isBiz ? 'Бізнес' : 'Фіз. особа') + (canSwitch ? '<svg class="badge-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>' : '');
         badge.className = isBiz ? 'badge-type badge-business' : 'badge-type';
         badge.disabled = !canSwitch;
         if (canSwitch) {

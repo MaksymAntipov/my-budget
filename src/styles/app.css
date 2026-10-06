@@ -327,6 +327,9 @@
         .badge-business { background: linear-gradient(135deg, rgba(46, 160, 67, 0.15), rgba(46, 160, 67, 0.05)); color: var(--sys-green); border-color: rgba(46, 160, 67, 0.2);}
         .badge-type--switchable { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; }
         .badge-type--switchable:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        .badge-type--switchable { gap: 6px; padding-right: 8px; }
+        .badge-chevron { flex-shrink: 0; transition: transform 0.2s; }
+        #profile-type-container:has(.profile-switcher-dropdown.open) .badge-chevron { transform: rotate(180deg); }
         .profile-switcher-dropdown {
             display: none;
             position: absolute;
