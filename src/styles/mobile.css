@@ -1,0 +1,388 @@
+/*
+ * Phones and tablets («варіант A»). html.is-compact is set from app.js by
+ * (max-width: 1023px), (pointer: coarse) and (max-width: 1366px) — touch tablets
+ * keep this layout in both orientations. Desktop never sees any of these rules.
+ */
+
+html:not(.is-compact) .compact-only { display: none !important; }
+
+.is-compact {
+    --tabbar-h: 58px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-text-size-adjust: 100%;
+}
+
+.is-compact body {
+    padding: 0 0 calc(var(--tabbar-h) + var(--safe-bottom) + 24px);
+    background-attachment: scroll;
+}
+
+/* ---------- Header: identity + «⋯», month stepper ---------- */
+.nav-identity { display: flex; align-items: center; }
+
+.is-compact .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    max-width: none;
+    margin: 0 0 12px;
+    animation: none;
+}
+.is-compact .header-nav.glass-card {
+    border-radius: 0;
+    border-width: 0 0 1px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px !important;
+    gap: 10px;
+    background: rgba(12, 12, 14, 0.88);
+    opacity: 1;
+    animation: none;
+}
+.is-compact .user-nav-row {
+    flex-wrap: nowrap;
+    gap: 10px;
+    padding: 0;
+    margin: 0;
+    border: none;
+}
+.is-compact .user-nav-row > div:first-child { min-width: 0; flex: 1; gap: 10px !important; }
+.is-compact .user-nav-actions { display: none; }
+.is-compact .nav-avatar { width: 40px; height: 40px; flex-shrink: 0; }
+.is-compact .nav-identity { flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.is-compact #current-user-name-display {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.is-compact #profile-type-container { margin-left: 0 !important; }
+/* The profile switch reads as a link under the name, with room for a thumb. */
+.is-compact #account-type-badge {
+    margin: -6px 0 -6px -8px;
+    padding: 6px 8px;
+    min-height: 32px;
+    background: none;
+    border: none;
+    font-size: 13px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.nav-more { position: relative; flex-shrink: 0; }
+.nav-more-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.nav-more-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 220px;
+    padding: 6px;
+    border-radius: 16px;
+    background: rgba(36, 36, 38, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    z-index: 2000;
+}
+.nav-more-menu.open { display: block; }
+.nav-more-modules { padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.nav-more-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 10px;
+    background: none;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.nav-more-item:hover, .nav-more-item:focus-visible { background: rgba(255, 255, 255, 0.08); }
+.nav-more-item.is-active { color: var(--sys-blue); }
+.nav-more-item.is-danger { color: var(--sys-red); }
+
+.month-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+}
+.month-step, .month-stepper-label {
+    min-height: 44px;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font: inherit;
+    cursor: pointer;
+}
+.month-step { width: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+.month-stepper-label { flex: 1; color: var(--text-primary); font-size: 16px; font-weight: 700; border-radius: 12px; }
+.month-stepper-label::after { content: ' ▾'; font-size: 11px; color: var(--text-tertiary); }
+.month-stepper-label[aria-expanded="true"]::after { content: ' ▴'; }
+
+.is-compact .header-nav:not(.months-open) .year-selector,
+.is-compact .header-nav:not(.months-open) .months-carousel { display: none; }
+.is-compact .header-nav .year-selector { font-size: 17px; }
+.is-compact .year-btn { width: 44px; height: 44px; }
+.is-compact .month-pill { padding: 10px 16px; font-size: 15px; }
+/* Savings and debts live in the «Зведення» tab as tiles. */
+.is-compact .header-nav .savings-container { display: none; }
+
+/* ---------- Tabs ---------- */
+.is-compact .dashboard-wrapper { padding: 0 12px; box-sizing: border-box; }
+.is-compact .container { grid-template-columns: minmax(0, 1fr) !important; gap: 12px; width: 100%; max-width: 960px; margin: 0 auto; }
+.is-compact .flow-container,
+.is-compact .flow-track-horizontal { display: none !important; }
+.is-compact .right-panel .glass-card { position: static !important; }
+
+html.is-compact[data-tab="income"] [data-tab]:not([data-tab="income"]),
+html.is-compact[data-tab="expenses"] [data-tab]:not([data-tab="expenses"]),
+html.is-compact[data-tab="summary"] [data-tab]:not([data-tab="summary"]) { display: none !important; }
+html.is-compact:not([data-tab="expenses"]) .mobile-fab { display: none !important; }
+.is-compact .left-panel { display: flex; flex-direction: column; gap: 12px; }
+.is-compact .glass-card { padding: 20px 16px; border-radius: 24px; }
+.is-compact h1 { font-size: 24px; margin-bottom: 16px; }
+.is-compact h2 { font-size: 22px; margin-bottom: 16px; }
+.is-compact .security-footer { display: none; }
+
+.mobile-tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 950;
+    display: flex;
+    justify-content: center;
+    padding: 4px max(8px, env(safe-area-inset-left, 0px)) calc(4px + var(--safe-bottom));
+    background: rgba(18, 18, 20, 0.92);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.mobile-tab {
+    flex: 1;
+    max-width: 160px;
+    min-height: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: none;
+    background: none;
+    color: #8e8e93;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.mobile-tab.is-active { color: var(--sys-blue); }
+
+.mobile-fab {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 16px);
+    z-index: 940;
+    height: 52px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 26px;
+    background: var(--sys-blue);
+    color: #fff;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 24px rgba(10, 132, 255, 0.35);
+    cursor: pointer;
+}
+/* The floating button replaces the one under the list, and keeps clear of the last card. */
+html.is-compact [data-tab="expenses"] > .btn-add { display: none; }
+html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
+
+/* ---------- «Доходи» ---------- */
+.is-compact .converter-header { flex-wrap: wrap; }
+.is-compact .converter-header h2 { flex: 1 1 100%; margin-bottom: 0; }
+.is-compact .rate-badge { text-align: left; }
+.is-compact .info-block { padding: 0 16px; }
+.is-compact .info-row { gap: 12px; }
+.is-compact .text-value, .is-compact .cf-val { white-space: nowrap; }
+.is-compact .rule-502030-info-btn { width: 36px; height: 36px; }
+.is-compact .rate-info { width: 36px; height: 36px; }
+
+/* ---------- «Витрати»: compact cards ---------- */
+.is-compact .expenses-head { flex-wrap: wrap; gap: 10px; }
+.is-compact .expense-card-pro { padding: 14px 12px 14px 16px; align-items: center; margin-bottom: 0; }
+.is-compact .expense-card-pro:hover,
+.is-compact .expense-card-pro:focus-within { transform: none; }
+.is-compact .expense-pro-main { flex: 1; min-width: 0; }
+.expense-pro-tags { display: contents; }
+/* Name and sum on one line, tags under them, trend on the right. */
+.is-compact .expense-pro-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 10px;
+    row-gap: 8px;
+    align-items: center;
+}
+.is-compact .expense-pro-title-group,
+.is-compact .expense-pro-trend { display: contents; }
+.is-compact .expense-pro-name-row { grid-column: 1; grid-row: 1; min-width: 0; }
+.is-compact .expense-pro-amount { grid-column: 2; grid-row: 1; justify-self: end; font-size: 19px; white-space: nowrap; }
+.is-compact .expense-pro-tags { grid-column: 1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.is-compact .expense-pro-tags > * { margin: 0 !important; }
+.is-compact .expense-pro-trend .trend-badge { grid-column: 2; grid-row: 2; justify-self: end; }
+.is-compact .expense-limit-over { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+.is-compact .expense-pro-sparkline,
+.is-compact .expense-10y,
+.is-compact .top-expense-badge,
+.is-compact .preview-tooltip,
+.is-compact .btn-pro-del { display: none !important; }
+.is-compact .expense-pro-actions { width: auto; padding-left: 12px; border-left: none; }
+.is-compact .btn-pro-add { width: 44px; height: 44px; border-radius: 22px; font-size: 22px; }
+.expense-limit-bar { display: none; }
+.is-compact .expense-limit-bar:not([hidden]) {
+    display: block;
+    height: 6px;
+    margin-top: 10px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+.is-compact .expense-limit-bar span { display: block; height: 100%; border-radius: 3px; background: var(--sys-green); }
+.is-compact .expense-limit-bar.is-near span { background: #ff9f0a; }
+.is-compact .expense-limit-bar.is-over span { background: var(--sys-red); }
+
+@media (min-width: 700px) {
+    .is-compact .expenses-container {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+}
+
+/* ---------- «Зведення» ---------- */
+.wallet-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.wallet-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-height: 64px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(46, 160, 67, 0.25);
+    background: rgba(46, 160, 67, 0.1);
+    color: var(--text-primary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.wallet-tile.is-debt { border-color: rgba(255, 69, 58, 0.25); background: rgba(255, 69, 58, 0.1); }
+.wallet-tile-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.wallet-tile-value { font-size: 18px; font-weight: 800; }
+.wallet-tile.is-debt .wallet-tile-value { color: #ff6961; }
+
+.is-compact #budgetChartContainer { display: none; }
+.flow-bar { margin: 4px 0 8px; }
+.flow-bar-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.flow-bar-deficit { color: #ff6961; font-size: 13px; }
+.flow-bar-track { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; background: rgba(255, 255, 255, 0.06); }
+.flow-bar-track span { flex-basis: 0; min-width: 3px; }
+.flow-bar-track span.is-free { opacity: 0.45; }
+.flow-bar-legend { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.flow-bar-legend li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); }
+.flow-bar-legend b { margin-left: auto; color: var(--text-primary); font-weight: 700; }
+.flow-bar-dot { width: 10px; height: 10px; border-radius: 5px; flex-shrink: 0; }
+.flow-bar-empty { font-size: 14px; color: var(--text-tertiary); padding: 8px 0; }
+
+/* ---------- Modals: bottom sheets on phones, centred cards on tablets ---------- */
+.is-compact .modal-overlay { align-items: flex-end; }
+.is-compact .modal-content {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 24px) !important;
+    box-sizing: border-box;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 12px 16px calc(16px + var(--safe-bottom)) !important;
+    border-width: 1px 0 0 !important;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.is-compact .modal-overlay.active .modal-content { transform: translateY(0); }
+.is-compact .modal-content::before {
+    content: '';
+    display: block;
+    flex-shrink: 0;
+    width: 40px;
+    height: 5px;
+    margin: 0 auto 12px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.25);
+}
+.is-compact .modal-header { gap: 12px; margin-bottom: 16px; flex-wrap: nowrap; align-items: flex-start; }
+.is-compact .modal-header > :first-child { min-width: 0; }
+.is-compact .btn-close-modal { width: 44px; height: 44px; border-radius: 22px; flex-shrink: 0; }
+.is-compact .btn-modal-done { position: sticky; bottom: 0; z-index: 2; }
+.btn-modal-delete {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 8px;
+    border: none;
+    background: none;
+    color: var(--sys-red);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+@media (min-width: 700px) {
+    .is-compact .modal-overlay { align-items: center; }
+    .is-compact .modal-content {
+        width: calc(100% - 48px) !important;
+        max-width: 560px !important;
+        max-height: min(88dvh, 900px) !important;
+        border-radius: 28px !important;
+        border-width: 1px !important;
+        padding: 24px !important;
+        transform: scale(0.96) translateY(16px);
+    }
+    .is-compact .modal-content.modal-wide { max-width: 640px !important; }
+    .is-compact .modal-content::before { display: none; }
+}
+
+.is-compact .modal-items-container { overflow: visible; flex: none; padding-right: 0; }
+.is-compact .debt-form { padding: 16px !important; }
+.is-compact .debt-form-row { flex-wrap: wrap; }
+.is-compact .debt-form-row > :first-child { flex: 1 1 100% !important; }
+.is-compact .debt-form-row > :not(:first-child) { flex: 1 1 0 !important; min-width: 0; }
+
+/* ---------- Forms: no iOS zoom, thumb-sized controls ---------- */
+.is-compact input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.is-compact select,
+.is-compact textarea { font-size: max(16px, 1em); }
+.is-compact .limit-mode-btn { min-height: 40px; padding: 0 14px; }
+.is-compact .undo-toast-btn { min-height: 40px; padding: 0 12px; }
+.is-compact .undo-toast { bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 12px); }

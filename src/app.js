@@ -799,6 +799,142 @@ async function fetchAvailableProfiles() {
         if (dropdown) dropdown.classList.remove('open');
     }
 
+    // ==========================================
+    // ТЕЛЕФОНИ Й ПЛАНШЕТИ: вкладки замість трьох колонок
+    // ==========================================
+    // Narrow screens, and touch tablets in any orientation (a landscape iPad is wider than 1024).
+    const COMPACT_QUERY = '(max-width: 1023px), (pointer: coarse) and (max-width: 1366px)';
+    const MOBILE_TAB_KEY = 'budget_mobile_tab';
+    const MOBILE_TABS = ['income', 'expenses', 'summary'];
+    const compactMq = window.matchMedia(COMPACT_QUERY);
+
+    function isCompactLayout() {
+        return compactMq.matches;
+    }
+
+    function syncCompactLayout() {
+        document.documentElement.classList.toggle('is-compact', compactMq.matches);
+    }
+
+    function readMobileTab() {
+        try {
+            const saved = localStorage.getItem(MOBILE_TAB_KEY);
+            if (MOBILE_TABS.includes(saved)) return saved;
+        } catch (e) {}
+        return 'expenses';
+    }
+
+    function setMobileTab(tab) {
+        if (!MOBILE_TABS.includes(tab)) return;
+        const changed = document.documentElement.dataset.tab !== tab;
+        document.documentElement.dataset.tab = tab;
+        document.querySelectorAll('[data-tab-btn]').forEach((btn) => {
+            const on = btn.dataset.tabBtn === tab;
+            btn.classList.toggle('is-active', on);
+            if (on) btn.setAttribute('aria-current', 'page');
+            else btn.removeAttribute('aria-current');
+        });
+        try { localStorage.setItem(MOBILE_TAB_KEY, tab); } catch (e) {}
+        if (changed && isCompactLayout()) window.scrollTo({ top: 0 });
+    }
+
+    /** Previous / next month from the compact header, across year boundaries. */
+    async function shiftMonth(delta) {
+        await saveData(true);
+        let month = currentMonth + delta;
+        let year = currentYear;
+        if (month < 0) { month = 11; year -= 1; }
+        if (month > 11) { month = 0; year += 1; }
+        currentYear = year;
+        currentMonth = month;
+        if (!appData[currentYear]) appData[currentYear] = {};
+        if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = createEmptyMonth();
+        persistViewedPeriod();
+        renderCalendar();
+        applyMonthData();
+        refreshMonobankStatus();
+    }
+
+    /** The full year + months picker, folded under the month name on small screens. */
+    function toggleMonthPicker(force) {
+        const nav = document.querySelector('.header-nav');
+        if (!nav) return;
+        const open = typeof force === 'boolean' ? force : !nav.classList.contains('months-open');
+        nav.classList.toggle('months-open', open);
+        document.getElementById('month-stepper-label')?.setAttribute('aria-expanded', String(open));
+        if (open) {
+            requestAnimationFrame(() => document.querySelector('#months-container .month-pill.active')
+                ?.scrollIntoView({ block: 'nearest', inline: 'center' }));
+        }
+    }
+
+    function toggleNavMore(e) {
+        if (e) e.stopPropagation();
+        closeProfileSwitcher();
+        const menu = document.getElementById('nav-more-menu');
+        if (!menu) return;
+        setNavMoreOpen(!menu.classList.contains('open'));
+    }
+
+    function setNavMoreOpen(open) {
+        document.getElementById('nav-more-menu')?.classList.toggle('open', open);
+        document.getElementById('nav-more-btn')?.setAttribute('aria-expanded', String(open));
+    }
+
+    document.addEventListener('click', (e) => {
+        // A menu item ran its action already; any other click outside closes the menu too.
+        if (e.target.closest?.('#nav-more-btn')) return;
+        setNavMoreOpen(false);
+    });
+
+    function deleteActiveCategory() {
+        const id = activeCategoryId;
+        if (id == null) return;
+        closeModal();
+        deleteCategory(id);
+    }
+
+    /** «Куди йдуть гроші»: one stacked bar instead of the Sankey chart on small screens. */
+    function renderFlowBar() {
+        const box = document.getElementById('flow-bar');
+        if (!box) return;
+        const data = appData[currentYear]?.[currentMonth];
+        const income = getMonthIncomeUah(currentYear, currentMonth);
+        if (!data?.initialized || !(income > 0)) {
+            box.innerHTML = '<div class="flow-bar-empty">Додайте доходи — тут з’явиться, куди йдуть гроші.</div>';
+            return;
+        }
+        const isBiz = currentUser?.account_type === 'business';
+        const parts = [];
+        if (isBiz) {
+            const invoices = (data.invoices || []).reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+            parts.push({ label: 'Закупівлі', color: '#ff9f0a', value: invoices > 0 ? invoices : getMonthPurchasesUah(data, income) });
+            parts.push({ label: 'Зарплати', color: '#bf5af2', value: getPayrollAccruedFromList(data.payroll) });
+            parts.push({ label: 'Витрати', color: '#0a84ff', value: expenses.reduce((sum, exp) => sum + getCategoryTotal(exp), 0) });
+        } else {
+            const sum = (pick) => expenses.filter(pick).reduce((total, exp) => total + getCategoryTotal(exp), 0);
+            parts.push({ label: "Обов'язкові", color: '#0a84ff', value: sum((exp) => exp.isEssential && !exp.isSavings) });
+            parts.push({ label: 'Заощадження', color: '#32d74b', value: sum((exp) => exp.isSavings) });
+            parts.push({ label: 'Інші', color: '#ff9f0a', value: sum((exp) => !exp.isEssential && !exp.isSavings) });
+        }
+        const spent = parts.reduce((total, part) => total + part.value, 0);
+        const free = income - spent;
+        if (free > 0) parts.push({ label: isBiz ? 'Прибуток' : 'Вільно', color: '#8e8e93', value: free, free: true });
+        const base = Math.max(income, spent);
+        const shown = parts.filter((part) => part.value > 0);
+        box.innerHTML = `
+            <div class="flow-bar-head"><span>Куди йдуть гроші</span>${free < 0 ? `<span class="flow-bar-deficit">дефіцит ${formatLimitMoney(-free)}</span>` : ''}</div>
+            <div class="flow-bar-track">${shown.map((part) => `<span class="${part.free ? 'is-free' : ''}" style="flex-grow: ${(part.value / base).toFixed(4)}; background: ${part.color};"></span>`).join('')}</div>
+            <ul class="flow-bar-legend">${shown.map((part) => `<li><span class="flow-bar-dot" style="background: ${part.color};"></span>${part.label}<b class="tabular">${formatLimitMoney(Math.round(part.value))}</b></li>`).join('')}</ul>`;
+    }
+
+    syncCompactLayout();
+    compactMq.addEventListener('change', () => {
+        syncCompactLayout();
+        if (!isCompactLayout()) toggleMonthPicker(false);
+    });
+    setMobileTab(readMobileTab());
+
     function isPersonalSkrynia() {
         return !(currentUser && currentUser.account_type === 'business');
     }
@@ -835,6 +971,23 @@ async function fetchAvailableProfiles() {
         const modules = getSkryniaModules();
         const showSwitcher = Boolean(currentUser) && modules.length > 1;
         const activeLabel = SKRYNIA_MODULE_LABELS[currentSkryniaModule] || SKRYNIA_MODULE_LABELS.budget;
+
+        const moreModules = document.getElementById('nav-more-modules');
+        if (moreModules) {
+            moreModules.hidden = !showSwitcher;
+            moreModules.innerHTML = '';
+            if (showSwitcher) {
+                modules.forEach((mod) => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.setAttribute('role', 'menuitem');
+                    item.className = 'nav-more-item' + (mod.id === currentSkryniaModule ? ' is-active' : '');
+                    item.textContent = mod.label;
+                    item.addEventListener('click', () => openSkryniaModule(mod.id));
+                    moreModules.appendChild(item);
+                });
+            }
+        }
 
         switchers.forEach((wrap) => {
             const btn = wrap.querySelector('.skrynia-switcher-btn');
@@ -1032,6 +1185,8 @@ async function performLogin(user, { openHub = false } = {}) {
         document.getElementById('text-transfer').innerText = isBiz ? 'Розподілити прибуток' : 'Відкласти в конверт';
         
         document.getElementById('savings-title').innerText = isBiz ? 'Фонди бізнесу:' : 'Мої заощадження:';
+        document.getElementById('m-savings-title').innerText = isBiz ? 'Фонди бізнесу' : 'Конверти';
+        document.getElementById('mobile-tab-income-label').innerText = isBiz ? 'Обіг' : 'Доходи';
         document.getElementById('transfer-modal-title').innerText = isBiz ? 'Поповнити фонд' : 'Відкласти в конверт';
         document.getElementById('jars-modal-title').innerText = isBiz ? 'Фонди бізнесу' : 'Мої конверти';
 
@@ -1625,6 +1780,8 @@ function logout() {
 
     function renderCalendar() {
         document.getElementById('display-year').innerText = currentYear;
+        const stepperLabel = document.getElementById('month-stepper-label');
+        if (stepperLabel) stepperLabel.textContent = `${monthNames[currentMonth]} ${currentYear}`;
         const container = document.getElementById('months-container');
         container.innerHTML = '';
 
@@ -1665,6 +1822,7 @@ function logout() {
         if (btnElement && typeof btnElement.scrollIntoView === 'function') {
             btnElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
+        toggleMonthPicker(false);
         refreshMonobankStatus();
     }
 
@@ -2641,12 +2799,24 @@ function convertCurrency() {
         event?.target?.closest?.('.expense-limit-chip')?.classList.toggle('show-alt');
     }
 
+    /** Spending against the limit as a bar; shown on phones and tablets (CSS hides it on desktop). */
+    function limitBarHtml(category) {
+        if (categoryLimitMode(category) === 'none') return '<div class="expense-limit-bar is-none" hidden></div>';
+        const limit = categoryLimitNumber(category);
+        const total = getCategoryTotal(category);
+        const share = limit > 0 ? Math.min(100, (total / limit) * 100) : (total > 0 ? 100 : 0);
+        const state = categoryIsOverLimit(category) ? 'is-over' : share >= 90 ? 'is-near' : 'is-ok';
+        return `<div class="expense-limit-bar ${state}" aria-hidden="true"><span style="width: ${share.toFixed(1)}%"></span></div>`;
+    }
+
     function syncCategoryLimitState(category) {
         if (!category) return;
         const card = document.querySelector(`.expense-card-pro[data-category-id="${CSS.escape(String(category.id))}"]`);
         if (!card) return;
         const chip = card.querySelector('.expense-limit-chip');
         if (chip) chip.outerHTML = limitChipHtml(category);
+        const bar = card.querySelector('.expense-limit-bar');
+        if (bar) bar.outerHTML = limitBarHtml(category);
         const over = categoryIsOverLimit(category);
         card.classList.toggle('is-over-limit', over);
         let note = card.querySelector('.expense-limit-over');
@@ -3205,8 +3375,10 @@ function getHistoricalIncome(year, month) {
                                 ${exp.source === 'monobank' ? '<span class="mono-mark" role="img" aria-label="Монобанк">m</span>' : ''}
                                 <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" placeholder="Назва категорії" data-input-action="updateCategoryName" data-args="${escapeAttr(JSON.stringify([exp.id]))}" data-stop-propagation="1" style="${isSavingsClass}">
                             </div>
-                            ${essentialCheckHtml}
-                            ${isLedgerCategory(exp) ? '' : limitChipHtml(exp)}
+                            <div class="expense-pro-tags">
+                                ${essentialCheckHtml}
+                                ${isLedgerCategory(exp) ? '' : limitChipHtml(exp)}
+                            </div>
                             ${overLimit ? '<div class="expense-limit-over">Вийшли за ліміт</div>' : ''}
                         </div>
                         <div class="expense-pro-trend">
@@ -3219,6 +3391,7 @@ function getHistoricalIncome(year, month) {
                         </div>
                     </div>
                     
+                    ${isLedgerCategory(exp) ? '' : limitBarHtml(exp)}
                     <div class="expense-pro-sparkline">
                         ${sparkData.sparklineSvg}
                         <div class="sparkline-labels">${sparkData.labelsHtml}</div>
@@ -3942,6 +4115,7 @@ let payrollAccruedTotal = 0;
         // Percent limits follow income: refresh every card's label and over-limit state.
         expenses.forEach((exp) => syncCategoryLimitState(exp));
         renderLimitPlan();
+        renderFlowBar();
         if (document.getElementById('category-modal')?.classList.contains('active')) renderModalLimit();
 
         updateChart();
@@ -3980,6 +4154,8 @@ let payrollAccruedTotal = 0;
         if (!currentUser) return;
         const total = (globalData.jars[currentUser.id] || []).reduce((sum, jar) => sum + jar.balance, 0);
         document.getElementById('total-savings-display').innerText = formatMoney(total);
+        const mobileSavings = document.getElementById('m-savings');
+        if (mobileSavings) mobileSavings.innerText = formatMoney(total);
     }
 
     function openEnvelopesModal() {
@@ -4736,6 +4912,8 @@ function renderEnvelopes() {
         });
 
         document.getElementById('total-debts-display').innerText = formatMoney(totalInUah);
+        const mobileDebts = document.getElementById('m-debts');
+        if (mobileDebts) mobileDebts.innerText = formatMoney(totalInUah);
         document.getElementById('debt-minus-sign').style.display = totalInUah > 0 ? 'inline' : 'none';
     }
 
@@ -4828,7 +5006,7 @@ function renderEnvelopes() {
     });
 
     function initChart() {
-        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+        Chart.defaults.font.family = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
         Chart.defaults.color = '#86868b'; 
     }
 
@@ -9688,6 +9866,11 @@ const uiActions = {
   openEnvelopesModal,
   openFamilyTree,
   openSkryniaModule,
+  setMobileTab,
+  shiftMonth,
+  toggleMonthPicker,
+  toggleNavMore,
+  deleteActiveCategory,
   openYearTracks,
   closeFamilyTree,
   closeYearTracks,

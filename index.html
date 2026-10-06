@@ -2,7 +2,8 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
     <title>MySkrynia</title>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://www.gstatic.com; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/ https://www.gstatic.com/charts/ https://static.cloudflareinsights.com; connect-src 'self' https://api.myskrynia.com.ua http://127.0.0.1:8787 http://localhost:8787 https://bank.gov.ua https://cloudflareinsights.com; font-src 'self' data:; upgrade-insecure-requests;">
     <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -18,7 +19,7 @@
             <div class="user-nav-row">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <button type="button" id="nav-avatar" class="nav-avatar" data-action="toggleSerenityEasterEgg" aria-haspopup="dialog" aria-controls="serenity-overlay" aria-expanded="false"></button>
-                    <div style="display: flex; align-items: center;">
+                    <div class="nav-identity">
                         <span id="current-user-name-display" style="font-weight: 700; font-size: 16px; color: var(--text-primary); letter-spacing: -0.3px;"></span>
                         <div id="profile-type-container" style="position: relative; margin-left: 8px;">
                             <button type="button" id="account-type-badge" class="badge-type" style="display: none;" data-action="toggleProfileSwitcher" data-pass-event="1">Фіз. особа</button>
@@ -35,6 +36,27 @@
                     <button style="background: transparent; color: var(--sys-red); border: none; font-size: 14px; font-weight: 600; cursor: pointer; padding: 8px;" data-action="deleteProfile">Видалити дані</button>
                     <button style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.3s;" data-action="logout">Вийти</button>
                 </div>
+                <!-- Phones and tablets: the header actions live behind «⋯». -->
+                <div id="nav-more" class="nav-more compact-only">
+                    <button type="button" id="nav-more-btn" class="nav-more-btn" data-action="toggleNavMore" data-pass-event="1" aria-label="Меню" aria-haspopup="menu" aria-expanded="false">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg>
+                    </button>
+                    <div id="nav-more-menu" class="nav-more-menu" role="menu">
+                        <div id="nav-more-modules" class="nav-more-modules" hidden></div>
+                        <button type="button" role="menuitem" class="nav-more-item" data-action="openLlmSettings">Ключ ШІ</button>
+                        <button type="button" role="menuitem" class="nav-more-item" data-action="logout">Вийти</button>
+                        <button type="button" role="menuitem" class="nav-more-item is-danger" data-action="deleteProfile">Видалити дані</button>
+                    </div>
+                </div>
+            </div>
+            <div class="month-stepper compact-only">
+                <button type="button" class="month-step" data-action="shiftMonth" data-args='[-1]' aria-label="Попередній місяць">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <button type="button" id="month-stepper-label" class="month-stepper-label" data-action="toggleMonthPicker" aria-expanded="false">Місяць</button>
+                <button type="button" class="month-step" data-action="shiftMonth" data-args='[1]' aria-label="Наступний місяць">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
             </div>
             <div class="year-selector">
                 <button class="year-btn" data-action="changeYear" data-args='[-1]'>❮</button>
@@ -81,7 +103,7 @@
 
         <div class="container" id="main-dashboard">
             <div class="left-panel">
-                <div class="glass-card" style="margin-bottom: 0;">
+                <div class="glass-card" data-tab="income" style="margin-bottom: 0;">
                     <div class="converter-header">
                         <h2 id="title-sources">Джерела доходу</h2>
                         <div class="rate-badge" id="rate-info">Завантаження...</div>
@@ -94,7 +116,7 @@
                     <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
                 </div>
 
-                <div class="glass-card" style="margin-bottom: 0;">
+                <div class="glass-card" data-tab="income" style="margin-bottom: 0;">
                     <h1 id="title-incomes">Доходи</h1>
                     <div class="info-block" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 0;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px;">
@@ -143,7 +165,7 @@
                     <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
                 </div>
 
-                <div id="invoices-block" class="glass-card" style="margin-bottom: 0; display: none;">
+                <div id="invoices-block" class="glass-card" data-tab="income" style="margin-bottom: 0; display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h2 style="margin: 0;">Закупівлі (Собівартість)</h2>
                     </div>
@@ -169,7 +191,7 @@
                     <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
                 </div>
 
-                    <div id="payroll-block" class="glass-card" style="margin-bottom: 0; display: none;">
+                    <div id="payroll-block" class="glass-card" data-tab="income" style="margin-bottom: 0; display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h2 style="margin: 0;">Розрахунок зарплат</h2>
                     </div>
@@ -194,7 +216,7 @@
                     <div class="flow-track-vertical"><div class="flow-particle-vertical"></div></div>
                 </div>
 
-                <div class="glass-card">
+                <div class="glass-card" data-tab="expenses">
                     <div class="expenses-head">
                         <h2>Витрати</h2>
                         <div class="expenses-head-actions">
@@ -209,9 +231,19 @@
                 </div>
             </div>
 
-            <div class="right-panel">
+            <div class="right-panel" data-tab="summary">
                 <div class="glass-card" style="position: sticky; top: 20px;">
                     <h2 style="margin-bottom: 20px;">Зведення</h2>
+                    <div class="wallet-tiles compact-only">
+                        <button type="button" class="wallet-tile" data-action="openEnvelopesModal">
+                            <span id="m-savings-title" class="wallet-tile-label">Конверти</span>
+                            <span class="wallet-tile-value tabular"><span id="m-savings">0</span> ₴</span>
+                        </button>
+                        <button type="button" class="wallet-tile is-debt" data-action="openDebtsModal">
+                            <span class="wallet-tile-label">Зобов'язання</span>
+                            <span class="wallet-tile-value tabular"><span id="m-debts">0</span> ₴</span>
+                        </button>
+                    </div>
                     
                     <div id="summary-card" class="summary-box summary-main" style="margin-bottom: 16px; padding: 20px 24px; position: relative;">
                         <div id="summary-progress" class="summary-progress" style="width: 0%;"></div>
@@ -265,6 +297,7 @@
                     <div class="chart-container" style="height: 340px;" id="budgetChartContainer">
                         <div id="sankey_basic" style="width: 100%; height: 100%;"></div>
                     </div>
+                    <div id="flow-bar" class="flow-bar compact-only" aria-label="Куди йдуть гроші"></div>
 
                     <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 28px; margin-bottom: 28px;">
                         <div style="background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.15)); padding: 20px; border-radius: 20px; text-align: center; border: 1px solid rgba(10, 132, 255, 0.2); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
@@ -321,6 +354,29 @@
             </div>
         </div>
 
+        <nav class="mobile-tabs compact-only" aria-label="Розділи">
+            <button type="button" class="mobile-tab" data-tab-btn="income" data-action="setMobileTab" data-args='["income"]'>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                <span id="mobile-tab-income-label">Доходи</span>
+            </button>
+            <button type="button" class="mobile-tab" data-tab-btn="expenses" data-action="setMobileTab" data-args='["expenses"]'>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                <span>Витрати</span>
+            </button>
+            <button type="button" class="mobile-tab" data-tab-btn="summary" data-action="setMobileTab" data-args='["summary"]'>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12A9 9 0 1 1 12 3v9z"></path></svg>
+                <span>Зведення</span>
+            </button>
+            <button type="button" class="mobile-tab" data-action="openAiChat">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6-4.6-1.9 4.6-1.9z"></path><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"></path></svg>
+                <span>ШІ</span>
+            </button>
+        </nav>
+        <button type="button" class="mobile-fab compact-only" data-action="addCategory">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Категорія
+        </button>
+
         <div class="security-footer">
             <div class="cf-badge">
                 <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -360,6 +416,7 @@
         <div id="modal-subitems-list" class="modal-items-container"></div>
         <button id="modal-add-subitem" class="btn-add" style="margin-top:0; margin-bottom: 24px;" data-action="addSubItem">+ Додати статтю витрат</button>
         <button class="btn-modal-done" data-action="closeModal">Готово</button>
+        <button type="button" class="btn-modal-delete compact-only" data-action="deleteActiveCategory">Видалити категорію</button>
     </div>
 </div>
 
@@ -528,11 +585,11 @@
         
         <div id="debts-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; max-height: 45vh; overflow-y: auto; padding-right: 8px;"></div>
         
-        <div style="background: rgba(255, 69, 58, 0.1); padding: 24px; border-radius: 24px; border: 1px solid rgba(255, 69, 58, 0.2); box-shadow: inset 0 2px 4px rgba(255, 69, 58, 0.05);">
+        <div class="debt-form" style="background: rgba(255, 69, 58, 0.1); padding: 24px; border-radius: 24px; border: 1px solid rgba(255, 69, 58, 0.2); box-shadow: inset 0 2px 4px rgba(255, 69, 58, 0.05);">
             <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: var(--sys-red);">Додати борг / розстрочку</h4>
             <input type="text" id="new-debt-name" class="ios-input" placeholder="Назва (наприклад, MacBook)" style="margin-bottom: 12px; height: 56px;">
             
-            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+            <div class="debt-form-row" style="display: flex; gap: 12px; margin-bottom: 20px;">
                 <input type="number" id="new-debt-amount" class="ios-input" placeholder="Сума боргу" style="flex: 2; height: 56px;">
                 <input type="number" id="new-debt-interest" class="ios-input" placeholder="% в міс." style="flex: 1; height: 56px;">
                 <div class="custom-dropdown" style="flex: 1;" data-stop-propagation="1" data-toggle-open="1">
