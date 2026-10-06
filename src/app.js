@@ -961,12 +961,131 @@ async function fetchAvailableProfiles() {
             const prompt = deferredInstallPrompt;
             deferredInstallPrompt = null;
             prompt.prompt();
-            await prompt.userChoice.catch(() => null);
+            const choice = await prompt.userChoice.catch(() => null);
+            if (choice?.outcome === 'accepted') hideInstallPromo();
             syncInstallButton();
             return;
         }
+        // No browser prompt: show the steps for this platform.
+        const ios = isIosDevice();
+        const android = document.getElementById('install-steps-android');
+        const iosSteps = document.getElementById('install-steps-ios');
+        if (android) android.hidden = ios;
+        if (iosSteps) iosSteps.hidden = !ios;
         document.getElementById('install-modal')?.classList.add('active');
     }
+
+    // ---------- «MySkrynia на екрані «Додому»» card ----------
+    // Shown on phones/tablets that can install, once the person uses the app: from the second
+    // visit or after a first edit; again right after Monobank is connected. «Не зараз» hides it
+    // for 14 days, ✕ for good.
+    const INSTALL_PROMO_KEYS = { visits: 'budget_install_visits', snooze: 'budget_install_snooze_until', off: 'budget_install_dismissed', mono: 'budget_install_mono_shown' };
+    const INSTALL_SNOOZE_MS = 14 * 24 * 3600 * 1000;
+    let installPromoCounted = false;
+    let installPromoAfterMono = false;
+
+    function readStore(key) {
+        try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+
+    function writeStore(key, value) {
+        try { localStorage.setItem(key, value); } catch (e) {}
+    }
+
+    /** Browsers inside Telegram, Instagram, Facebook… can't install: they get «open in the browser». */
+    function isInAppBrowser() {
+        return /Telegram|FBAN|FBAV|Instagram|Line\/|; wv\)/i.test(navigator.userAgent);
+    }
+
+    function isAndroidDevice() {
+        return /android/i.test(navigator.userAgent);
+    }
+
+    function installPromoVariant(reason) {
+        if (isInAppBrowser()) return 'inapp';
+        if (reason === 'mono') return 'mono';
+        return 'default';
+    }
+
+    function canPromoteInstall() {
+        if (!currentUser || !isCompactLayout() || isStandaloneApp()) return false;
+        return Boolean(deferredInstallPrompt) || isIosDevice() || isAndroidDevice();
+    }
+
+    function maybeShowInstallPromo(reason = 'visit') {
+        if (!canPromoteInstall() || readStore(INSTALL_PROMO_KEYS.off) === '1') return;
+        const promo = document.getElementById('install-promo');
+        if (!promo || !promo.hidden) return;
+        if (reason === 'mono') {
+            if (readStore(INSTALL_PROMO_KEYS.mono) === '1') return;
+            writeStore(INSTALL_PROMO_KEYS.mono, '1');
+        } else if (Number(readStore(INSTALL_PROMO_KEYS.snooze) || 0) > Date.now()) {
+            return;
+        }
+        const variant = installPromoVariant(reason);
+        const texts = {
+            default: ['MySkrynia на екрані «Додому»', isIosDevice()
+                ? 'Відкривається одним дотиком, на весь екран — і сповіщення про покупки з Монобанку. На iPhone сповіщення працюють лише так.'
+                : 'Відкривається одним дотиком, на весь екран — і сповіщення про покупки з Монобанку.'],
+            mono: ['Покупки — одразу на телефон', 'Встановіть MySkrynia на екран «Додому» — і кожна покупка з картки приходитиме сповіщенням, навіть коли застосунок закритий.'],
+            inapp: ['Відкрийте у браузері', 'Ви в браузері всередині іншого застосунку — звідси MySkrynia не встановити на екран, і сповіщення не працюють.'],
+        };
+        const [title, body] = texts[variant];
+        document.getElementById('install-promo-title').textContent = title;
+        document.getElementById('install-promo-body').textContent = body;
+        document.getElementById('install-promo-hint').hidden = variant !== 'inapp';
+        document.getElementById('install-promo-later').hidden = variant === 'inapp';
+        document.getElementById('install-promo-go').textContent = variant === 'inapp'
+            ? 'Скопіювати посилання'
+            : (deferredInstallPrompt ? 'Встановити' : 'Як встановити');
+        promo.dataset.variant = variant;
+        promo.hidden = false;
+    }
+
+    function hideInstallPromo() {
+        const promo = document.getElementById('install-promo');
+        if (promo) promo.hidden = true;
+    }
+
+    async function acceptInstallPromo() {
+        const promo = document.getElementById('install-promo');
+        if (promo?.dataset.variant === 'inapp') {
+            try {
+                await navigator.clipboard.writeText(window.location.origin + '/');
+                showSaveStatus('Посилання скопійовано — відкрийте його у браузері', { tone: 'info', autoHideMs: 4000 });
+            } catch (e) {
+                showSaveStatus(`Скопіюйте адресу: ${window.location.host}`, { tone: 'info', autoHideMs: 6000 });
+            }
+            return;
+        }
+        if (!deferredInstallPrompt) hideInstallPromo();
+        await installApp();
+    }
+
+    function snoozeInstallPromo() {
+        writeStore(INSTALL_PROMO_KEYS.snooze, String(Date.now() + INSTALL_SNOOZE_MS));
+        hideInstallPromo();
+    }
+
+    function dismissInstallPromo() {
+        writeStore(INSTALL_PROMO_KEYS.off, '1');
+        hideInstallPromo();
+    }
+
+    /** Called after login: counts the visit, shows the card from the second one. */
+    function noteInstallPromoVisit() {
+        if (installPromoCounted) return;
+        installPromoCounted = true;
+        const visits = Number(readStore(INSTALL_PROMO_KEYS.visits) || 0) + 1;
+        writeStore(INSTALL_PROMO_KEYS.visits, String(visits));
+        if (visits >= 2) setTimeout(() => maybeShowInstallPromo('visit'), 2500);
+    }
+
+    // A first edit counts as «using the app» on the very first visit.
+    document.addEventListener('change', (e) => {
+        if (e.target?.closest?.('#main-dashboard, .modal-overlay')) setTimeout(() => maybeShowInstallPromo('action'), 1200);
+    }, true);
+    window.addEventListener('appinstalled', hideInstallPromo);
 
     function closeInstallModal(e) {
         if (e && e.target?.id !== 'install-modal') return;
@@ -1301,6 +1420,7 @@ async function performLogin(user, { openHub = false } = {}) {
         hideSkryniaHub();
         updateSkryniaSwitcherUI();
         hydrateAiChat();
+        noteInstallPromoVisit();
 
         if (openHub && getSkryniaModules().length > 1) {
             showSkryniaHub();
@@ -1744,6 +1864,7 @@ function logout() {
 
         try { unloadAiChat({ forget: true }); } catch (e) {}
 
+        hideInstallPromo();
         currentUser = null;
         dataLoadedFor = null;
         dataVersion = 0;
@@ -8467,6 +8588,10 @@ function generatePayrollSparklineHTML(currentTotal) {
     function closeMonobankModal(event) {
         if (event && event.target?.id !== 'monobank-modal' && !event.target?.closest?.('.btn-close-modal')) return;
         document.getElementById('monobank-modal')?.classList.remove('active');
+        if (installPromoAfterMono) {
+            installPromoAfterMono = false;
+            setTimeout(() => maybeShowInstallPromo('mono'), 800);
+        }
     }
 
     /** A Monobank operation as stored in a month: the server's routing fields stay for later re-routing. */
@@ -9597,6 +9722,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             renderMonobankCards(data.accounts || []);
             syncMonobankModal();
             renderMonobankButton();
+            installPromoAfterMono = true;
         } catch {
             if (err) err.textContent = "Не вдалося з'єднатися із сервером.";
         } finally {
@@ -10033,6 +10159,9 @@ const uiActions = {
   deleteActiveCategory,
   installApp,
   closeInstallModal,
+  acceptInstallPromo,
+  snoozeInstallPromo,
+  dismissInstallPromo,
   togglePushNotifications,
   openYearTracks,
   closeFamilyTree,

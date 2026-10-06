@@ -364,6 +364,22 @@
             </div>
         </div>
 
+        <section id="install-promo" class="install-promo compact-only" aria-labelledby="install-promo-title" hidden>
+            <div class="install-promo-row">
+                <img class="install-promo-icon" src="/icons/icon-192.png" alt="">
+                <div class="install-promo-text">
+                    <div id="install-promo-title" class="install-promo-title">MySkrynia на екрані «Додому»</div>
+                    <div id="install-promo-body" class="install-promo-body">Відкривається одним дотиком, на весь екран — і сповіщення про покупки з Монобанку.</div>
+                </div>
+                <button type="button" class="install-promo-close" data-action="dismissInstallPromo" aria-label="Більше не показувати">✕</button>
+            </div>
+            <p id="install-promo-hint" class="install-promo-hint" hidden>Натисніть <b>⋯</b> угорі → <b>«Відкрити в браузері»</b>, або скопіюйте посилання.</p>
+            <div class="install-promo-actions">
+                <button type="button" id="install-promo-go" class="install-promo-go" data-action="acceptInstallPromo">Встановити</button>
+                <button type="button" id="install-promo-later" class="install-promo-later" data-action="snoozeInstallPromo">Не зараз</button>
+            </div>
+        </section>
+
         <nav class="mobile-tabs compact-only" aria-label="Розділи">
             <button type="button" class="mobile-tab" data-tab-btn="income" data-action="setMobileTab" data-args='["income"]'>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -437,14 +453,19 @@
             <button type="button" class="btn-close-modal" data-action="closeInstallModal" aria-label="Закрити">✕</button>
         </div>
         <img class="install-sheet-icon" src="/icons/icon-192.png" alt="">
-        <ol class="install-steps">
+        <ol id="install-steps-android" class="install-steps" hidden>
+            <li>Відкрийте меню браузера <b>⋮</b>.</li>
+            <li>Оберіть <b>«Встановити застосунок»</b> (або «Додати на головний екран»).</li>
+            <li>Підтвердіть — MySkrynia відкриватиметься як застосунок, на весь екран.</li>
+        </ol>
+        <ol id="install-steps-ios" class="install-steps">
             <li>Натисніть <b>«Поділитися»</b>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="значок «Поділитися»"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                 у браузері.</li>
             <li>Оберіть <b>«На початковий екран»</b> (або «Додати на початковий екран»).</li>
             <li>Натисніть <b>«Додати»</b> — MySkrynia відкриватиметься як застосунок, на весь екран.</li>
         </ol>
-        <p id="install-push-note" class="install-note" hidden>Сповіщення на iPhone працюють лише у встановленій Скрині: відкрийте її з екрана «Додому» й увімкніть у меню «⋯».</p>
+        <p id="install-push-note" class="install-note" hidden>Сповіщення на iPhone працюють лише у встановленій MySkrynia: відкрийте її з екрана «Додому» й увімкніть у меню «⋯».</p>
         <button type="button" class="btn-modal-done" data-action="closeInstallModal">Зрозуміло</button>
     </div>
 </div>
