@@ -229,6 +229,85 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .is-compact .rule-502030-info-btn { width: 36px; height: 36px; }
 .is-compact .rate-info { width: 36px; height: 36px; }
 
+/* Income sources: two light lines instead of three stacked blocks.
+   [name ··········· ×]
+   [amount ······· UAH▾] */
+.is-compact .rate-badge {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+}
+.is-compact .converter-header { gap: 4px; margin-bottom: 12px; }
+.is-compact #incomes-container { gap: 8px !important; }
+.is-compact .expense-item.income-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 84px;
+    grid-template-areas: "name del" "amount cur";
+    align-items: center;
+    gap: 6px 8px !important;
+    padding: 10px 12px 12px !important;
+    margin: 0 !important;
+    border-radius: 18px;
+}
+.is-compact .income-row .income-name,
+.is-compact .income-row .income-mono-main {
+    grid-area: name;
+    min-width: 0;
+}
+.is-compact .income-row input.income-name {
+    flex: none;
+    width: 100%;
+    height: 36px;
+    margin: 0;
+    padding: 0 4px;
+    background: transparent;
+    font-size: 16px;
+    font-weight: 700;
+}
+.is-compact .income-row .income-delete {
+    grid-area: del;
+    justify-self: end;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 18px !important;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-tertiary);
+}
+.is-compact .income-row .income-delete svg { width: 18px; height: 18px; }
+.is-compact .income-row input.income-amount {
+    grid-area: amount;
+    flex: none;
+    width: 100% !important;
+    height: 48px;
+    margin: 0 !important;
+    padding: 0 14px;
+    border-radius: 14px;
+    background: var(--input-bg);
+    text-align: left !important;
+    font-size: 20px;
+    font-weight: 700;
+}
+.is-compact .income-row .income-currency-dd,
+.is-compact .income-row .income-currency-lock {
+    grid-area: cur;
+    width: 84px !important;
+}
+.is-compact .income-row .income-currency-dd .custom-dropdown-selected { height: 48px !important; }
+.is-compact .income-row .income-currency-lock { text-align: center; }
+.is-compact [data-tab="income"] > .btn-add {
+    margin-top: 8px !important;
+    padding: 12px !important;
+    border-style: dashed;
+    background: transparent;
+    font-size: 15px !important;
+}
+
 /* ---------- «Витрати»: compact cards ---------- */
 .is-compact .expenses-head { flex-wrap: wrap; gap: 10px; }
 .is-compact .expense-card-pro { padding: 14px 12px 14px 16px; align-items: center; margin-bottom: 0; }

@@ -2471,7 +2471,7 @@ function renderIncomes() {
             if (inc.source === 'monobank') {
                 if (!inc.currency) inc.currency = 'UAH';
                 const row = document.createElement('div');
-                row.className = 'expense-item income-mono';
+                row.className = 'expense-item income-mono income-row';
                 row.style = 'padding: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;';
                 row.innerHTML = `
                     <div class="income-mono-main">
@@ -2535,10 +2535,11 @@ if (isBiz) {
                 `;
             } else {
                 // СТАРЫЙ ДИЗАЙН ДЛЯ ФИЗЛИЦ (Компактная строка)
+                div.classList.add('income-row');
                 div.style = "padding: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;";
                 div.innerHTML = `
                     <input type="text" class="input-name income-name" value="${escapeHtml(inc.name || '')}" placeholder="Назва" style="flex: 1; min-width: 100px;">
-                    <input type="number" class="input-name tabular income-amount" value="${inc.amount || ''}" placeholder="0" style="text-align: right; margin: 0 8px; width: 100px;">
+                    <input type="number" class="input-name tabular income-amount" value="${inc.amount || ''}" placeholder="0" inputmode="decimal" aria-label="Сума" style="text-align: right; margin: 0 8px; width: 100px;">
                     
                     <div class="custom-dropdown income-currency-dd" data-stop-propagation="1" data-toggle-open="1" style="width: 90px; flex-shrink: 0;">
                         <div class="custom-dropdown-selected" style="height: 48px; padding: 0 30px 0 12px; border-radius: 14px; font-size: 14px;">${escapeHtml(inc.currency)}</div>
