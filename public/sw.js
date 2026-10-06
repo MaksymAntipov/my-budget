@@ -3,7 +3,7 @@
  * Pages always come from the network (a deploy shows up at once); only the hashed,
  * immutable /assets/* files are cached. The API is another origin and never touched.
  */
-const CACHE = 'skrynia-v2';
+const CACHE = 'skrynia-v3';
 // Pages serves offline.html at /offline (a redirect can't stand in for a navigation).
 const OFFLINE_URL = '/offline';
 const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png'];
@@ -49,4 +49,40 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (url.pathname.startsWith('/assets/')) event.respondWith(cachedAsset(request));
+});
+
+// ---------- Push: Monobank purchases and limits (sent by the API, see push/handle.ts) ----------
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: event.data ? event.data.text() : '' };
+  }
+  const title = data.title || 'Скриня';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/badge-96.png',
+      tag: data.tag || undefined,
+      renotify: Boolean(data.tag),
+      data: { tab: data.tab || '' },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const tab = event.notification.data?.tab || '';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((client) => new URL(client.url).origin === self.location.origin);
+      if (open) {
+        open.postMessage({ type: 'open-tab', tab });
+        return open.focus();
+      }
+      return self.clients.openWindow(tab ? `/?tab=${encodeURIComponent(tab)}` : '/');
+    }),
+  );
 });

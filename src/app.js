@@ -871,6 +871,7 @@ async function fetchAvailableProfiles() {
     function toggleNavMore(e) {
         if (e) e.stopPropagation();
         closeProfileSwitcher();
+        syncPushMenuItem();
         const menu = document.getElementById('nav-more-menu');
         if (!menu) return;
         setNavMoreOpen(!menu.classList.contains('open'));
@@ -971,6 +972,117 @@ async function fetchAvailableProfiles() {
         if (e && e.target?.id !== 'install-modal') return;
         document.getElementById('install-modal')?.classList.remove('active');
     }
+
+    // ---------- Push notifications (per device and profile) ----------
+    const PUSH_FLAG_PREFIX = 'budget_push_';
+
+    function pushSupported() {
+        return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    }
+
+    function pushFlagKey() {
+        return currentUser?.id ? `${PUSH_FLAG_PREFIX}${currentUser.id}` : '';
+    }
+
+    function readPushEndpoint() {
+        try { return pushFlagKey() ? localStorage.getItem(pushFlagKey()) || '' : ''; } catch (e) { return ''; }
+    }
+
+    function writePushEndpoint(endpoint) {
+        try {
+            if (!pushFlagKey()) return;
+            if (endpoint) localStorage.setItem(pushFlagKey(), endpoint);
+            else localStorage.removeItem(pushFlagKey());
+        } catch (e) {}
+    }
+
+    /** Shown on iOS too: there it explains that pushes need the installed app. */
+    function syncPushMenuItem() {
+        const item = document.getElementById('nav-more-push');
+        if (!item) return;
+        const iosBrowser = isIosDevice() && !isStandaloneApp();
+        item.hidden = !currentUser || (!pushSupported() && !iosBrowser);
+        const on = Boolean(readPushEndpoint()) && pushSupported() && Notification.permission === 'granted';
+        item.textContent = on ? 'Сповіщення увімкнено ✓' : 'Увімкнути сповіщення';
+        item.classList.toggle('is-on', on);
+    }
+
+    function urlBase64ToBytes(value) {
+        const base64 = value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (value.length % 4)) % 4);
+        return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    }
+
+    async function togglePushNotifications() {
+        if (!currentUser) return;
+        if (isIosDevice() && !isStandaloneApp()) {
+            const note = document.getElementById('install-push-note');
+            if (note) note.hidden = false;
+            document.getElementById('install-modal')?.classList.add('active');
+            return;
+        }
+        if (!pushSupported()) return;
+        if (readPushEndpoint()) return disablePushNotifications();
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                showSaveStatus('Сповіщення заборонені для цього сайту — дозвольте їх у налаштуваннях браузера.', { tone: 'error', autoHideMs: 6000 });
+                return;
+            }
+            const keyResponse = await apiFetch('/api/push/key');
+            const { publicKey } = await keyResponse.json();
+            if (!publicKey) {
+                showSaveStatus('Сповіщення ще не налаштовані на сервері.', { tone: 'error', autoHideMs: 5000 });
+                return;
+            }
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = (await registration.pushManager.getSubscription())
+                || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToBytes(publicKey) });
+            const response = await apiFetch('/api/push/subscribe', {
+                method: 'POST',
+                body: JSON.stringify({ userId: currentUser.id, subscription: subscription.toJSON() }),
+            });
+            if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'subscribe failed');
+            writePushEndpoint(subscription.endpoint);
+            showSaveStatus('Сповіщення увімкнено на цьому пристрої', { tone: 'info', autoHideMs: 3000 });
+        } catch (err) {
+            console.warn('Push subscribe failed', err);
+            showSaveStatus('Не вдалося увімкнути сповіщення. Спробуйте ще раз.', { tone: 'error', autoHideMs: 5000 });
+        } finally {
+            syncPushMenuItem();
+        }
+    }
+
+    /** Stops pushes for this profile on this device; the browser subscription may serve the other profile. */
+    async function disablePushNotifications({ quiet = false } = {}) {
+        const endpoint = readPushEndpoint();
+        writePushEndpoint('');
+        syncPushMenuItem();
+        if (!endpoint || !currentUser) return;
+        try {
+            await apiFetch('/api/push/unsubscribe', {
+                method: 'POST',
+                keepalive: true,
+                body: JSON.stringify({ userId: currentUser.id, endpoint }),
+            });
+            if (!quiet) showSaveStatus('Сповіщення вимкнено на цьому пристрої', { tone: 'info', autoHideMs: 3000 });
+        } catch (e) {}
+    }
+
+    // A tap on a notification: the service worker asks the open app to show the right tab.
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data?.type === 'open-tab' && MOBILE_TABS.includes(event.data.tab)) setMobileTab(event.data.tab);
+        });
+    }
+    (() => {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        if (!MOBILE_TABS.includes(tab)) return;
+        try { localStorage.setItem(MOBILE_TAB_KEY, tab); } catch (e) {}
+        params.delete('tab');
+        const query = params.toString();
+        window.history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash);
+    })();
 
     syncInstallButton();
     syncCompactLayout();
@@ -1621,12 +1733,14 @@ async function flushSaveToServer(year, month) {
     }
 
 function logout() {
-        try {
+        // Pushes stop with the session; the unsubscribe goes out before the session is revoked.
+        const pushOff = disablePushNotifications({ quiet: true }).catch(() => {});
+        pushOff.finally(() => {
             apiFetch('/api/auth/logout', {
                 method: 'POST',
                 keepalive: true,
             }).catch(() => {});
-        } catch (e) {}
+        });
 
         try { unloadAiChat({ forget: true }); } catch (e) {}
 
@@ -9919,6 +10033,7 @@ const uiActions = {
   deleteActiveCategory,
   installApp,
   closeInstallModal,
+  togglePushNotifications,
   openYearTracks,
   closeFamilyTree,
   closeYearTracks,

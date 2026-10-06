@@ -52,6 +52,7 @@
                     <div id="nav-more-menu" class="nav-more-menu" role="menu">
                         <div id="nav-more-modules" class="nav-more-modules" hidden></div>
                         <button type="button" role="menuitem" id="nav-more-install" class="nav-more-item is-accent" data-action="installApp" hidden>Встановити на екран</button>
+                        <button type="button" role="menuitem" id="nav-more-push" class="nav-more-item" data-action="togglePushNotifications" hidden>Увімкнути сповіщення</button>
                         <button type="button" role="menuitem" class="nav-more-item" data-action="openLlmSettings">Ключ ШІ</button>
                         <button type="button" role="menuitem" class="nav-more-item" data-action="logout">Вийти</button>
                         <button type="button" role="menuitem" class="nav-more-item is-danger" data-action="deleteProfile">Видалити дані</button>
@@ -443,6 +444,7 @@
             <li>Оберіть <b>«На початковий екран»</b>.</li>
             <li>Натисніть <b>«Додати»</b> — Скриня відкриватиметься як застосунок, на весь екран.</li>
         </ol>
+        <p id="install-push-note" class="install-note" hidden>Сповіщення на iPhone працюють лише у встановленій Скрині: відкрийте її з екрана «Додому» й увімкніть у меню «⋯».</p>
         <button type="button" class="btn-modal-done" data-action="closeInstallModal">Зрозуміло</button>
     </div>
 </div>

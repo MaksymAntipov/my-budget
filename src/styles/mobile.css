@@ -85,7 +85,7 @@ html:not(.is-compact) .compact-only { display: none !important; }
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    min-width: 220px;
+    min-width: 240px;
     padding: 6px;
     border-radius: 16px;
     background: rgba(36, 36, 38, 0.98);
@@ -97,6 +97,7 @@ html:not(.is-compact) .compact-only { display: none !important; }
 .nav-more-modules { padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .nav-more-item {
     display: flex;
+    white-space: nowrap;
     align-items: center;
     width: 100%;
     min-height: 44px;
@@ -523,3 +524,6 @@ body:has(.mono-queue.active:not([hidden])) .mono-snacks { top: 112px; }
 .install-steps { margin: 0 0 8px; padding-left: 22px; display: grid; gap: 12px; color: var(--text-secondary); font-size: 16px; line-height: 1.45; }
 .install-steps b { color: var(--text-primary); }
 .install-steps svg { vertical-align: -4px; color: var(--sys-blue); }
+.nav-more-item.is-on { color: var(--sys-green); }
+.install-note { margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; background: rgba(10, 132, 255, 0.1); color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
+.install-note[hidden] { display: none; }
