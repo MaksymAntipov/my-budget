@@ -13,6 +13,7 @@ import {
   EDGE_OUTSET,
   EDGE_INSET_END,
 } from './layout.js';
+import { bindTouchGestures } from '../canvas-touch.js';
 
 /**
  * @param {HTMLElement} root
@@ -111,7 +112,7 @@ export function renderYearTracksApp(root, handlers) {
               : renderCanvas(board, selectedTrackId, selectedStageId)
           }
         </div>
-        <aside class="yt-panel" data-yt-panel ${panelOpen ? '' : 'hidden'}>
+        <aside class="yt-panel" data-yt-panel ${panelOpen ? '' : 'hidden'} ${selectedTrack && selectedStage ? '' : 'data-empty'}>
           <div class="yt-panel-toolbar">
             <button type="button" class="yt-btn yt-btn-ghost yt-panel-collapse" data-yt-panel-toggle aria-label="Сховати панель">›</button>
           </div>
@@ -562,7 +563,11 @@ function renderPanel(track, stage, stageIndex) {
   if (!track || !stage) {
     return `
       <h3>Деталі</h3>
-      <p class="yt-hint">Оберіть стадію на полотні. Зум: Ctrl/⌘+scroll або pinch. Панорама: scroll / Space+drag. Перетягніть трек на правий край іншого, щоб зробити «потім».</p>`;
+      <p class="yt-hint">${
+        window.matchMedia('(pointer: coarse)').matches
+          ? 'Торкніться стадії, щоб відкрити деталі. Масштаб — двома пальцями, полотно рухається одним. Перетягніть трек на правий край іншого, щоб зробити «потім».'
+          : 'Оберіть стадію на полотні. Зум: Ctrl/⌘+scroll або pinch. Панорама: scroll / Space+drag. Перетягніть трек на правий край іншого, щоб зробити «потім».'
+      }</p>`;
   }
 
   const isTitle = stageIndex === 0;
@@ -896,6 +901,18 @@ function bindCanvasInteractions(root, { board, onSelect, onCycleStageStatus, onM
   });
 
   // Figma-like: Ctrl/⌘ + wheel / trackpad pinch → zoom; plain wheel → pan
+  bindTouchGestures(wrap, {
+    startPan,
+    endPan,
+    isPanning: () => panning,
+    pinch: (factor, clientX, clientY, dx, dy) => {
+      zoomAt(wrap, factor, { clientX, clientY });
+      panOffsetX += dx;
+      panOffsetY += dy;
+      applyViewportTransform(canvas);
+    },
+  });
+
   wrap.addEventListener(
     'wheel',
     (e) => {

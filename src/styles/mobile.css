@@ -508,9 +508,9 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .is-compact .debt-form-row > :not(:first-child) { flex: 1 1 0 !important; min-width: 0; }
 
 /* ---------- Forms: no iOS zoom, thumb-sized controls ---------- */
-.is-compact input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-.is-compact select,
-.is-compact textarea { font-size: max(16px, 1em); }
+html.is-compact input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.is-compact select:not([multiple]),
+html.is-compact textarea:not([hidden]) { font-size: max(16px, 1em); }
 .is-compact .limit-mode-btn { min-height: 40px; padding: 0 14px; }
 .is-compact .undo-toast-btn { min-height: 40px; padding: 0 12px; }
 .is-compact .undo-toast { bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 12px); }
@@ -527,3 +527,59 @@ body:has(.mono-queue.active:not([hidden])) .mono-snacks { top: 112px; }
 .nav-more-item.is-on { color: var(--sys-green); }
 .install-note { margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; background: rgba(10, 132, 255, 0.1); color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
 .install-note[hidden] { display: none; }
+
+/* ---------- «Мої треки» and «Сімейне дерево» ---------- */
+.is-compact :is(.yt-year-switch, .yt-zoom-switch, .ft-zoom-switch) button { min-width: 40px; min-height: 40px; }
+.is-compact :is(.yt-btn, .ft-btn) { min-height: 40px; }
+
+@media (max-width: 699px) {
+    /* Phones: the canvas takes the screen; details slide up as a sheet once something is picked. */
+    .is-compact :is(.yt-header, .ft-header) {
+        padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;
+        gap: 8px;
+    }
+    .is-compact :is(.yt-header, .ft-header) .skrynia-switcher,
+    .is-compact :is(.yt-zoom-switch, .ft-zoom-switch),
+    .is-compact :is(.yt-save-status, .ft-save-status),
+    .is-compact .yt-header-actions [data-yt-panel-toggle],
+    .is-compact .ft-header-actions [data-ft-panel-toggle] { display: none !important; }
+    /* Two tidy rows: [title ······ ✕] / [year or prompt ··· + add]. */
+    .is-compact :is(.yt-header, .ft-header) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "title close" "left right";
+        align-items: center;
+    }
+    .is-compact :is(.yt-header-left, .yt-header-actions, .ft-header-left, .ft-header-actions) { display: contents; }
+    .is-compact :is(.yt-title, .ft-title) { grid-area: title; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .is-compact :is([data-yt-close], [data-ft-close]) { grid-area: close; justify-self: end; min-width: 44px; min-height: 44px; }
+    .is-compact .yt-year-switch, .is-compact [data-ft-export-prompt] { grid-area: left; justify-self: start; }
+    .is-compact :is([data-yt-add], [data-ft-add]) { grid-area: right; justify-self: end; }
+    .is-compact :is(.yt-panel-toolbar, .ft-panel-toolbar) { margin: -6px -8px -10px 0; }
+    .is-compact :is(.yt-body, .ft-body) {
+        position: relative;
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-rows: minmax(0, 1fr) !important;
+    }
+    .is-compact :is(.yt-panel, .ft-panel) {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        max-height: 62%;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: none;
+        border-radius: 20px 20px 0 0;
+        background: #1c1c1e;
+        box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+    .is-compact :is(.yt-panel, .ft-panel)[data-empty] { display: none !important; }
+    /* The «›» collapse arrow points down: it lowers the sheet. */
+    .is-compact :is(.yt-panel-collapse, .ft-panel-collapse) {
+        width: 44px;
+        height: 44px;
+        transform: rotate(90deg);
+    }
+}

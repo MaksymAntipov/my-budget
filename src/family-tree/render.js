@@ -10,6 +10,7 @@ import {
   relationLabelToSelf,
 } from './model.js';
 import { computeFamilyLayout } from './layout.js';
+import { bindTouchGestures } from '../canvas-touch.js';
 
 /**
  * @param {HTMLElement} root
@@ -83,7 +84,7 @@ export function renderFamilyTreeApp(root, handlers) {
               : renderCanvas(tree, layout, selectedId)
           }
         </div>
-        <aside class="ft-panel" data-ft-panel ${panelOpen ? '' : 'hidden'}>
+        <aside class="ft-panel" data-ft-panel ${panelOpen ? '' : 'hidden'} ${selected ? '' : 'data-empty'}>
           <div class="ft-panel-toolbar">
             <button type="button" class="ft-btn ft-btn-ghost ft-panel-collapse" data-ft-panel-toggle aria-label="Сховати панель">›</button>
           </div>
@@ -775,6 +776,18 @@ function bindCanvasInteractions(root, { onSelect, onMovePerson, tree }) {
   // Prevent browser image/text drag while panning
   wrap.addEventListener('dragstart', (e) => {
     if (spaceHeld || panning) e.preventDefault();
+  });
+
+  bindTouchGestures(wrap, {
+    startPan,
+    endPan,
+    isPanning: () => panning,
+    pinch: (factor, clientX, clientY, dx, dy) => {
+      zoomAt(wrap, factor, { clientX, clientY });
+      panOffsetX += dx;
+      panOffsetY += dy;
+      applyViewportTransform(canvas);
+    },
   });
 
   wrap.addEventListener(
