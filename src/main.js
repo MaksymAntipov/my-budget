@@ -8,6 +8,13 @@ import { initRunway } from './runway/index.js';
 
 bindUiActions(document);
 
+// Installable app + offline page (public/sw.js). Not in `vite dev`, where it would cache dev modules.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('Service worker not registered', err));
+  });
+}
+
 const getSession = () =>
   typeof window.__getBudgetSession === 'function' ? window.__getBudgetSession() : {};
 

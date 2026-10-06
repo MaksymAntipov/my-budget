@@ -928,6 +928,51 @@ async function fetchAvailableProfiles() {
             <ul class="flow-bar-legend">${shown.map((part) => `<li><span class="flow-bar-dot" style="background: ${part.color};"></span>${part.label}<b class="tabular">${formatLimitMoney(Math.round(part.value))}</b></li>`).join('')}</ul>`;
     }
 
+    // ---------- Install as an app (PWA) ----------
+    let deferredInstallPrompt = null;
+
+    function isStandaloneApp() {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function isIosDevice() {
+        return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    /** Chrome/Android offer their own prompt; iOS only installs from Safari's share sheet. */
+    function syncInstallButton() {
+        const btn = document.getElementById('nav-more-install');
+        if (btn) btn.hidden = isStandaloneApp() || !(deferredInstallPrompt || isIosDevice());
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        syncInstallButton();
+    });
+    window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        syncInstallButton();
+    });
+
+    async function installApp() {
+        if (deferredInstallPrompt) {
+            const prompt = deferredInstallPrompt;
+            deferredInstallPrompt = null;
+            prompt.prompt();
+            await prompt.userChoice.catch(() => null);
+            syncInstallButton();
+            return;
+        }
+        document.getElementById('install-modal')?.classList.add('active');
+    }
+
+    function closeInstallModal(e) {
+        if (e && e.target?.id !== 'install-modal') return;
+        document.getElementById('install-modal')?.classList.remove('active');
+    }
+
+    syncInstallButton();
     syncCompactLayout();
     compactMq.addEventListener('change', () => {
         syncCompactLayout();
@@ -9872,6 +9917,8 @@ const uiActions = {
   toggleMonthPicker,
   toggleNavMore,
   deleteActiveCategory,
+  installApp,
+  closeInstallModal,
   openYearTracks,
   closeFamilyTree,
   closeYearTracks,

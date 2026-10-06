@@ -114,6 +114,8 @@ html:not(.is-compact) .compact-only { display: none !important; }
 .nav-more-item:hover, .nav-more-item:focus-visible { background: rgba(255, 255, 255, 0.08); }
 .nav-more-item.is-active { color: var(--sys-blue); }
 .nav-more-item.is-danger { color: var(--sys-red); }
+.nav-more-item.is-accent { color: var(--sys-blue); }
+.nav-more-item[hidden] { display: none; }
 
 .month-stepper {
     display: flex;
@@ -515,3 +517,9 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 /* A sync in progress and a new purchase can show at once: the purchase goes under the sync card. */
 body:has(.mono-queue.active:not([hidden])) .mono-snacks { top: 112px; }
 .is-compact body:has(.mono-queue.active:not([hidden])) .mono-snacks { top: calc(env(safe-area-inset-top, 0px) + 104px); }
+
+/* «Скриня на екрані «Додому»» — iOS install steps */
+.install-sheet-icon { width: 72px; height: 72px; border-radius: 18px; margin: 0 auto 16px; display: block; }
+.install-steps { margin: 0 0 8px; padding-left: 22px; display: grid; gap: 12px; color: var(--text-secondary); font-size: 16px; line-height: 1.45; }
+.install-steps b { color: var(--text-primary); }
+.install-steps svg { vertical-align: -4px; color: var(--sys-blue); }

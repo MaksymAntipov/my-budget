@@ -4,3 +4,14 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://www.gstatic.com; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/ https://www.gstatic.com/charts/ https://static.cloudflareinsights.com; connect-src 'self' https://api.myskrynia.com.ua https://bank.gov.ua https://cloudflareinsights.com; font-src 'self' data:; upgrade-insecure-requests
+
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache
+
+/icons/*
+  Cache-Control: public, max-age=604800
