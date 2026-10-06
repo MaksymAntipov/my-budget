@@ -1,6 +1,6 @@
 {
-  "name": "MySkrynia — Скриня",
-  "short_name": "Скриня",
+  "name": "MySkrynia",
+  "short_name": "MySkrynia",
   "description": "Аналіз та стратегія вашого капіталу",
   "lang": "uk",
   "id": "/",
@@ -11,8 +11,23 @@
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
