@@ -3,8 +3,9 @@
  * Pages always come from the network (a deploy shows up at once); only the hashed,
  * immutable /assets/* files are cached. The API is another origin and never touched.
  */
-const CACHE = 'skrynia-v1';
-const OFFLINE_URL = '/offline.html';
+const CACHE = 'skrynia-v2';
+// Pages serves offline.html at /offline (a redirect can't stand in for a navigation).
+const OFFLINE_URL = '/offline';
 const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png'];
 const MAX_ASSETS = 60;
 
