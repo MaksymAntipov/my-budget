@@ -1156,7 +1156,7 @@
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </div>
             <h2 class="auth-title">Вхід у систему</h2>
-            <p class="auth-subtitle">Введіть email для отримання коду</p>
+            <p class="auth-subtitle">Надішлемо код на пошту. Вперше тут — після коду створимо профіль.</p>
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px;">
@@ -1164,10 +1164,7 @@
             <div id="login-error" style="color: var(--sys-red); font-size: 14px; text-align: center; display: none; font-weight: 600;"></div>
         </div>
         
-        <button class="btn-init-primary" id="btn-login-send" data-action="sendAuthOtp" data-args='[false]'>Отримати код</button>
-        <button class="btn-init-secondary" style="margin-top: 12px;" data-action="showCreateProfileFromAuth">
-            Створити новий профіль
-        </button>
+        <button class="btn-init-primary" id="btn-login-send" data-action="sendAuthOtp">Отримати код</button>
     </div>
     <div class="auth-footer-security">
         <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1184,11 +1181,11 @@
             <div class="auth-icon">
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
             </div>
-            <h2 class="auth-title">Новий профіль</h2>
-            <p class="auth-subtitle">Почніть керувати бюджетом</p>
+            <h2 class="auth-title" id="create-profile-title">Новий профіль</h2>
+            <p class="auth-subtitle" id="create-profile-subtitle">Як вас звати?</p>
         </div>
         
-        <div class="type-selector">
+        <div class="type-selector" id="create-profile-types">
             <button id="btn-type-personal" class="type-btn active" data-action="selectProfileType" data-args='["personal"]'>Для себе</button>
             <button id="btn-type-business" class="type-btn" data-action="selectProfileType" data-args='["business"]'>Для бізнесу</button>
         </div>
@@ -1197,12 +1194,11 @@
         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
             <input type="text" id="new-user-name" class="ios-input" placeholder="Ім'я / Назва">
             <input type="text" id="new-user-surname" class="ios-input" placeholder="Прізвище / Сфера">
-            <input type="email" id="new-user-email" class="ios-input" placeholder="Email (для входу)">
         </div>
         
         <div id="create-error" style="color: white; font-size: 14px; margin-bottom: 20px; text-align: center; display: none; font-weight: 700; background: linear-gradient(135deg, #ff453a, #d70015); padding: 14px; border-radius: 14px; box-shadow: 0 4px 12px rgba(255,69,58,0.3);"></div>
 
-        <button class="btn-init-primary" id="btn-create-send" style="height: 60px; font-size: 18px;" data-action="sendAuthOtp" data-args='[true]'>Отримати код</button>
+        <button class="btn-init-primary" id="btn-create-profile" style="height: 60px; font-size: 18px;" data-action="submitNewProfile">Створити профіль</button>
         <button class="btn-init-secondary" style="background: transparent;" data-action="hideCreateProfile">Скасувати</button>
     </div>
     <div class="auth-footer-security">

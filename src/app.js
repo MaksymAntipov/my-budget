@@ -443,23 +443,67 @@ function loadAuthStats() { /* /api/stats removed */ }
         
     }
 
-    function showCreateProfile() {
-        document.getElementById('create-profile-overlay').classList.add('active');
+    // 'first': the code is verified but the email has no profile yet; 'add': a second profile from the switcher.
+    let createProfileMode = 'first';
+
+    const PROFILE_TYPE_TITLES = { personal: 'Особистий профіль', business: 'Бізнес-профіль' };
+
+    function showCreateProfile(mode = 'first', type = 'personal') {
+        createProfileMode = mode;
         document.getElementById('new-user-name').value = '';
         document.getElementById('new-user-surname').value = '';
-        document.getElementById('new-user-email').value = '';
         document.getElementById('create-error').style.display = 'none';
-        selectProfileType('personal'); 
-    }
-
-    function showCreateProfileFromAuth() {
-        document.getElementById('auth-overlay').classList.remove('active');
-        showCreateProfile();
+        document.getElementById('create-profile-types').style.display = mode === 'add' ? 'none' : '';
+        document.getElementById('create-profile-title').innerText = mode === 'add' ? PROFILE_TYPE_TITLES[type] : 'Новий профіль';
+        document.getElementById('create-profile-subtitle').innerText = mode === 'add'
+            ? 'Окремий бюджет на той самий email'
+            : 'Як вас звати?';
+        selectProfileType(type);
+        closeProfileSwitcher();
+        document.getElementById('create-profile-overlay').classList.add('active');
+        document.getElementById('new-user-name').focus();
     }
 
     function hideCreateProfile() {
         document.getElementById('create-profile-overlay').classList.remove('active');
-        if (!currentUser) showAuthScreen();
+        // Without a profile the open session is of no use: sign out back to the email screen.
+        if (createProfileMode === 'first' && !currentUser) logout();
+    }
+
+    async function submitNewProfile() {
+        const errorDiv = document.getElementById('create-error');
+        const btn = document.getElementById('btn-create-profile');
+        const name = document.getElementById('new-user-name').value.trim();
+        const surname = document.getElementById('new-user-surname').value.trim();
+        const accountType = document.getElementById('new-user-type').value;
+        if (!name) return showError(errorDiv, "Введіть ім'я");
+
+        btn.disabled = true;
+        btn.innerText = 'Створення...';
+        try {
+            const response = await apiFetch('/api/profiles', {
+                method: 'POST',
+                body: JSON.stringify({ name, surname, account_type: accountType }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                document.getElementById('create-profile-overlay').classList.remove('active');
+                logout();
+                return;
+            }
+            if (!response.ok || !data.user) return showError(errorDiv, data.error || 'Не вдалося створити профіль');
+
+            availableProfiles = data.profiles || [data.user];
+            localStorage.setItem('budget_available_profiles', JSON.stringify(availableProfiles));
+            document.getElementById('create-profile-overlay').classList.remove('active');
+            if (currentUser) await switchProfile(data.user);
+            else await performLogin(data.user, { openHub: true });
+        } catch (err) {
+            showError(errorDiv, "Помилка з'єднання");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Створити профіль';
+        }
     }
 
     function selectProfileType(type) {
@@ -468,23 +512,12 @@ function loadAuthStats() { /* /api/stats removed */ }
         document.getElementById('btn-type-business').classList.toggle('active', type === 'business');
     }
 
-    async function sendAuthOtp(isRegister) {
-        const errorDiv = document.getElementById(isRegister ? 'create-error' : 'login-error');
-        const btnId = isRegister ? 'btn-create-send' : 'btn-login-send';
-        const btn = document.getElementById(btnId);
-        
-        let payload = { isRegister };
-        
-        if (isRegister) {
-            payload.name = document.getElementById('new-user-name').value.trim();
-            payload.surname = document.getElementById('new-user-surname').value.trim();
-            payload.email = document.getElementById('new-user-email').value.trim();
-            payload.account_type = document.getElementById('new-user-type').value;
-            if (!payload.name || !payload.email) return showError(errorDiv, 'Заповніть обов\'язкові поля');
-        } else {
-            payload.email = document.getElementById('login-email').value.trim();
-            if (!payload.email) return showError(errorDiv, 'Введіть email');
-        }
+    /** One door for everyone: the code goes to any email; a missing profile is created after it. */
+    async function sendAuthOtp(resendTo) {
+        const errorDiv = document.getElementById('login-error');
+        const btn = document.getElementById('btn-login-send');
+        const payload = { email: typeof resendTo === 'string' ? resendTo : document.getElementById('login-email').value.trim() };
+        if (!payload.email) return showError(errorDiv, 'Введіть email');
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(payload.email)) {
@@ -505,12 +538,9 @@ function loadAuthStats() { /* /api/stats removed */ }
                 if (response.status === 429 && (data.retryAfter || (data.error && data.error.includes('через')))) {
                     tempAuthData = payload;
                     document.getElementById('auth-overlay').classList.remove('active');
-                    document.getElementById('create-profile-overlay').classList.remove('active');
                     
                     const seconds = Number(data.retryAfter) || parseInt((data.error.match(/\d+/) || [])[0], 10) || 600;
-                    document.getElementById('otp-subtitle').innerText = isRegister
-                        ? `Код вже був відправлений на ${payload.email}. Він ще діє.`
-                        : `Якщо акаунт з ${payload.email} існує, попередній код ще діє. Перевірте пошту.`;
+                    document.getElementById('otp-subtitle').innerText = `Код на ${payload.email} уже надіслано, він ще діє. Перевірте вхідні та «Спам».`;
                     document.getElementById('otp-input').value = '';
                     document.getElementById('otp-error').style.display = 'none';
                     startOtpCountdown('btn-otp-resend', seconds);
@@ -525,11 +555,8 @@ function loadAuthStats() { /* /api/stats removed */ }
             } else {
                 tempAuthData = payload;
                 document.getElementById('auth-overlay').classList.remove('active');
-                document.getElementById('create-profile-overlay').classList.remove('active');
                 
-                document.getElementById('otp-subtitle').innerText = isRegister
-                    ? `Код відправлено на ${payload.email}`
-                    : `Якщо акаунт з ${payload.email} існує, код надіслано на пошту. Перевірте вхідні та «Спам».`;
+                document.getElementById('otp-subtitle').innerText = `Код надіслано на ${payload.email}. Перевірте вхідні та «Спам».`;
                 document.getElementById('otp-input').value = '';
                 document.getElementById('otp-error').style.display = 'none';
                 startOtpCountdown('btn-otp-resend', 600);
@@ -571,12 +598,14 @@ function loadAuthStats() { /* /api/stats removed */ }
                 btn.innerText = 'Підтвердити';
                 btn.disabled = false;
                 
-                                if (data.users) {
+                if (data.users) {
                     availableProfiles = data.users;
                     localStorage.setItem('budget_available_profiles', JSON.stringify(availableProfiles));
                 }
 
-                if (data.users && data.users.length > 1) {
+                if (data.needsProfile || !data.users?.length) {
+                    showCreateProfile('first');
+                } else if (data.users.length > 1) {
                     showAccountSelect(data.users);
                 } else {
                     await performLogin(data.users ? data.users[0] : data.user, { openHub: true });
@@ -644,9 +673,7 @@ function loadAuthStats() { /* /api/stats removed */ }
     }
 
     function resendOtp() {
-        if (tempAuthData) {
-            sendAuthOtp(tempAuthData.isRegister);
-        }
+        if (tempAuthData) sendAuthOtp(tempAuthData.email);
     }
 
     function sanitizeOtpInput(value) {
@@ -667,11 +694,7 @@ function loadAuthStats() { /* /api/stats removed */ }
             resendBtn.innerText = 'Відправити повторно';
         }
         document.getElementById('otp-overlay').classList.remove('active');
-        if (tempAuthData && tempAuthData.isRegister) {
-            document.getElementById('create-profile-overlay').classList.add('active');
-        } else {
-            document.getElementById('auth-overlay').classList.add('active');
-        }
+        document.getElementById('auth-overlay').classList.add('active');
         tempAuthData = null;
     }
 
@@ -715,8 +738,9 @@ async function fetchAvailableProfiles() {
         dropdown.innerHTML = '';
 
         const otherProfiles = availableProfiles.filter(p => String(p.id) !== String(currentUser?.id));
+        const missingType = missingProfileType();
 
-        if (otherProfiles.length === 0) {
+        if (otherProfiles.length === 0 && !missingType) {
             badge.classList.remove('badge-type--switchable');
             badge.disabled = true;
             badge.removeAttribute('title');
@@ -724,7 +748,7 @@ async function fetchAvailableProfiles() {
         }
 
         badge.disabled = false;
-        badge.title = 'Перемкнути профіль';
+        badge.title = otherProfiles.length ? 'Перемкнути профіль' : 'Додати профіль';
         badge.classList.add('badge-type--switchable');
         otherProfiles.forEach(p => {
             const isBiz = p.account_type === 'business';
@@ -741,11 +765,29 @@ async function fetchAvailableProfiles() {
             });
             dropdown.appendChild(btn);
         });
+        if (missingType) {
+            const add = document.createElement('button');
+            add.type = 'button';
+            add.className = 'profile-switcher-item profile-switcher-item--add';
+            add.innerHTML = `<span>+ ${PROFILE_TYPE_TITLES[missingType]}</span>`;
+            add.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showCreateProfile('add', missingType);
+            });
+            dropdown.appendChild(add);
+        }
+    }
+
+    /** The profile type this email does not have yet (one personal and one business per email). */
+    function missingProfileType() {
+        if (!currentUser) return null;
+        const types = new Set([currentUser.account_type || 'personal', ...availableProfiles.map((p) => p.account_type)]);
+        return ['personal', 'business'].find((type) => !types.has(type)) || null;
     }
 
     function toggleProfileSwitcher(e) {
         if (e) e.stopPropagation();
-        if (availableProfiles.filter(p => String(p.id) !== String(currentUser?.id)).length === 0) return;
+        if (availableProfiles.filter(p => String(p.id) !== String(currentUser?.id)).length === 0 && !missingProfileType()) return;
         document.getElementById('profile-switcher-dropdown').classList.toggle('open');
     }
 
@@ -964,7 +1006,7 @@ async function performLogin(user, { openHub = false } = {}) {
         const isBiz = currentUser && currentUser.account_type === 'business';
         
         const badge = document.getElementById('account-type-badge');
-        const canSwitch = availableProfiles.some(p => String(p.id) !== String(currentUser?.id));
+        const canSwitch = availableProfiles.some(p => String(p.id) !== String(currentUser?.id)) || Boolean(missingProfileType());
         badge.style.display = 'inline-flex';
         badge.innerHTML = (isBiz ? 'Бізнес' : 'Фіз. особа') + (canSwitch ? ' <span style="opacity:0.7;font-size:9px;">▾</span>' : '');
         badge.className = isBiz ? 'badge-type badge-business' : 'badge-type';
@@ -9715,7 +9757,7 @@ const uiActions = {
   showAuthScreen,
   showConfirm,
   showCreateProfile,
-  showCreateProfileFromAuth,
+  submitNewProfile,
   showError,
   showGrowthStep,
   showSkryniaHub,

@@ -361,6 +361,8 @@
         .profile-switcher-item:hover { background: rgba(255,255,255,0.08); }
         .profile-switcher-item--biz { color: var(--sys-green); }
         .profile-switcher-item--personal { color: var(--sys-blue); }
+        .profile-switcher-item--add { color: var(--text-secondary); }
+        .profile-switcher-item + .profile-switcher-item--add { border-top: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 10px 10px; }
 
         .skrynia-switcher { position: relative; z-index: 30; }
         .skrynia-switcher-btn {
