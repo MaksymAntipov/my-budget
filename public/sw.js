@@ -3,10 +3,10 @@
  * Pages always come from the network (a deploy shows up at once); only the hashed,
  * immutable /assets/* files are cached. The API is another origin and never touched.
  */
-const CACHE = 'skrynia-v3';
+const CACHE = 'skrynia-v4';
 // Pages serves offline.html at /offline (a redirect can't stand in for a navigation).
 const OFFLINE_URL = '/offline';
-const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png'];
+const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png?v=2'];
 const MAX_ASSETS = 60;
 
 self.addEventListener('install', (event) => {
@@ -63,8 +63,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/badge-96.png',
+      icon: '/icons/icon-192.png?v=2',
+      badge: '/icons/badge-96.png?v=2',
       tag: data.tag || undefined,
       renotify: Boolean(data.tag),
       data: { tab: data.tab || '' },
