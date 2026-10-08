@@ -1240,8 +1240,15 @@
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .modal-overlay.active { opacity: 1; visibility: visible; }
+        /* Closing: the card shrinks away first and the backdrop clears right after it,
+           instead of everything vanishing with the backdrop. Opening keeps the spring. */
+        .modal-overlay:not(.active) { pointer-events: none; transition: opacity 0.22s ease 0.08s, visibility 0s linear 0.3s; }
+        .modal-overlay:not(.active) .modal-content { transition: transform 0.24s cubic-bezier(0.4, 0, 1, 1); }
         .modal-content { background: rgba(28, 28, 30, 0.95); width: 90%; max-width: 500px; border-radius: 36px; padding: 36px; box-shadow: 0 32px 64px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); transform: scale(0.9) translateY(30px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 85vh; display: flex; flex-direction: column; color: white;}
         .modal-overlay.active .modal-content { transform: scale(1) translateY(0); }
+        @media (prefers-reduced-motion: reduce) {
+            .modal-overlay, .modal-overlay .modal-content { transition-duration: 0.01s !important; transition-delay: 0s !important; }
+        }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .modal-title-group h3 { margin: 0; font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #ffffff 0%, #a1a1a6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .modal-total { font-size: 16px; color: var(--text-secondary); font-weight: 600; margin-top: 6px; }
@@ -2811,10 +2818,42 @@
             flex: 1;
             min-width: 0;
         }
-        .income-mono-main .income-name {
-            flex: 1;
-            min-width: 0;
-            margin: 0;
+        /* Read-only Monobank income: sender (up to two lines) and the sender's message under it. */
+        .income-mono-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; padding: 4px 0; }
+        .income-mono-name,
+        .income-mono-comment {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            overflow-wrap: anywhere;
+        }
+        .income-mono-name { font-size: 16px; font-weight: 600; line-height: 1.3; color: var(--text-primary); }
+        .income-mono input.income-amount { flex: none; min-width: 0; box-sizing: border-box; color: #30d158; }
+        .income-mono .income-currency-lock { width: auto; padding: 0 4px; }
+        .income-mono-comment { color: var(--text-secondary); font-size: 13px; line-height: 1.35; }
+        /* Debts on a computer: wide, the list on the left takes the full height, the form on the right. */
+        html:not(.is-compact) .debts-sheet { max-width: 1000px !important; width: 92%; max-height: 88vh; }
+        html:not(.is-compact) .debts-body {
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+            grid-template-rows: minmax(0, 1fr);
+            gap: 24px;
+            align-items: start;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        html:not(.is-compact) .debts-body > #debts-list { max-height: 100% !important; min-height: 0; margin-bottom: 0 !important; }
+        html:not(.is-compact) .debts-body .debt-form-row { flex-wrap: wrap; }
+        html:not(.is-compact) .debts-body .debt-form-row > :first-child { flex: 1 1 100% !important; }
+        html:not(.is-compact) .debts-body .debt-form-row > :not(:first-child) { flex: 1 1 0 !important; min-width: 0; }
+        .income-day {
+            margin: 10px 4px 2px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
         .expense-pro-name-row .expense-pro-input { margin-bottom: 0; }
         .mono-card-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
@@ -2971,7 +3010,6 @@
             font-variant-numeric: tabular-nums;
         }
         .mono-snack-amount.is-income { color: #30d158; }
-        .income-mono .income-name[readonly],
         .income-mono .income-amount[readonly] {
             pointer-events: none;
         }
@@ -2994,6 +3032,12 @@
             margin-top: 3px;
             font-size: 13px;
             color: rgba(255,255,255,0.6);
+        }
+        .mono-snack-comment {
+            margin-top: 3px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.85);
+            overflow-wrap: anywhere;
         }
         @keyframes mono-snack-in {
             from { opacity: 0; transform: translateY(-24px) scale(0.96); }
@@ -3448,6 +3492,22 @@
         .mr-open-rules > span { display: flex; flex-direction: column; gap: 2px; }
         .mr-open-rules strong { font-size: 15px; }
         .mr-open-rules span span { color: var(--text-secondary); font-size: 13px; }
+        /* Old months and a full re-pull: a quiet link, the current month syncs by itself. */
+        .mono-pull-link {
+            display: block;
+            min-height: 44px;
+            margin: 4px 0 8px;
+            padding: 0;
+            background: none;
+            border: none;
+            color: var(--sys-blue);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+        }
+        .mono-pull-link:disabled { color: var(--text-tertiary); cursor: default; }
         @media (max-width: 600px) {
             .btn-sub-move { height: 48px; }
             .mr-chip { max-width: 48%; }

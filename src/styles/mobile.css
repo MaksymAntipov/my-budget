@@ -13,7 +13,7 @@ html:not(.is-compact) .compact-only { display: none !important; }
 }
 
 .is-compact body {
-    padding: 0 0 calc(var(--tabbar-h) + var(--safe-bottom) + 24px);
+    padding: 0 0 calc(var(--tabbar-h) + var(--safe-bottom) + var(--promo-h, 0px) + 24px);
     background-attachment: scroll;
 }
 
@@ -57,9 +57,10 @@ html:not(.is-compact) .compact-only { display: none !important; }
 .is-compact #profile-type-container { margin-left: 0 !important; }
 /* The profile switch reads as a link under the name, with room for a thumb. */
 .is-compact #account-type-badge {
-    margin: -6px 0 -6px -8px;
-    padding: 6px 8px;
-    min-height: 32px;
+    /* 44px to tap, while the negative margin keeps the header as compact as before. */
+    margin: -12px 0 -12px -8px;
+    padding: 12px 8px;
+    min-height: 44px;
     background: none;
     border: none;
     font-size: 13px;
@@ -93,7 +94,9 @@ html:not(.is-compact) .compact-only { display: none !important; }
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
     z-index: 2000;
 }
-.nav-more-menu.open { display: block; }
+.nav-more-menu.open { display: block; animation: menu-pop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: top right; }
+@keyframes menu-pop { from { opacity: 0; transform: translateY(-6px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) { .nav-more-menu.open { animation: none; } }
 .nav-more-modules { padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .nav-more-item {
     display: flex;
@@ -158,6 +161,18 @@ html.is-compact[data-tab="income"] [data-tab]:not([data-tab="income"]),
 html.is-compact[data-tab="expenses"] [data-tab]:not([data-tab="expenses"]),
 html.is-compact[data-tab="summary"] [data-tab]:not([data-tab="summary"]) { display: none !important; }
 html.is-compact:not([data-tab="expenses"]) .mobile-fab { display: none !important; }
+/* «Новий місяць» on phones: in the page flow, so on a short screen the page scrolls to its
+   buttons instead of leaving them under the tab bar; nothing to add a category to yet. */
+.is-compact .init-overlay.active {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin: 4px auto 0;
+    transform: none;
+    animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.is-compact .init-card { padding: 28px 20px; }
+.is-compact body:has(.init-overlay.active) .mobile-fab { display: none !important; }
 .is-compact .left-panel { display: flex; flex-direction: column; gap: 12px; }
 .is-compact .glass-card { padding: 20px 16px; border-radius: 24px; }
 .is-compact h1 { font-size: 24px; margin-bottom: 16px; }
@@ -267,13 +282,20 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
     height: 36px;
     margin: 0;
     padding: 0 4px;
+    text-overflow: ellipsis;
     background: transparent;
     font-size: 16px;
     font-weight: 700;
 }
+/* Runs under the 84px currency column up to the 36px ✕, which sits on top of it. */
+.is-compact .income-row > input.income-name,
+.is-compact .income-row > .income-mono-main { grid-column: 1 / -1; grid-row: 1; padding-right: 44px; }
+.is-compact .income-mono-name { font-weight: 700; }
 .is-compact .income-row .income-delete {
     grid-area: del;
     justify-self: end;
+    position: relative;
+    z-index: 1;
     width: 36px !important;
     height: 36px !important;
     border-radius: 18px !important;
@@ -334,6 +356,14 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .is-compact .expense-pro-tags > * { margin: 0 !important; }
 .is-compact .expense-pro-trend .trend-badge { grid-column: 2; grid-row: 2; justify-self: end; }
 .is-compact .expense-limit-over { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+/* Phones: the name gets its own full-width line (it is an input and cannot wrap),
+   the sum and its trend go under it, the tags last — nothing is squeezed or overlaps. */
+@media (max-width: 699px) {
+    .is-compact .expense-pro-name-row { grid-column: 1 / -1; }
+    .is-compact .expense-pro-amount { grid-column: 1; grid-row: 2; justify-self: start; }
+    .is-compact .expense-pro-tags { grid-column: 1 / -1; grid-row: 3; }
+    .is-compact .expense-limit-over { grid-row: 4; }
+}
 .is-compact .expense-pro-sparkline,
 .is-compact .expense-10y,
 .is-compact .top-expense-badge,
@@ -383,6 +413,18 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .wallet-tile-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
 .wallet-tile-value { font-size: 18px; font-weight: 800; }
 .wallet-tile.is-debt .wallet-tile-value { color: #ff6961; }
+.wallet-tile-value { white-space: nowrap; }
+
+/* Narrow phones (iPhone SE): labels stay on one line, long sums shrink or move down. */
+.is-compact .row-label,
+.is-compact .cf-row > span:first-child { white-space: nowrap; }
+.is-compact .cf-row { gap: 12px; }
+.is-compact .income-year-row { flex-wrap: wrap; column-gap: 12px; row-gap: 4px; }
+.is-compact .income-year-row > :last-child { margin-left: auto; text-align: right; }
+@media (max-width: 360px) {
+    .wallet-tile-value { font-size: 15px; }
+    .is-compact .cf-row { font-size: 14px; }
+}
 
 .is-compact #budgetChartContainer { display: none; }
 .flow-bar { margin: 4px 0 8px; }
@@ -415,6 +457,11 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
     overscroll-behavior: contain;
 }
 .is-compact .modal-overlay.active .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) { transform: none; }
+/* Closing: the sheet accelerates down and out, the backdrop clears as it leaves. */
+.is-compact .modal-overlay:not(.active) .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 1, 1);
+}
+.is-compact .modal-overlay:not(.active) { transition: opacity 0.2s ease 0.12s, visibility 0s linear 0.32s, background-color 0.3s; }
 .is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content)::before {
     content: '';
     display: block;
@@ -502,6 +549,20 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 }
 
 .is-compact .modal-items-container { overflow: visible; flex: none; padding-right: 0; }
+/* On phones the sheet itself scrolls: its parts keep their natural height — no squeezed
+   fields, no scroll inside a scroll. Strategy and the AI chat keep their own inner scroller. */
+.is-compact .modal-overlay:not(#growth-modal) .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.ai-chat-panel) > * { flex-shrink: 0; }
+.is-compact #jars-list,
+.is-compact #debts-list,
+.is-compact .employee-modal-fields { max-height: none !important; overflow: visible !important; padding-right: 0 !important; }
+/* Envelope and debt cards: ✕, sums and «Оплатити» are big enough for a thumb. */
+.is-compact :is(#jars-list, #debts-list) :is([data-action="deleteEnvelope"], [data-action="deleteDebt"], [data-action="hardDeleteDebt"]) {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 14px !important;
+}
+.is-compact :is(#jars-list, #debts-list) input { height: 44px !important; font-size: 16px !important; }
+.is-compact #debts-list button { min-height: 44px; }
 .is-compact .debt-form { padding: 16px !important; }
 .is-compact .debt-form-row { flex-wrap: wrap; }
 .is-compact .debt-form-row > :first-child { flex: 1 1 100% !important; }
@@ -511,7 +572,9 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 html.is-compact input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 html.is-compact select:not([multiple]),
 html.is-compact textarea:not([hidden]) { font-size: max(16px, 1em); }
-.is-compact .limit-mode-btn { min-height: 40px; padding: 0 14px; }
+.is-compact .limit-mode-btn { min-height: 40px; padding: 0 14px; white-space: nowrap; }
+/* Narrow phones: the «₴ сума / % доходу» switch drops under its title instead of wrapping. */
+.is-compact .limit-editor-head { flex-wrap: wrap; row-gap: 8px; }
 .is-compact .undo-toast-btn { min-height: 40px; padding: 0 12px; }
 .is-compact .undo-toast { bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 12px); }
 
@@ -521,6 +584,7 @@ body:has(.mono-queue.active:not([hidden])) .mono-snacks { top: 112px; }
 
 /* «Скриня на екрані «Додому»» — iOS install steps */
 .install-sheet-icon { width: 72px; height: 72px; border-radius: 18px; margin: 0 auto 16px; display: block; }
+.install-steps[hidden] { display: none; }
 .install-steps { margin: 0 0 8px; padding-left: 22px; display: grid; gap: 12px; color: var(--text-secondary); font-size: 16px; line-height: 1.45; }
 .install-steps b { color: var(--text-primary); }
 .install-steps svg { vertical-align: -4px; color: var(--sys-blue); }

@@ -27,6 +27,7 @@ import {
   txKey,
 } from './mono/routing.js';
 import { apiFetch } from './api.js';
+import { animateIn, animateOut, animateMoney, enableSheetSwipe } from './motion.js';
 import { syncFamilyTreeNavVisibility, openFamilyTree, closeFamilyTree } from './family-tree/index.js';
 import {
   syncYearTracksNavVisibility,
@@ -1040,11 +1041,23 @@ async function fetchAvailableProfiles() {
             : (deferredInstallPrompt ? 'Встановити' : 'Як встановити');
         promo.dataset.variant = variant;
         promo.hidden = false;
+        installPromoSpace.observe(promo);
+        syncInstallPromoSpace();
     }
 
     function hideInstallPromo() {
         const promo = document.getElementById('install-promo');
         if (promo) promo.hidden = true;
+        syncInstallPromoSpace();
+    }
+
+    // The card floats over the end of the page: reserve its height so the last rows
+    // can still scroll out from under it.
+    const installPromoSpace = new ResizeObserver(() => syncInstallPromoSpace());
+    function syncInstallPromoSpace() {
+        const promo = document.getElementById('install-promo');
+        const height = promo && !promo.hidden ? promo.offsetHeight + 12 : 0;
+        document.documentElement.style.setProperty('--promo-h', `${height}px`);
     }
 
     async function acceptInstallPromo() {
@@ -2033,6 +2046,7 @@ function logout() {
         applyMonthData();
         persistViewedPeriod();
         await saveData(true);
+        autoImportMonobank();
     }
 
     function clearCurrentMonth() {
@@ -2737,6 +2751,26 @@ function logout() {
         });
     }
 
+/** Monobank incomes under one header per day: «Сьогодні», «Вчора», «8 жовтня». */
+    function incomeDay(time) {
+        const d = new Date((Number(time) || 0) * 1000);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    }
+
+    function incomeDayLabel(time) {
+        const d = new Date((Number(time) || 0) * 1000);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (incomeDay(time) === incomeDay(Date.now() / 1000)) return 'Сьогодні';
+        if (incomeDay(time) === incomeDay(yesterday.getTime() / 1000)) return 'Вчора';
+        return d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
+    }
+
+    function incomeTime(time) {
+        if (!Number(time)) return '';
+        return new Date(Number(time) * 1000).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    }
+
 function renderIncomes() {
         const container = document.getElementById('incomes-container');
         if(!container) return;
@@ -2746,19 +2780,38 @@ function renderIncomes() {
         const isBiz = currentUser && currentUser.account_type === 'business';
         const incomes = ensureIncomeIds(appData[currentYear][currentMonth].incomes || []);
         appData[currentYear][currentMonth].incomes = incomes;
-        
-        incomes.forEach(inc => {
+
+        // Own sources first, then Monobank credits newest first, grouped by day.
+        const mono = incomes
+            .filter((inc) => inc.source === 'monobank')
+            .sort((a, b) => (Number(b.time) || 0) - (Number(a.time) || 0));
+        let lastDay = null;
+
+        [...incomes.filter((inc) => inc.source !== 'monobank'), ...mono].forEach(inc => {
             if (inc.source === 'monobank') {
                 if (!inc.currency) inc.currency = 'UAH';
+                const day = incomeDay(inc.time);
+                if (day !== lastDay) {
+                    lastDay = day;
+                    const head = document.createElement('div');
+                    head.className = 'income-day';
+                    head.textContent = incomeDayLabel(inc.time);
+                    container.appendChild(head);
+                }
+                const meta = [incomeTime(inc.time), inc.comment].filter(Boolean).join(' · ');
                 const row = document.createElement('div');
                 row.className = 'expense-item income-mono income-row';
+                row.dataset.incomeId = String(inc.id);
                 row.style = 'padding: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;';
                 row.innerHTML = `
                     <div class="income-mono-main">
                         <span class="mono-mark" role="img" aria-label="Монобанк">m</span>
-                        <input type="text" class="input-name income-name" value="${escapeHtml(inc.name || '')}" readonly tabindex="-1">
+                        <div class="income-mono-text">
+                            <span class="income-mono-name">${escapeHtml(inc.name || '')}</span>
+                            ${meta ? `<span class="income-mono-comment">${escapeHtml(meta)}</span>` : ''}
+                        </div>
                     </div>
-                    <input type="text" class="input-name tabular income-amount" value="${escapeHtml(formatMoney(parseFloat(inc.amount) || 0))}" readonly tabindex="-1" style="text-align: right; width: 120px; flex-shrink: 0;">
+                    <input type="text" class="input-name tabular income-amount" value="+${escapeHtml(formatMoney(parseFloat(inc.amount) || 0))}" readonly tabindex="-1" style="text-align: right; width: 120px; flex-shrink: 0;">
                     <span class="income-currency-lock">UAH</span>
                     <button type="button" class="btn-delete income-delete" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -2768,7 +2821,7 @@ function renderIncomes() {
                 if (delBtn) {
                     delBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        deleteIncome(inc.id);
+                        animateOut(row, () => deleteIncome(inc.id));
                     });
                 }
                 container.appendChild(row);
@@ -2777,6 +2830,7 @@ function renderIncomes() {
             if (!inc.currency) inc.currency = 'UAH';
             const div = document.createElement('div');
             div.className = 'expense-item'; 
+            div.dataset.incomeId = String(inc.id);
             
 if (isBiz) {
                 // НОВЫЙ ДИЗАЙН ДЛЯ БИЗНЕСА (Красивая карточка)
@@ -2803,7 +2857,7 @@ if (isBiz) {
                         <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                 <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Обіг</div>
-                                <div id="inc-percent-${escapeAttr(String(inc.id))}" style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 6px;">0.0%</div>
+                                <div id="inc-percent-${escapeAttr(String(inc.id))}" style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 6px;">0,0%</div>
                             </div>
                             <input type="number" class="tabular income-amount" value="${inc.amount || ''}" placeholder="0" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
                         </div>
@@ -2843,7 +2897,7 @@ if (isBiz) {
             if (delBtn) {
                 delBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    deleteIncome(inc.id);
+                    animateOut(div, () => deleteIncome(inc.id));
                 });
             }
 
@@ -2853,10 +2907,12 @@ if (isBiz) {
 
  function addIncome() {
         if(!appData[currentYear][currentMonth].incomes) appData[currentYear][currentMonth].incomes = [];
-        appData[currentYear][currentMonth].incomes.push({id: newId(), name: 'Новий', amount: 0, actual_balance: 0, currency: 'UAH'});
+        const id = newId();
+        appData[currentYear][currentMonth].incomes.push({id, name: 'Новий', amount: 0, actual_balance: 0, currency: 'UAH'});
         saveData();
         renderIncomes();
         convertCurrency();
+        animateIn(document.querySelector(`#incomes-container [data-income-id="${CSS.escape(String(id))}"]`));
     }
 
     function updateIncome(id, field, value) {
@@ -2979,7 +3035,7 @@ function convertCurrency() {
         incomes.forEach(inc => {
             const amt = parseFloat(inc.amount) || 0;
             const incAmountUah = inc.currency === 'USD' ? (amt * currentExchangeRate) : amt;
-            const percent = totalUah > 0 ? ((incAmountUah / totalUah) * 100).toFixed(1) : 0;
+            const percent = totalUah > 0 ? ((incAmountUah / totalUah) * 100).toFixed(1).replace('.', ',') : 0;
             
             const badge = document.getElementById(`inc-percent-${inc.id}`);
             if (badge) badge.innerText = percent + '%';
@@ -3231,7 +3287,7 @@ function convertCurrency() {
         } else if (currentTotal > prevTotal) {
             let diffText = '';
             if (prevTotal !== 0) {
-                const diff = Math.abs(((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1);
+                const diff = Math.abs(((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1).replace('.', ',');
                 diffText = `+${diff}%`;
             }
             trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
@@ -3242,7 +3298,7 @@ function convertCurrency() {
         } else if (currentTotal < prevTotal) {
             let diffText = '';
             if (prevTotal !== 0) {
-                const diff = Math.abs(((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1);
+                const diff = Math.abs(((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1).replace('.', ',');
                 diffText = `-${diff}%`;
             }
             trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
@@ -3320,14 +3376,14 @@ function convertCurrency() {
             trendHtml = ``; 
             colorMain = '#ff453a'; 
         } else if (currentTotal > prevTotal) {
-            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
+            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1).replace('.', ',') : 100;
             trendHtml = `<div class="trend-badge trend-up" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; cursor:pointer;">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#ff453a';
         } else if (currentTotal < prevTotal) {
-            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
+            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1).replace('.', ',') : 100;
             trendHtml = `<div class="trend-badge trend-down" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; cursor:pointer;">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
@@ -3413,14 +3469,14 @@ function getHistoricalIncome(year, month) {
             trendHtml = ``; 
             colorMain = '#32d74b'; 
         } else if (currentTotal > prevTotal) {
-            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
+            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1).replace('.', ',') : 100;
             trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; color: #32d74b; background: rgba(50, 215, 75, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#32d74b';
         } else if (currentTotal < prevTotal) {
-            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
+            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1).replace('.', ',') : 100;
             trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="margin-bottom:0; color: #ff453a; background: rgba(255, 69, 58, 0.15); padding: 2px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer;">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
@@ -3525,7 +3581,7 @@ function getHistoricalIncome(year, month) {
             trendHtml = `<div class="trend-badge trend-new">Нова</div>`;
             colorMain = '#ffd60a';
         } else if (currentTotal > prevTotal) {
-            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
+            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1).replace('.', ',') : 100;
             if (isSavings) {
                 trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="color: #32d74b; background: rgba(50, 215, 75, 0.15);">
                                 <span class="trend-main-text">↑ +${diff}%</span>
@@ -3540,7 +3596,7 @@ function getHistoricalIncome(year, month) {
                 colorMain = '#ff453a';
             }
         } else if (currentTotal < prevTotal) {
-            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
+            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1).replace('.', ',') : 100;
             if (isSavings) {
                 trendHtml = `<div class="trend-badge" data-stop-propagation="1" data-toggle-expanded="1" style="color: #ff453a; background: rgba(255, 69, 58, 0.15);">
                                 <span class="trend-main-text">↓ -${diff}%</span>
@@ -3893,8 +3949,12 @@ function getHistoricalIncome(year, month) {
     }
 
     function addCategory() {
-        expenses.push({ id: newId(), key: newId(), name: "", items: [], isEssential: false });
+        const id = newId();
+        expenses.push({ id, key: newId(), name: "", items: [], isEssential: false });
         renderExpenses(); saveData(); updateAll();
+        const card = document.querySelector(`#expenses-list [data-category-id="${CSS.escape(String(id))}"]`);
+        if (card && isCompactLayout()) card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        animateIn(card);
     }
 
     function openModal(categoryId) {
@@ -4004,6 +4064,7 @@ function getHistoricalIncome(year, month) {
         if (!Array.isArray(category.items)) category.items = [];
         category.items.push({ id: newId(), name: "", amount: null, isPaid: false });
         renderModalItems();
+        animateIn(document.getElementById('modal-subitems-list')?.lastElementChild);
     }
 
     function updateSubItemName(subId, val) {
@@ -4012,7 +4073,9 @@ function getHistoricalIncome(year, month) {
     }
 
     function deleteCategory(id) {
-        showConfirm("Видалити категорію", "Видалити цю категорію з усіма витратами?", () => {
+        showConfirm("Видалити категорію", "Видалити цю категорію з усіма витратами?", () => animateOut(
+            document.querySelector(`#expenses-list [data-category-id="${CSS.escape(String(id))}"]`),
+            () => {
             const index = expenses.findIndex(e => sameId(e.id, id));
             const category = index >= 0 ? expenses[index] : null;
             if (!category) return;
@@ -4064,7 +4127,7 @@ function getHistoricalIncome(year, month) {
                 }
                 persistUndoMonth(year, month);
             });
-        });
+        }));
     }
 
     function updateSubItemAmount(subId, val) {
@@ -4101,6 +4164,12 @@ function getHistoricalIncome(year, month) {
     }
 
     function deleteSubItem(subId) {
+        const btn = [...document.querySelectorAll('#modal-subitems-list .btn-sub-delete')]
+            .find((b) => { try { return sameId(JSON.parse(b.dataset.args)[0], subId); } catch (e) { return false; } });
+        animateOut(btn?.closest('#modal-subitems-list > *'), () => removeSubItem(subId));
+    }
+
+    function removeSubItem(subId) {
         const category = findExpenseById(activeCategoryId);
         if (!category) return;
         const index = (category.items || []).findIndex(i => sameId(i.id, subId));
@@ -4276,9 +4345,9 @@ let payrollAccruedTotal = 0;
             if (trendBadgeEl) trendBadgeEl.innerHTML = invSparkData.trendHtml;
             if (sparkContainerEl) sparkContainerEl.innerHTML = invSparkData.sparklineSvg + `<div class="sparkline-labels">${invSparkData.labelsHtml}</div>`;
 
-            const cogsPercent = currentIncomeUah > 0 ? ((cogsAmount / currentIncomeUah) * 100).toFixed(1) : 0;
+            const cogsPercent = currentIncomeUah > 0 ? ((cogsAmount / currentIncomeUah) * 100).toFixed(1).replace('.', ',') : 0;
             const grossProfit = currentIncomeUah - cogsAmount;
-            const grossMarginPercent = currentIncomeUah > 0 ? ((grossProfit / currentIncomeUah) * 100).toFixed(1) : 0;
+            const grossMarginPercent = currentIncomeUah > 0 ? ((grossProfit / currentIncomeUah) * 100).toFixed(1).replace('.', ',') : 0;
 
             const cfInvoicesEl = document.getElementById('cf-invoices');
             if (cfInvoicesEl) cfInvoicesEl.innerHTML = `-${formatMoney(cogsAmount)} ₴ <span style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${cogsPercent}%</span>`;
@@ -4309,7 +4378,7 @@ let payrollAccruedTotal = 0;
         const displayIncomeUah = currentIncomeUah;
         const displayIncomeUsd = window.currentIncomeUsd || 0;
 
-        document.getElementById('income-display').innerText = formatMoney(displayIncomeUah);
+        animateMoney(document.getElementById('income-display'), displayIncomeUah);
         document.getElementById('yearly-income-display').innerText = formatMoney(displayIncomeUah * 12);
 
         if (!isBiz) document.getElementById('yearly-income-usd').innerText = formatMoney(displayIncomeUsd * 12);
@@ -4342,7 +4411,7 @@ let payrollAccruedTotal = 0;
         }
 
         const remaining = displayIncomeUah - cogsAmount - totalExp;
-        const percent = displayIncomeUah > 0 ? ((remaining / displayIncomeUah) * 100).toFixed(1) : 0;
+        const percent = displayIncomeUah > 0 ? ((remaining / displayIncomeUah) * 100).toFixed(1).replace('.', ',') : 0;
 
         // Оновлюємо віджет "План витрат / Оплачено / Залишок" для всіх типів акаунтів
         document.getElementById('total-expenses').innerText = formatMoney(totalExp);
@@ -4351,7 +4420,7 @@ let payrollAccruedTotal = 0;
         document.getElementById('cf-paid').innerText = formatMoney(paidExp) + ' ₴';
         document.getElementById('cf-left').innerText = formatMoney(leftToPay) + ' ₴';
 
-        document.getElementById('remaining-money').innerText = formatMoney(remaining);
+        animateMoney(document.getElementById('remaining-money'), remaining);
         document.getElementById('remaining-percent').innerText = percent;
         // НОВИЙ КОД: Рендер графіка Чистого прибутку
         const profSparkData = generateProfitSparklineHTML(remaining);
@@ -4389,7 +4458,7 @@ let payrollAccruedTotal = 0;
 
         const percentElements = document.querySelectorAll('.expense-info.tabular');
         expenses.forEach((exp, index) => {
-            const catPercent = displayIncomeUah > 0 ? ((getCategoryTotal(exp) / displayIncomeUah) * 100).toFixed(1) : 0;
+            const catPercent = displayIncomeUah > 0 ? ((getCategoryTotal(exp) / displayIncomeUah) * 100).toFixed(1).replace('.', ',') : 0;
             if (percentElements[index]) percentElements[index].innerText = catPercent + '%';
         });
 
@@ -4434,9 +4503,8 @@ let payrollAccruedTotal = 0;
     function updateSavingsDisplay() {
         if (!currentUser) return;
         const total = (globalData.jars[currentUser.id] || []).reduce((sum, jar) => sum + jar.balance, 0);
-        document.getElementById('total-savings-display').innerText = formatMoney(total);
-        const mobileSavings = document.getElementById('m-savings');
-        if (mobileSavings) mobileSavings.innerText = formatMoney(total);
+        animateMoney(document.getElementById('total-savings-display'), total);
+        animateMoney(document.getElementById('m-savings'), total);
     }
 
     function openEnvelopesModal() {
@@ -5192,9 +5260,8 @@ function renderEnvelopes() {
             }
         });
 
-        document.getElementById('total-debts-display').innerText = formatMoney(totalInUah);
-        const mobileDebts = document.getElementById('m-debts');
-        if (mobileDebts) mobileDebts.innerText = formatMoney(totalInUah);
+        animateMoney(document.getElementById('total-debts-display'), totalInUah);
+        animateMoney(document.getElementById('m-debts'), totalInUah);
         document.getElementById('debt-minus-sign').style.display = totalInUah > 0 ? 'inline' : 'none';
     }
 
@@ -5457,6 +5524,7 @@ let cogsAmount = 0;
                         backgroundColor: dynamicBarColors, 
                         borderRadius: 12, 
                         borderSkipped: false,
+                        maxBarThickness: 56, // one or two months: a column, not a wall
                         borderWidth: 0, 
                         yAxisID: 'y', 
                         order: 2 
@@ -6370,7 +6438,7 @@ function addInvoice() {
         }
 
         const rowsHtml = rows.map(([supId, data]) => {
-            const percent = total > 0 ? ((data.total / total) * 100).toFixed(1) : '0.0';
+            const percent = total > 0 ? ((data.total / total) * 100).toFixed(1).replace('.', ',') : '0,0';
             const actions = data.known ? `
                 <button type="button" class="payroll-emp-btn" data-action="openEditSupplierModal" data-args="${escapeAttr(JSON.stringify([String(supId)]))}" title="Редагувати">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -6454,14 +6522,14 @@ function generatePayrollSparklineHTML(currentTotal) {
             trendHtml = ``; 
             colorMain = '#ff453a'; 
         } else if (currentTotal > prevTotal) {
-            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1) : 100;
+            const diff = prevTotal > 0 ? (((currentTotal - prevTotal) / prevTotal) * 100).toFixed(1).replace('.', ',') : 100;
             trendHtml = `<div class="trend-badge trend-up" style="cursor: pointer; margin-bottom: 0;" data-stop-propagation="1" data-toggle-expanded="1">
                             <span class="trend-main-text">↑ +${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
                          </div>`;
             colorMain = '#ff453a';
         } else if (currentTotal < prevTotal) {
-            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1) : 100;
+            const diff = prevTotal > 0 ? (((prevTotal - currentTotal) / prevTotal) * 100).toFixed(1).replace('.', ',') : 100;
             trendHtml = `<div class="trend-badge trend-down" style="cursor: pointer; margin-bottom: 0;" data-stop-propagation="1" data-toggle-expanded="1">
                             <span class="trend-main-text">↓ -${diff}%</span>
                             <span class="trend-hover-text">${diffMoneyText}</span>
@@ -8520,7 +8588,15 @@ function generatePayrollSparklineHTML(currentTotal) {
         else if (connected) label = 'Підтягнути з Моно';
         btn.textContent = label;
         btn.disabled = monobankBusy || Boolean(monoQueue);
+        // Connected: the statement comes in by itself, so the header keeps only «Монобанк» (settings).
+        btn.hidden = connected;
         if (manage) manage.hidden = !connected;
+        const pull = document.getElementById('btn-mono-pull');
+        if (pull) {
+            pull.hidden = !connected;
+            pull.disabled = monobankBusy || Boolean(monoQueue) || !appData[currentYear]?.[currentMonth]?.initialized;
+            pull.textContent = monoQueue ? 'Підтягуємо виписку…' : `Підтягнути виписку за ${monthNames[currentMonth].toLowerCase()} ${currentYear}`;
+        }
         const rules = document.getElementById('btn-mono-rules');
         if (rules) rules.hidden = !connected;
     }
@@ -8573,6 +8649,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         }
         renderMonobankButton();
         syncMonobankModal();
+        autoImportMonobank();
     }
 
     function openMonobankModal() {
@@ -9305,6 +9382,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             monoId: item.monoId || item.id,
             accountId,
             time: item.time,
+            ...(item.comment ? { comment: item.comment } : {}),
         }));
         bucket.incomes = [...kept, ...added];
         if (year === currentYear && monthIndex === currentMonth) {
@@ -9395,6 +9473,12 @@ function generatePayrollSparklineHTML(currentTotal) {
         text.append(sum, name);
 
         body.append(head, text);
+        if (income && event?.comment) {
+            const comment = document.createElement('div');
+            comment.className = 'mono-snack-comment';
+            comment.textContent = event.comment;
+            body.append(comment);
+        }
         const place = document.createElement('div');
         place.className = 'mono-snack-category';
         place.textContent = income
@@ -9448,6 +9532,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             currency: 'UAH',
             source: 'monobank',
             time: event.time,
+            ...(event.comment ? { comment: event.comment } : {}),
         });
         bucket.incomes = list;
         if (year === currentYear && monthIndex === currentMonth) {
@@ -9455,6 +9540,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             if (!editing) {
                 renderIncomes();
                 convertCurrency();
+                animateIn(document.querySelector(`#incomes-container [data-income-id="${CSS.escape(String(event.monoId))}"]`));
             }
         }
         return true;
@@ -9663,6 +9749,21 @@ function generatePayrollSparklineHTML(currentTotal) {
         if (monobankLink?.accounts) renderMonobankCards(monobankLink.accounts);
     }
 
+    /**
+     * The current calendar month pulls the statement of newly selected cards on its own
+     * (after connecting, adding a card, opening the month). Older months and a full
+     * re-pull stay manual, in the Monobank sheet.
+     */
+    function autoImportMonobank() {
+        if (!currentUser || !monobankLink?.connected || monobankBusy || monoQueue) return;
+        const now = new Date();
+        if (currentYear !== now.getFullYear() || currentMonth !== now.getMonth()) return;
+        if (!appData[currentYear]?.[currentMonth]?.initialized) return;
+        const imported = new Set(monobankLink.importedAccountIds || []);
+        const pending = selectedAccountIds().filter((id) => !imported.has(id));
+        if (pending.length) runMonoQueue(currentYear, currentMonth, pending);
+    }
+
     function onMonobankClick() {
         if (!currentUser || monobankBusy || monoQueue) return;
         const monthData = appData[currentYear]?.[currentMonth];
@@ -9729,6 +9830,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             monobankBusy = false;
             renderMonobankButton();
         }
+        autoImportMonobank();
     }
 
     function renderMonobankCards(accounts) {
@@ -9818,6 +9920,7 @@ function generatePayrollSparklineHTML(currentTotal) {
             syncMonobankModal();
             renderMonobankCards(monobankLink.accounts || []);
             renderMonobankButton();
+            autoImportMonobank();
         } catch {
             if (err) err.textContent = "Не вдалося з'єднатися із сервером.";
         }
@@ -10289,3 +10392,4 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 });
 
+enableSheetSwipe();
