@@ -523,6 +523,9 @@ export function buildRunwayDump(snapshot) {
     `дохід цього місяця: ${uahLine(s.incomeUah)}`,
     `обов'язкові цього місяця: ${uahLine(s.essentialsUah)}`,
     `бажані (не обов'язкові) цього місяця: ${uahLine(s.wantsUah)}`,
+    ...(Number(s.unsortedUah) > 0
+      ? [`покупки Монобанку, ще не розкладені по категоріях: ${uahLine(s.unsortedUah)} (не ріж їх як бажані — категорії ще невідомі)`]
+      : []),
     `вільний після обов'язкових: ${uahLine(leftoverUah(s))}`,
     `подушка зараз: ${uahLine(s.pillowNow)}`,
     `ціль подушки: ${s.pillowTarget > 0 ? uahLine(s.pillowTarget) : 'немає (не позначені обов’язкові)'}`,

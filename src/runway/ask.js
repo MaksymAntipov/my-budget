@@ -1,4 +1,5 @@
 import { apiFetch } from '../api.js';
+import { promptTokens, tokenUsageLabel } from '../ai/dump.js';
 import { formatAiMarkdown } from '../ai/markdown.js';
 import {
   getLlmSettings,
@@ -14,6 +15,7 @@ import { RUNWAY_AI_SYSTEM, RUNWAY_AI_TASK, buildRunwayDump } from './model.js';
  *   snapshot: object,
  *   signal?: AbortSignal,
  *   onToken: (text: string) => void,
+ *   onSent?: (tokens: number) => void,
  * }} opts
  */
 export async function askRunwayAi(opts) {
@@ -26,6 +28,8 @@ export async function askRunwayAi(opts) {
     throw new Error('no-provider');
   }
   const dump = buildRunwayDump(opts.snapshot);
+  const messages = [{ role: 'user', content: `${dump}\n\nЗАВДАННЯ:\n${RUNWAY_AI_TASK}` }];
+  opts.onSent?.(promptTokens(RUNWAY_AI_SYSTEM, messages));
   const res = await apiFetch('/api/ai/chat', {
     method: 'POST',
     signal: opts.signal,
@@ -36,7 +40,7 @@ export async function askRunwayAi(opts) {
       model: normalizeModel(provider, settings.model),
       maxOutputTokens: 2048,
       system: RUNWAY_AI_SYSTEM,
-      messages: [{ role: 'user', content: `${dump}\n\nЗАВДАННЯ:\n${RUNWAY_AI_TASK}` }],
+      messages,
     }),
   });
   const ctype = res.headers.get('content-type') || '';
@@ -82,6 +86,8 @@ export async function askRunwayAi(opts) {
   return text;
 }
 
-export function runwayAnswerHtml(text) {
-  return formatAiMarkdown(text || '');
+/** @param {string} text @param {number} [sentTokens] */
+export function runwayAnswerHtml(text, sentTokens = 0) {
+  const usage = tokenUsageLabel(sentTokens, text);
+  return formatAiMarkdown(text || '') + (usage ? `<div class="ai-chat-tokens">${usage}</div>` : '');
 }

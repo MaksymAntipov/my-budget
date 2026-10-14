@@ -31,6 +31,7 @@ import { renderRunwayApp } from './render.js';
  * @property {number} [incomeUah]
  * @property {number} [essentialsUah]
  * @property {number} [wantsUah]
+ * @property {number} [unsortedUah]
  */
 
 /** @type {null | (() => { userId?: string })} */
@@ -47,6 +48,8 @@ let aiAnswer = '';
 let aiError = '';
 let aiBusy = false;
 let aiKey = '';
+/** Approx. request tokens of the current answer. */
+let aiTokens = 0;
 /** @type {AbortController | null} */
 let aiAbort = null;
 /** @type {ReturnType<typeof setInterval> | null} */
@@ -68,6 +71,7 @@ export function emptySnapshot() {
     incomeUah: 0,
     essentialsUah: 0,
     wantsUah: 0,
+    unsortedUah: 0,
   };
 }
 
@@ -125,6 +129,7 @@ function snapshotKey(snapshot) {
     Math.round(s.incomeUah || 0),
     Math.round(s.essentialsUah || 0),
     Math.round(s.wantsUah || 0),
+    Math.round(s.unsortedUah || 0),
     s.hasDebts ? 1 : 0,
     'opt4',
   ].join('|');
@@ -147,7 +152,7 @@ function paint() {
       paint();
     },
     ai: {
-      answerHtml: fresh ? runwayAnswerHtml(aiAnswer) : '',
+      answerHtml: fresh ? runwayAnswerHtml(aiAnswer, aiTokens) : '',
       error: aiError,
       busy: aiBusy,
       onAsk: requestAi,
@@ -215,10 +220,11 @@ function paintAiOut(text, opts = {}) {
     return;
   }
   if (!text) {
-    out.innerHTML = '<p class="rw-ai-wait">Рахую суми й дати фінішу…</p>';
+    const sent = aiTokens > 0 ? ` <span class="ai-chat-tokens">надіслано ≈ ${aiTokens.toLocaleString('uk-UA')} токенів</span>` : '';
+    out.innerHTML = `<p class="rw-ai-wait">Рахую суми й дати фінішу…${sent}</p>`;
     return;
   }
-  out.innerHTML = `<div class="ai-chat-text">${runwayAnswerHtml(text)}${opts.streaming ? '<span class="ai-caret"></span>' : ''}</div>`;
+  out.innerHTML = `<div class="ai-chat-text">${opts.streaming ? runwayAnswerHtml(text) : runwayAnswerHtml(text, aiTokens)}${opts.streaming ? '<span class="ai-caret"></span>' : ''}</div>`;
 }
 
 function requestAi() {
@@ -275,6 +281,10 @@ async function maybeStartAi(opts = {}) {
       userId: session.userId,
       snapshot,
       signal: aiAbort.signal,
+      onSent: (tokens) => {
+        aiTokens = tokens;
+        paintAiOut('');
+      },
       onToken: (chunk) => {
         aiAnswer = chunk;
         paintAiOut(chunk, { streaming: true });

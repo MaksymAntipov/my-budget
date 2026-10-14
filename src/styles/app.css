@@ -2636,6 +2636,13 @@
             font-weight: 600;
             color: var(--text-secondary);
         }
+        .ai-chat-tokens {
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            opacity: 0.8;
+            font-variant-numeric: tabular-nums;
+        }
         .ai-chat-stop {
             background: transparent !important;
             color: #ff453a !important;

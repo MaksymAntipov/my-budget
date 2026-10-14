@@ -317,4 +317,9 @@ describe('buildRunwayDump', () => {
     assert.doesNotMatch(dump, /вкладка:/);
     assert.doesNotMatch(dump, /Абанк|Приват|монобанк/i);
   });
+
+  it('keeps unsorted bank purchases apart from wants', () => {
+    const dump = buildRunwayDump({ points: [{ label: 'жов 26', pillow: 0, debt: 0 }], wantsUah: 5000, unsortedUah: 7300 });
+    assert.match(dump, /ще не розкладені по категоріях: 7\s300 ₴/);
+  });
 });

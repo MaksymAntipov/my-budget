@@ -15,6 +15,7 @@ import {
 } from './settings.js';
 import { clearAiHistory, clearAllAiHistory, loadAiHistory, saveAiHistory } from './history.js';
 import { isWideLookQuestion, parseFocusFromQuestion } from './focus.js';
+import { promptTokens, tokenUsageLabel } from './dump.js';
 import { formatAiMarkdown, splitSuggestions } from './markdown.js';
 import {
   briefingKindFromThread,
@@ -693,14 +694,16 @@ function renderAiThread(opts = {}) {
             <span class="ai-skrynia-loader-gem">💎</span>
           </button>
           <div class="ai-chat-wait-text">Скриня думає…</div>
-          <div class="ai-chat-wait-hint">Натисніть діамант, щоб зупинити</div>
+          <div class="ai-chat-wait-hint">${m.promptTokens ? `Надіслано ≈ ${Number(m.promptTokens).toLocaleString('uk-UA')} токенів · ` : ''}Натисніть діамант, щоб зупинити</div>
         </div>`;
       }
       const who = m.role === 'assistant' ? 'ШІ' : 'Ви';
       const cls = m.role === 'assistant' ? 'ai-chat-bubble--bot' : 'ai-chat-bubble--user';
       const caret = live ? '<span class="ai-caret" aria-hidden="true"></span>' : '';
       const chips = m.role === 'assistant' ? renderSuggestChips(m, i) : '';
-      return `<div class="ai-chat-bubble ${cls}"><div class="ai-chat-who">${who}</div><div class="ai-chat-text">${formatAiHtml(m.content)}${caret}</div></div>${chips}`;
+      const usage = m.role === 'assistant' && !live ? tokenUsageLabel(m.promptTokens, m.content) : '';
+      const usageHtml = usage ? `<div class="ai-chat-tokens">${usage}</div>` : '';
+      return `<div class="ai-chat-bubble ${cls}"><div class="ai-chat-who">${who}</div><div class="ai-chat-text">${formatAiHtml(m.content)}${caret}</div>${usageHtml}</div>${chips}`;
     })
     .join('');
   if (pinned) log.scrollTop = log.scrollHeight;
@@ -791,6 +794,16 @@ async function streamAssistant(opts = {}) {
   renderAiThread({ stick: true });
 
   try {
+    const system = buildSystemPrompt();
+    const messages = apiPayload(opts);
+    const sent = promptTokens(system, messages);
+    const target = [...thread].reverse().find((m) => m.role === 'assistant');
+    if (target) {
+      // A continuation re-sends the context: it adds to the same reply's bill.
+      target.promptTokens = (opts.continue ? Number(target.promptTokens) || 0 : 0) + sent;
+      renderAiThread({ stick: true });
+    }
+    console.info(`[AI] ${opts.briefing ? 'briefing' : opts.wide ? 'wide' : opts.continue ? 'continue' : 'chat'}: ≈ ${sent} токенів запиту`);
     const res = await apiFetch('/api/ai/chat', {
       method: 'POST',
       signal: abortCtrl.signal,
@@ -801,8 +814,8 @@ async function streamAssistant(opts = {}) {
         model: normalizeModel(provider, settings.model),
         // Reports are short by design now; a 16k cap mostly paid for padding.
         maxOutputTokens: opts.briefing || opts.wide || opts.continue ? 6000 : 3000,
-        system: buildSystemPrompt(),
-        messages: apiPayload(opts),
+        system,
+        messages,
       }),
     });
 

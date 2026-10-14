@@ -28,6 +28,8 @@ function sanitizeMessage(raw) {
   if (mode) msg.mode = mode;
   if (source) msg.source = source;
   if (suggestions?.length) msg.suggestions = suggestions;
+  const promptTokens = Number(raw.promptTokens);
+  if (role === 'assistant' && Number.isFinite(promptTokens) && promptTokens > 0) msg.promptTokens = Math.round(promptTokens);
   if (!msg.source && role === 'assistant' && /HELICOPTER VIEW|КАПІТАЛ ЗАРАЗ/i.test(content)) msg.source = 'briefing';
   return msg;
 }

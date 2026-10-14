@@ -68,6 +68,7 @@ import {
   trailingAverage,
 } from './runway/model.js';
 import { hasLlmKey } from './ai/settings.js';
+import { capItems, FOCUS_ITEM_CAP, ITEM_CAP, splitAiHistory } from './ai/dump.js';
 import {
   initAiChat,
   openAiChat,
@@ -2318,11 +2319,15 @@ function logout() {
         }, 0);
     }
 
+    /**
+     * Spending that can be cut. Debt payments are capital moves, and unsorted bank purchases
+     * are not a category yet — counting either as «wants» lets the model suggest cutting them.
+     */
     function monthWantsTotalUah(expenseList) {
         const list = expenseList || expenses || [];
         return list.reduce((sum, exp) => {
-            if (!exp.items || exp.isSavings || isEssentialCategory(exp)) return sum;
-            return sum + getCategoryTotal(exp);
+            if (!exp.items || isLedgerCategory(exp) || isUnassigned(exp) || isEssentialCategory(exp)) return sum;
+            return sum + exp.items.reduce((acc, item) => acc + (item.debtId ? 0 : parseFloat(item.amount) || 0), 0);
         }, 0);
     }
 
@@ -2474,7 +2479,7 @@ function logout() {
 
     function buildRunwaySnapshot() {
         if (!currentUser || currentUser.account_type === 'business') {
-            return { points: [], pillowTarget: 0, pillowNow: 0, pillowAvg: 0, pillowNowLabel: '—', pillowForecast: { kind: 'stalled' }, hasDebts: false, debtNow: 0, debtAvg: 0, debtNowLabel: '—', debtForecast: { kind: 'stalled' }, incomeUah: 0, essentialsUah: 0, wantsUah: 0 };
+            return { points: [], pillowTarget: 0, pillowNow: 0, pillowAvg: 0, pillowNowLabel: '—', pillowForecast: { kind: 'stalled' }, hasDebts: false, debtNow: 0, debtAvg: 0, debtNowLabel: '—', debtForecast: { kind: 'stalled' }, incomeUah: 0, essentialsUah: 0, wantsUah: 0, unsortedUah: 0 };
         }
         const months = listRunwayMonthsChrono();
         const pillowNow = getCushionBalanceUah();
@@ -2523,6 +2528,7 @@ function logout() {
             incomeUah: currentIncomeUah || 0,
             essentialsUah: monthEssentialTotalUah(),
             wantsUah: monthWantsTotalUah(),
+            unsortedUah: (expenses || []).filter(isUnassigned).reduce((sum, cat) => sum + getCategoryTotal(cat), 0),
         };
     }
 
@@ -7184,37 +7190,32 @@ function generatePayrollSparklineHTML(currentTotal) {
             prompt += buildGrowthCourseSnapshot({ compact: true });
         }
 
-        const years = Object.keys(appData).map(Number).sort((a,b) => a-b);
+        const nowOrd = currentYear * 12 + currentMonth;
         if (compact) {
             prompt += `\n### РУХ КОШТІВ (знімок для чату)\n`;
             prompt += `Поточний місяць — категорії без окремих статей (є ₴/міс, частка доходу, топ, за 10 років = ×120). Інші місяці — один рядок. Якщо нижче є блок «ДЕТАЛІЗАЦІЯ ПІД ПИТАННЯ» — рахуй саме його.\n`;
             if (appData[currentYear]?.[currentMonth]?.initialized) {
                 prompt += generateAiDataForMonth(currentYear, currentMonth, isBiz, { lineItems: false });
             }
-            let others = '';
-            years.forEach(y => {
-                const months = Object.keys(appData[y] || {}).map(Number).sort((a,b) => a-b);
-                months.forEach(m => {
-                    if (!appData[y][m].initialized) return;
-                    if (y === currentYear && m === currentMonth) return;
-                    others += generateAiMonthOneLiner(y, m, isBiz);
-                });
-            });
-            if (others) prompt += `\nІнші ініціалізовані місяці:\n${others}`;
+            const others = initializedMonthsAsc().filter(({ y, m }) => y * 12 + m !== nowOrd);
+            const plan = splitAiHistory(others, nowOrd, { full: 0, lines: 12 });
+            const lines = plan.lines.map(({ y, m }) => generateAiMonthOneLiner(y, m, isBiz)).join('');
+            if (lines) prompt += `\nІнші ініціалізовані місяці:\n${lines}`;
+            prompt += generateAiYearLines(plan.years, isBiz);
             prompt += buildAiFocusDump(opts, isBiz);
             return prompt;
         }
 
+        // Full look: detail where advice lives (the newest months), totals for history.
+        const plan = splitAiHistory(initializedMonthsAsc(), nowOrd);
         prompt += `\n### РУХ КОШТІВ (CASH FLOW)\n`;
-        prompt += `Нижче — усі ініціалізовані місяці. У категоріях: ₴/міс, частка доходу, місце, «за 10 років» (= місяць × 120). Якщо питають про конкретний період (останній місяць, квартал, рік) — рахуй лише відповідні блоки «ПЕРІОД». Блок «ПОТОЧНИЙ МІСЯЦЬ» — стан зараз; блоки «історія» — минуле.\n`;
-        years.forEach(y => {
-            const months = Object.keys(appData[y]).map(Number).sort((a,b) => a-b);
-            months.forEach(m => {
-                if (appData[y][m].initialized) {
-                    prompt += generateAiDataForMonth(y, m, isBiz);
-                }
-            });
+        prompt += `Блоки «ПЕРІОД» — останні місяці з категоріями (₴/міс, частка доходу, місце; у поточному ще «за 10 років» = місяць × 120). Раніші місяці — один рядок із топ-категоріями, ще старіші — підсумок за рік. Якщо питають про конкретний період — рахуй лише відповідний блок або рядок. Блок «ПОТОЧНИЙ МІСЯЦЬ» — стан зараз; «історія» — минуле.\n`;
+        plan.full.forEach(({ y, m }) => {
+            prompt += generateAiDataForMonth(y, m, isBiz);
         });
+        const lines = plan.lines.map(({ y, m }) => generateAiMonthOneLiner(y, m, isBiz, { top: 4 })).join('');
+        if (lines) prompt += `\nРаніші місяці (підсумок і найбільші категорії):\n${lines}`;
+        prompt += generateAiYearLines(plan.years, isBiz);
         return prompt;
     }
 
@@ -7458,7 +7459,12 @@ function generatePayrollSparklineHTML(currentTotal) {
         // ---- Capital flow per month
         prompt += `\n### РУХ КАПІТАЛУ ПО МІСЯЦЯХ\n`;
         prompt += `Споживання — звичайні категорії${isBiz ? ' + собівартість і зарплати' : ''}. Конверти й платежі по боргах — це рух капіталу, не споживання.\n`;
-        flows.forEach((f) => {
+        const olderFlows = flows.slice(0, -12);
+        if (olderFlows.length) {
+            const sum = (key) => olderFlows.reduce((acc, f) => acc + f[key], 0);
+            prompt += `- Раніше (${monthLabel(olderFlows[0])} – ${monthLabel(olderFlows[olderFlows.length - 1])}, ${olderFlows.length} міс. разом): дохід ${formatMoney(sum('income'))} ₴; споживання ${formatMoney(sum('consumption'))} ₴; у конверти ${formatMoney(sum('toEnvelopes'))} ₴; на борги ${formatMoney(sum('debtPaid'))} ₴; вільний залишок ${formatMoney(sum('free'))} ₴\n`;
+        }
+        flows.slice(-12).forEach((f) => {
             const mark = isRunning(f) ? ` (триває: ${today.getDate()}-й день з ${daysInMonth}, суми поки що)` : '';
             prompt += `- ${monthLabel(f)}${mark}: дохід ${formatMoney(f.income)} ₴; споживання ${formatMoney(f.consumption)} ₴; у конверти ${formatMoney(f.toEnvelopes)} ₴; на борги ${formatMoney(f.debtPaid)} ₴; вільний залишок ${formatMoney(f.free)} ₴\n`;
         });
@@ -7637,9 +7643,44 @@ function generatePayrollSparklineHTML(currentTotal) {
         return Object.values(boards).some((board) => Array.isArray(board?.tracks) && board.tracks.length > 0);
     }
 
-    function generateAiMonthOneLiner(year, month, isBiz) {
+    /** @param {{ top?: number }} [opts] top — append the N biggest categories */
+    function generateAiMonthOneLiner(year, month, isBiz, opts = {}) {
+        const totals = aiMonthTotals(year, month, isBiz);
+        if (!totals) return '';
+        const { income, spent } = totals;
+        let line = `- ${monthNames[month]} ${year}: дохід ${income.toFixed(0)} ₴, витрати ${spent.toFixed(0)} ₴, ${isBiz ? 'прибуток' : 'залишок'} ${(income - spent).toFixed(0)} ₴`;
+        const top = Number(opts.top) || 0;
+        if (top > 0) {
+            const cats = (appData[year][month].expenses || [])
+                .filter((cat) => !isUnassigned(cat))
+                .map((cat) => ({ name: cat.name || 'Без назви', total: getCategoryTotal(cat) }))
+                .filter((row) => row.total > 0)
+                .sort((a, b) => b.total - a.total)
+                .slice(0, top);
+            if (cats.length) line += `; топ: ${cats.map((c) => `${c.name} ${c.total.toFixed(0)}`).join(', ')}`;
+        }
+        return `${line}\n`;
+    }
+
+    /** History older than the line window: one row per year, monthly averages. */
+    function generateAiYearLines(years, isBiz) {
+        if (!years?.length) return '';
+        let out = `\nСтаріша історія (по роках):\n`;
+        years.forEach(({ year, months }) => {
+            const rows = months.map(({ y, m }) => aiMonthTotals(y, m, isBiz)).filter(Boolean);
+            if (!rows.length) return;
+            const income = rows.reduce((sum, r) => sum + r.income, 0);
+            const spent = rows.reduce((sum, r) => sum + r.spent, 0);
+            const n = rows.length;
+            out += `- ${year} (${n} міс.): дохід ${income.toFixed(0)} ₴ (≈ ${(income / n).toFixed(0)}/міс), витрати ${spent.toFixed(0)} ₴ (≈ ${(spent / n).toFixed(0)}/міс), ${isBiz ? 'прибуток' : 'залишок'} ${(income - spent).toFixed(0)} ₴\n`;
+        });
+        return out;
+    }
+
+    /** Income and everything spent (expenses + business COGS and payroll); null when the month is empty. */
+    function aiMonthTotals(year, month, isBiz) {
         const data = appData[year]?.[month];
-        if (!data?.initialized) return '';
+        if (!data?.initialized) return null;
         const income = getMonthIncomeUah(year, month);
         let expenses = 0;
         (data.expenses || []).forEach(cat => {
@@ -7655,8 +7696,8 @@ function generatePayrollSparklineHTML(currentTotal) {
             (data.payroll || []).forEach(emp => { extra += getEmployeeAccrued(emp); });
         }
         const spent = expenses + extra;
-        if (income === 0 && spent === 0) return '';
-        return `- ${monthNames[month]} ${year}: дохід ${income.toFixed(0)} ₴, витрати ${spent.toFixed(0)} ₴, ${isBiz ? 'прибуток' : 'залишок'} ${(income - spent).toFixed(0)} ₴\n`;
+        if (income === 0 && spent === 0) return null;
+        return { income, spent };
     }
 
     function getAiFocusCatalog() {
@@ -7893,6 +7934,8 @@ function generatePayrollSparklineHTML(currentTotal) {
         const onlyNames = Array.isArray(opts.onlyNames) && opts.onlyNames.length ? opts.onlyNames : null;
         if (onlyNames && !monthHasFocusNames(data, onlyNames)) return '';
         const monthName = monthNames[month];
+        // Ten-year cost and the save tip are advice for now, not for history.
+        const isNow = monthTimeLabel(year, month) === 'ПОТОЧНИЙ МІСЯЦЬ';
         let str = `\n==== ПЕРІОД: ${monthName} ${year} — ${monthTimeLabel(year, month)}${onlyNames ? ' (зріз під питання)' : ''} ====\n`;
         if (onlyNames) str += `Зріз: ${onlyNames.join(', ')}\n`;
 
@@ -7907,7 +7950,7 @@ function generatePayrollSparklineHTML(currentTotal) {
                 }
             });
         }
-        str += `  Загалом дохід: ${totalIncomeUah.toFixed(2)} ₴\n`;
+        str += `  Загалом дохід: ${totalIncomeUah.toFixed(0)} ₴\n`;
 
         let totalCogs = 0;
         let totalPayroll = 0;
@@ -7919,15 +7962,15 @@ function generatePayrollSparklineHTML(currentTotal) {
             } else if (data.cogs) {
                 totalCogs = data.cogs.type === 'percent' ? totalIncomeUah * (data.cogs.value / 100) : (parseFloat(data.cogs.value)||0);
             }
-            str += `  - Витрати на закупівлі: ${totalCogs.toFixed(2)} ₴\n`;
-            str += `  - Валовий прибуток: ${(totalIncomeUah - totalCogs).toFixed(2)} ₴\n`;
+            str += `  - Витрати на закупівлі: ${totalCogs.toFixed(0)} ₴\n`;
+            str += `  - Валовий прибуток: ${(totalIncomeUah - totalCogs).toFixed(0)} ₴\n`;
 
             if (data.payroll && data.payroll.length > 0) {
                 str += `Зарплатний фонд:\n`;
                 data.payroll.forEach(emp => {
                     totalPayroll += getEmployeeAccrued(emp);
                 });
-                str += `  - Всього нараховано ЗП: ${totalPayroll.toFixed(2)} ₴\n`;
+                str += `  - Всього нараховано ЗП: ${totalPayroll.toFixed(0)} ₴\n`;
             }
         } else if (isBiz) {
             if (data.invoices && data.invoices.length > 0) {
@@ -7947,7 +7990,6 @@ function generatePayrollSparklineHTML(currentTotal) {
         let essentialMarked = 0;
         const ranks = expenseRankMap(data.expenses);
         str += `Витрати (Операційні / Особисті):\n`;
-        str += `  (поле «за 10 років» = місяць × 120, якщо звичка не зміниться; не інфляційний прогноз)\n`;
         if (data.expenses && data.expenses.length > 0) {
             data.expenses.forEach(cat => {
                 const allItems = cat.items || [];
@@ -7978,20 +8020,27 @@ function generatePayrollSparklineHTML(currentTotal) {
                     const share = totalIncomeUah > 0
                         ? `${((shown / totalIncomeUah) * 100).toFixed(1)}% доходу`
                         : 'частка н/д';
-                    const cost10y = shown * 120;
+                    const cost10y = isNow ? ` | ${(shown * 120).toFixed(0)} ₴ за 10 років` : '';
                     const trend = formatAiCategoryTrend(shown, getPrevMonthCategoryTotal(year, month, cat));
                     const paidAll = items.length > 0 && items.every((item) => item.isPaid === true);
                     const paidBit = paidAll ? ' | оплачено' : '';
-                    str += `  - Категорія "${cat.name}"${tag}${rankTag}: ${shown.toFixed(2)} ₴/міс | ${share} | ${cost10y.toFixed(0)} ₴ за 10 років | ${trend}${paidBit}\n`;
-                    if (lineItems) {
-                        items.forEach(item => {
+                    str += `  - Категорія "${cat.name}"${tag}${rankTag}: ${shown.toFixed(0)} ₴/міс | ${share}${cost10y} | ${trend}${paidBit}\n`;
+                    if (lineItems && isUnassigned(cat) && !onlyNames) {
+                        // Raw bank purchases: the count says enough, listing them costs tokens.
+                        str += `      * ${items.length} ${pluralUk(items.length, 'покупка', 'покупки', 'покупок')} Монобанку, ще не розкладені по категоріях\n`;
+                    } else if (lineItems) {
+                        const { shown: listed, restCount, restSum } = capItems(items, onlyNames ? FOCUS_ITEM_CAP : ITEM_CAP);
+                        listed.forEach(item => {
                             const paidMark = item.isPaid ? ' ✓' : '';
                             str += `      * ${item.name}: ${item.amount} ₴${paidMark}\n`;
                         });
+                        if (restCount) {
+                            str += `      * …ще ${restCount} ${pluralUk(restCount, 'стаття', 'статті', 'статей')} на ${restSum.toFixed(0)} ₴\n`;
+                        }
                     }
                 }
             });
-            if (!onlyNames) {
+            if (!onlyNames && isNow) {
                 const top10y = (data.expenses || [])
                     .map((c) => {
                         const t = (c.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
@@ -8006,8 +8055,8 @@ function generatePayrollSparklineHTML(currentTotal) {
             }
             if (!isBiz && !onlyNames) {
                 if (essentialMarked > 0) {
-                    str += `  Обов'язкові цього місяця: ${essentialTotal.toFixed(2)} ₴ (${essentialMarked} категорій позначено)\n`;
-                    str += `  Необов'язкові цього місяця: ${optionalTotal.toFixed(2)} ₴\n`;
+                    str += `  Обов'язкові цього місяця: ${essentialTotal.toFixed(0)} ₴ (${essentialMarked} категорій позначено)\n`;
+                    str += `  Необов'язкові цього місяця: ${optionalTotal.toFixed(0)} ₴\n`;
                 } else {
                     str += `  Обов'язкові категорії не позначені — не вигадуй базу подушки з усіх витрат.\n`;
                 }
@@ -8037,15 +8086,15 @@ function generatePayrollSparklineHTML(currentTotal) {
             }
         }
 
-        if (!isBiz && totalIncomeUah > 0 && !onlyNames) {
-            str += `Рекомендовано відкласти цього місяця: ${recommendedSaveUah(totalIncomeUah).toFixed(2)} ₴\n`;
+        if (!isBiz && totalIncomeUah > 0 && !onlyNames && isNow) {
+            str += `Рекомендовано відкласти цього місяця: ${recommendedSaveUah(totalIncomeUah).toFixed(0)} ₴\n`;
         }
 
         const netProfit = totalIncomeUah - totalCogs - totalPayroll - totalExpenses;
         str += `Підсумок місяця:\n`;
-        if (onlyNames) str += `  - Зріз під питання: ${sliceExpenses.toFixed(2)} ₴\n`;
-        str += `  - Всього витрачено (витрати + закупівлі + ЗП): ${(totalCogs + totalPayroll + totalExpenses).toFixed(2)} ₴\n`;
-        str += `  - Чистий ${isBiz ? 'прибуток' : 'залишок'}: ${netProfit.toFixed(2)} ₴\n`;
+        if (onlyNames) str += `  - Зріз під питання: ${sliceExpenses.toFixed(0)} ₴\n`;
+        str += `  - Всього витрачено (витрати + закупівлі + ЗП): ${(totalCogs + totalPayroll + totalExpenses).toFixed(0)} ₴\n`;
+        str += `  - Чистий ${isBiz ? 'прибуток' : 'залишок'}: ${netProfit.toFixed(0)} ₴\n`;
         str += `===================================\n`;
         
         return str;
