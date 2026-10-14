@@ -710,7 +710,9 @@ function renderAiThread(opts = {}) {
       const cls = m.role === 'assistant' ? 'ai-chat-bubble--bot' : 'ai-chat-bubble--user';
       const caret = live ? '<span class="ai-caret" aria-hidden="true"></span>' : '';
       const chips = m.role === 'assistant' ? renderSuggestChips(m, i) : '';
-      const usage = m.role === 'assistant' && !live ? tokenUsageLabel(m.promptTokens, m.content) : '';
+      const usage = m.role === 'assistant' && !live && !isTransientAiError(m.content)
+        ? tokenUsageLabel(m.promptTokens, m.content)
+        : '';
       const usageHtml = usage ? `<div class="ai-chat-tokens">${usage}</div>` : '';
       return `<div class="ai-chat-bubble ${cls}"><div class="ai-chat-who">${who}</div><div class="ai-chat-text">${formatAiHtml(m.content)}${caret}</div>${usageHtml}</div>${notesHtml(m)}${chips}`;
     })
@@ -876,6 +878,8 @@ async function streamAssistant(opts = {}) {
     const bot = thread[thread.length - 1];
     let providerTruncated = false;
     let providerFailed = false;
+    /** Exact wording from the backend, with the status code. */
+    let lastError = '';
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -892,6 +896,7 @@ async function streamAssistant(opts = {}) {
           if (json.error) {
             providerFailed = true;
             const err = String(json.error);
+            lastError = err;
             // The backend already words it (with the provider's status code).
             appendSystemNote(err);
             if (isProviderCapacityError(err) || /Ліміт провайдера|Забагато запитів|Денна квота/.test(err)) {
@@ -922,7 +927,9 @@ async function streamAssistant(opts = {}) {
       applyProviderLock(45);
     }
     if (!bot.content.trim()) {
-      bot.content = providerFailed ? PROVIDER_BUSY_NOTE : 'Порожня відповідь від моделі.';
+      // Nothing came: the error is the reply itself, not a note under an empty bubble.
+      bot.content = lastError || (providerFailed ? PROVIDER_BUSY_NOTE : 'Порожня відповідь від моделі.');
+      delete bot.notes;
     } else {
       const split = splitSuggestions(bot.content);
       if (split.body) bot.content = split.body;
