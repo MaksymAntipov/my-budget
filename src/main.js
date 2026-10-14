@@ -5,6 +5,7 @@ import { bindUiActions } from './bind-ui.js';
 import { initFamilyTree } from './family-tree/index.js';
 import { initYearTracks } from './year-tracks/index.js';
 import { initRunway } from './runway/index.js';
+import { initInvest } from './invest/index.js';
 
 bindUiActions(document);
 
@@ -21,6 +22,7 @@ const getSession = () =>
 // Isolated personal modules; session comes from app.js via __getBudgetSession.
 initFamilyTree({ getSession });
 initYearTracks({ getSession });
+initInvest({ getSession });
 initRunway({
   getSession,
   getSnapshot: () =>

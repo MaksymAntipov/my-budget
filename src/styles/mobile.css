@@ -443,7 +443,7 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 /* Full-screen modules (tracks, family tree, runway) keep their own layout. */
 .is-compact .modal-overlay { align-items: flex-end; }
 .is-compact :is(#year-tracks-modal, #family-tree-modal, #runway-modal) { align-items: stretch; }
-.is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) {
+.is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.inv-modal-content) {
     width: 100% !important;
     max-width: none !important;
     max-height: calc(100dvh - 24px) !important;
@@ -456,13 +456,13 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
     overflow-y: auto;
     overscroll-behavior: contain;
 }
-.is-compact .modal-overlay.active .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) { transform: none; }
+.is-compact .modal-overlay.active .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.inv-modal-content) { transform: none; }
 /* Closing: the sheet accelerates down and out, the backdrop clears as it leaves. */
-.is-compact .modal-overlay:not(.active) .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) {
+.is-compact .modal-overlay:not(.active) .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.inv-modal-content) {
     transition: transform 0.3s cubic-bezier(0.4, 0, 1, 1);
 }
 .is-compact .modal-overlay:not(.active) { transition: opacity 0.2s ease 0.12s, visibility 0s linear 0.32s, background-color 0.3s; }
-.is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content)::before {
+.is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.inv-modal-content)::before {
     content: '';
     display: block;
     flex-shrink: 0;
@@ -503,7 +503,7 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
     .is-compact .modal-overlay { align-items: center; }
     .is-compact .ai-chat-overlay { align-items: flex-end; }
     .is-compact .ai-chat-overlay .ai-chat-panel { height: min(80dvh, 900px); margin-bottom: 16px; }
-    .is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content) {
+    .is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.inv-modal-content) {
         width: calc(100% - 48px) !important;
         max-width: 560px !important;
         max-height: min(88dvh, 900px) !important;
@@ -513,7 +513,7 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
         transform: scale(0.96) translateY(16px);
     }
     .is-compact .modal-content.modal-wide { max-width: 640px !important; }
-    .is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content)::before { display: none; }
+    .is-compact .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.inv-modal-content)::before { display: none; }
     .is-compact .ai-chat-overlay.is-expanded .ai-chat-panel { width: 100% !important; max-width: none !important; height: 100dvh; margin: 0; }
 }
 
@@ -551,7 +551,7 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .is-compact .modal-items-container { overflow: visible; flex: none; padding-right: 0; }
 /* On phones the sheet itself scrolls: its parts keep their natural height — no squeezed
    fields, no scroll inside a scroll. Strategy and the AI chat keep their own inner scroller. */
-.is-compact .modal-overlay:not(#growth-modal) .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.ai-chat-panel) > * { flex-shrink: 0; }
+.is-compact .modal-overlay:not(#growth-modal) .modal-content:not(.yt-modal-content):not(.ft-modal-content):not(.rw-modal-content):not(.inv-modal-content):not(.ai-chat-panel) > * { flex-shrink: 0; }
 .is-compact #jars-list,
 .is-compact #debts-list,
 .is-compact .employee-modal-fields { max-height: none !important; overflow: visible !important; padding-right: 0 !important; }

@@ -534,6 +534,7 @@
         .skrynia-hub-card--budget { color: var(--sys-blue); }
         .skrynia-hub-card--tracks { color: var(--sys-green); }
         .skrynia-hub-card--runway { color: #bf5af2; }
+        .skrynia-hub-card--invest { color: #00d47e; }
         .skrynia-hub-card--tree { color: #ff9f0a; }
         .skrynia-hub-card-icon {
             width: 48px;

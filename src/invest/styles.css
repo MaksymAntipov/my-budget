@@ -1,0 +1,232 @@
+/* «Інвестиції»: full-screen Skrynia module like «Внески».
+   Reuses app classes as they are (.rw-header/.rw-pill/.rw-btn/.rw-delta/.rw-tip-val, .schedule-table, .info-block,
+   .ios-input, .custom-dropdown.compact, .sub-item, .btn-add, .btn-modal-done, .btn-modal-delete, .btn-close-modal);
+   only module-specific pieces live here, scoped to #invest-modal. */
+
+#invest-modal {
+  --inv-up: #00d47e;
+  --inv-up-soft: rgba(0, 212, 126, 0.14);
+  --inv-warn: #ff9f0a;
+  --inv-warn-soft: rgba(255, 159, 10, 0.14);
+}
+
+#invest-modal.modal-overlay {
+  z-index: 1400;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  overflow: auto;
+}
+
+#invest-modal .modal-content.inv-modal-content {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border-radius: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-color, #0f0f10);
+  border: none;
+  transform: none;
+  overflow: visible;
+}
+
+#invest-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#invest-modal .inv-shell { display: flex; flex-direction: column; flex: 1; }
+#invest-modal .inv-page { width: min(1480px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+#invest-modal .inv-save { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+#invest-modal .inv-empty-add { max-width: 360px; align-self: center; }
+
+#invest-modal .inv-h { margin: 0 0 12px; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; color: var(--text-primary); }
+#invest-modal .inv-h small { font-size: 13px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0; }
+
+/* summary tiles (.info-block look) */
+#invest-modal .inv-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+#invest-modal .inv-stat { position: relative; background: rgba(0, 0, 0, 0.2); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column; gap: 2px; }
+#invest-modal .inv-stat-val { font-size: 24px; font-weight: 800; letter-spacing: -0.8px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+#invest-modal .inv-stat-val.is-up { color: var(--inv-up); }
+#invest-modal .inv-stat-hint { font-size: 13px; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+#invest-modal .inv-ccy-split { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+/* whole-period income tip: .rw-tip-box opening below the tile */
+#invest-modal .inv-has-tip { cursor: help; }
+#invest-modal .inv-has-tip:focus-visible { outline: 2px solid var(--sys-blue); outline-offset: 2px; }
+#invest-modal .inv-stat-tip { position: absolute; top: calc(100% + 10px); right: 0; width: max-content; max-width: min(360px, calc(100vw - 32px));
+  padding: 10px 12px; border-radius: 12px; background: rgba(44, 44, 46, 0.96); color: #fff; font-size: 13px; font-weight: 500; line-height: 1.4;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0; visibility: hidden; pointer-events: none; z-index: 80; transform: translateY(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s; }
+#invest-modal .inv-stat-tip::after { content: ''; position: absolute; bottom: 100%; right: 28px; border: 6px solid transparent; border-bottom-color: rgba(44, 44, 46, 0.96); }
+#invest-modal .inv-has-tip:hover .inv-stat-tip, #invest-modal .inv-has-tip:focus .inv-stat-tip { opacity: 1; visibility: visible; transform: translateY(0); }
+#invest-modal .inv-tip-rows { display: grid; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+#invest-modal .inv-tip-row { display: flex; justify-content: space-between; gap: 16px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+#invest-modal .inv-tip-row b { color: var(--inv-up); font-weight: 700; }
+
+/* year matrix on top of .schedule-table: fluid, 12 equal months, scrolls only when months get under ~80px */
+#invest-modal .inv-matrix-wrap { max-height: none; background: rgba(0, 0, 0, 0.2); }
+#invest-modal .inv-table { table-layout: fixed; width: 100%; min-width: calc(170px + 12 * 80px + 110px); font-variant-numeric: tabular-nums; }
+#invest-modal .inv-table col.c-inst { width: 170px; }
+#invest-modal .inv-table col.c-total { width: 110px; }
+#invest-modal .inv-table th, #invest-modal .inv-table td { min-width: 0; padding: 10px 6px; vertical-align: top; }
+#invest-modal .inv-table th { font-size: 12px; vertical-align: middle; }
+#invest-modal .inv-table th:first-child, #invest-modal .inv-table td:first-child { min-width: 0; padding-left: 12px; padding-right: 8px; }
+#invest-modal .inv-table td:last-child, #invest-modal .inv-table th:last-child { padding-right: 12px; }
+#invest-modal .inv-table th.is-now { color: var(--sys-blue); }
+#invest-modal .inv-group td { background: rgba(255, 255, 255, 0.04); color: var(--text-secondary); font-size: 13px; font-weight: 700; text-align: left; vertical-align: middle; }
+#invest-modal .inv-group td:first-child { background: #232325; }
+#invest-modal .inv-name { font-weight: 700; font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+#invest-modal .inv-meta { font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-top: 3px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+#invest-modal .inv-ccy { display: inline-flex; border-radius: 6px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
+#invest-modal .inv-ccy-UAH { color: #8e8e93; background: rgba(255, 255, 255, 0.06); }
+#invest-modal .inv-ccy-USD { color: var(--inv-up); background: var(--inv-up-soft); }
+#invest-modal .inv-ccy-EUR { color: var(--sys-blue); background: var(--input-focus); }
+#invest-modal .inv-cell { cursor: pointer; transition: background 0.2s; }
+#invest-modal .inv-cell:hover { background: rgba(10, 132, 255, 0.08); }
+#invest-modal .inv-cell:focus-visible { outline: 2px solid var(--sys-blue); outline-offset: -2px; }
+#invest-modal .inv-cell.is-empty { color: var(--text-tertiary); }
+#invest-modal .inv-amt { font-weight: 700; font-size: 13px; }
+#invest-modal .inv-uah { font-size: 11px; color: var(--text-secondary); font-weight: 500; margin-top: 2px; }
+#invest-modal .inv-evs { display: grid; gap: 4px; justify-items: end; margin-top: 6px; }
+#invest-modal .inv-total { font-weight: 700; font-size: 13px; }
+#invest-modal .inv-table tfoot td { font-weight: 700; font-size: 13px; background: rgba(255, 255, 255, 0.04); vertical-align: middle; border-bottom: 1px solid var(--glass-border); }
+#invest-modal .inv-table tfoot td:first-child { background: #232325; }
+#invest-modal .inv-table tfoot tr.inv-cum td { color: var(--text-secondary); font-weight: 600; font-size: 11px; background: transparent; border-bottom: none; }
+#invest-modal .inv-table tfoot tr.inv-cum td:first-child { background: #1c1c1e; }
+
+/* payout tags: .rw-delta colors, two lines in narrow columns */
+#invest-modal .inv-ev { display: inline-block; border-radius: 8px; padding: 3px 5px; font-size: 11px; font-weight: 700; letter-spacing: -0.2px; white-space: nowrap; text-align: right; line-height: 1.3; }
+#invest-modal .inv-ev small { display: block; font-size: 10px; font-weight: 600; opacity: 0.85; }
+#invest-modal .inv-ev.coupon { color: var(--inv-warn); background: var(--inv-warn-soft); }
+#invest-modal .inv-ev.maturity { color: var(--inv-up); background: var(--inv-up-soft); }
+#invest-modal .inv-legend { display: flex; gap: 8px 16px; flex-wrap: wrap; color: var(--text-secondary); font-size: 13px; font-weight: 500; margin-top: 12px; }
+#invest-modal .inv-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+#invest-modal .inv-legend .inv-ev small { display: inline; }
+
+/* payouts + split lists inside .info-block */
+#invest-modal .inv-two { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+#invest-modal .inv-list { margin: 0; }
+#invest-modal .inv-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+#invest-modal .inv-row:last-child { border-bottom: none; }
+#invest-modal .inv-row-split { grid-template-columns: minmax(0, 1fr) auto; }
+#invest-modal .inv-date { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; }
+#invest-modal .inv-date small { display: block; color: var(--text-secondary); font-weight: 600; font-size: 12px; }
+#invest-modal .inv-what { min-width: 0; }
+#invest-modal .inv-what b { font-weight: 700; }
+#invest-modal .inv-what .inv-ev { margin-right: 8px; vertical-align: 1px; }
+#invest-modal .inv-what > div { color: var(--text-secondary); font-size: 13px; font-weight: 500; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#invest-modal .inv-money { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+#invest-modal .inv-money small { display: block; font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+#invest-modal .inv-empty-note { padding: 16px 0; color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+#invest-modal .inv-bar { margin-top: 8px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+#invest-modal .inv-bar > i { display: block; height: 100%; background: var(--sys-blue); border-radius: 3px; }
+
+/* cell popover: .custom-dropdown-options panel look */
+#invest-modal .inv-pop { position: fixed; z-index: 1450; background: rgba(28, 28, 30, 0.95); -webkit-backdrop-filter: blur(40px) saturate(200%); backdrop-filter: blur(40px) saturate(200%);
+  border-radius: 18px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 14px 16px; min-width: 260px; max-width: calc(100vw - 32px); display: grid; gap: 10px; font-size: 14px; color: var(--text-primary); }
+#invest-modal .inv-pop-line { display: flex; justify-content: space-between; align-items: center; gap: 14px; font-variant-numeric: tabular-nums; }
+#invest-modal .inv-pop-line span { color: var(--text-secondary); font-weight: 600; }
+#invest-modal .inv-pop-line .inv-ev { margin-right: 6px; }
+#invest-modal .inv-pop-item { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+
+/* add / edit sheet: .modal-overlay backdrop + .modal-content panel pinned to the right */
+#invest-modal .inv-sheet-overlay { position: fixed; inset: 0; z-index: 1500; display: flex; justify-content: flex-end; background: rgba(0, 0, 0, 0.7); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px); }
+#invest-modal .inv-sheet { width: min(480px, 100%); height: 100%; overflow-y: auto; background: rgba(28, 28, 30, 0.95); border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 36px 0 0 36px; box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5); color: white;
+  padding: 28px; padding-top: calc(28px + env(safe-area-inset-top, 0px)); padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 16px; transform: translateX(24px); opacity: 0; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; }
+#invest-modal .inv-sheet.is-open { transform: none; opacity: 1; }
+#invest-modal .inv-sheet .modal-header { margin-bottom: 8px; }
+#invest-modal .inv-sheet .limit-editor-title { margin-top: 8px; }
+#invest-modal .inv-field { display: flex; flex-direction: column; min-width: 0; }
+#invest-modal .inv-field > .employee-field-label { margin-bottom: 6px; }
+#invest-modal .employee-field-label span:not(.rw-tip-val) { text-transform: none; color: var(--text-tertiary); font-weight: 500; }
+#invest-modal .inv-sheet .ios-input { height: 56px; padding: 0 18px; font-variant-numeric: tabular-nums; }
+#invest-modal .inv-sheet .ios-input:disabled { color: var(--text-secondary); cursor: not-allowed; }
+#invest-modal .inv-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#invest-modal .inv-grid2.is-single { grid-template-columns: 1fr; }
+#invest-modal [hidden] { display: none !important; }
+
+#invest-modal .inv-isin-status { grid-column: 1 / -1; font-size: 13px; font-weight: 600; line-height: 1.45; padding: 10px 14px; border-radius: 14px; }
+#invest-modal .inv-isin-status:empty { display: none; }
+#invest-modal .inv-isin-status.is-ok { color: var(--inv-up); background: var(--inv-up-soft); }
+#invest-modal .inv-isin-status.is-miss { color: var(--inv-warn); background: var(--inv-warn-soft); }
+#invest-modal .inv-isin-status b { font-weight: 800; }
+#invest-modal .inv-lock { display: inline-flex; border-radius: 8px; padding: 2px 7px; font-size: 11px; font-weight: 700; color: var(--inv-up); background: var(--inv-up-soft); margin-left: 8px; text-transform: none; }
+
+/* payment rows on top of .sub-item */
+#invest-modal .inv-pays { display: flex; flex-direction: column; gap: 12px; }
+#invest-modal .inv-pay-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+#invest-modal .inv-pay-head em { font-style: normal; color: var(--text-secondary); font-weight: 500; }
+#invest-modal .inv-pay-n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 11px; background: rgba(255, 255, 255, 0.1); color: var(--text-secondary); font-size: 12px; margin-right: 8px; }
+#invest-modal .inv-pay-fields { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 8px; }
+#invest-modal .inv-pay input { width: 100%; font-family: inherit; font-variant-numeric: tabular-nums; }
+#invest-modal .inv-pay input:disabled { color: var(--text-secondary); box-shadow: none; }
+#invest-modal .inv-pay-sum { font-size: 13px; color: var(--text-secondary); font-weight: 500; display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+#invest-modal .inv-pay-sum b { color: var(--inv-warn); font-size: 14px; font-weight: 700; }
+#invest-modal .inv-pay.is-maturity .inv-pay-sum b { color: var(--inv-up); }
+#invest-modal .inv-pay-rm { background: rgba(255, 255, 255, 0.1); width: 32px; height: 32px; border-radius: 16px; border: 1px solid transparent; color: var(--text-secondary); cursor: pointer; font-size: 14px; }
+#invest-modal .inv-pay-rm:hover { background: rgba(255, 69, 58, 0.15); color: var(--sys-red); }
+#invest-modal .inv-sheet .btn-add { margin-top: 12px; }
+
+#invest-modal .inv-check { display: flex; gap: 10px; align-items: center; font-size: 15px; font-weight: 600; cursor: pointer; }
+#invest-modal .inv-check span { color: var(--text-secondary); font-weight: 500; }
+#invest-modal .inv-check input { width: 20px; height: 20px; accent-color: var(--sys-blue); }
+
+/* form summary: .info-block rows with runway-style tips */
+#invest-modal .inv-preview { margin: 0; }
+#invest-modal .inv-line { position: relative; cursor: help; font-size: 15px; font-variant-numeric: tabular-nums; flex-wrap: nowrap; }
+#invest-modal .inv-line:focus-visible { outline: 2px solid var(--sys-blue); outline-offset: 2px; border-radius: 8px; }
+#invest-modal .inv-line .text-value.is-up { color: var(--inv-up); }
+#invest-modal .inv-line .text-value.is-warn { color: var(--inv-warn); }
+#invest-modal .inv-line-tip { position: absolute; left: 0; bottom: calc(100% - 4px); width: max-content; max-width: min(320px, 100%);
+  padding: 10px 12px; border-radius: 12px; background: rgba(44, 44, 46, 0.96); color: #fff; font-size: 13px; font-weight: 500; line-height: 1.4;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0; visibility: hidden; pointer-events: none; z-index: 80; transform: translateY(6px); transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s; }
+#invest-modal .inv-line-tip::after { content: ''; position: absolute; top: 100%; left: 18px; border: 6px solid transparent; border-top-color: rgba(44, 44, 46, 0.96); }
+#invest-modal .inv-line-f { display: block; margin-top: 6px; color: var(--text-secondary); }
+#invest-modal .inv-line:hover .inv-line-tip, #invest-modal .inv-line:focus .inv-line-tip { opacity: 1; visibility: visible; transform: translateY(0); }
+#invest-modal .inv-form-error { margin: 0; padding: 10px 14px; border-radius: 14px; color: var(--sys-red); background: rgba(255, 69, 58, 0.12); font-size: 14px; font-weight: 600; }
+#invest-modal .inv-sheet .btn-modal-done { margin-top: 4px; }
+
+/* delete confirmation: app #confirm-modal look, typed word, red action */
+#invest-modal .inv-confirm-overlay { position: fixed; inset: 0; z-index: 1600; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.7); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px); }
+#invest-modal .inv-confirm { width: 100%; max-width: 400px; padding: 40px 32px 32px; text-align: center; display: flex; flex-direction: column; gap: 16px;
+  background: rgba(28, 28, 30, 0.95); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 36px; box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5); color: white; }
+#invest-modal .inv-confirm-icon { font-size: 56px; line-height: 1; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2)); }
+#invest-modal .inv-confirm h3 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary); }
+#invest-modal .inv-confirm p { margin: 0; color: var(--text-secondary); font-size: 16px; line-height: 1.5; font-weight: 500; }
+#invest-modal .inv-confirm p b, #invest-modal .inv-confirm label b { color: var(--text-primary); text-transform: none; }
+#invest-modal .inv-confirm .inv-field { text-align: left; }
+#invest-modal .inv-confirm .ios-input { text-align: center; font-weight: 600; }
+#invest-modal .inv-confirm-actions { display: flex; gap: 16px; margin-top: 8px; }
+#invest-modal .inv-confirm-actions > button { margin: 0; flex: 1; }
+#invest-modal .inv-btn-danger { background: linear-gradient(135deg, var(--sys-red), #c42b21); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3); }
+#invest-modal .inv-btn-danger:hover:not(:disabled) { background: linear-gradient(135deg, #ff6259, var(--sys-red)); box-shadow: 0 12px 24px rgba(255, 69, 58, 0.35); }
+#invest-modal .inv-btn-danger:disabled { opacity: 0.35; box-shadow: none; }
+
+@media (max-width: 860px) {
+  #invest-modal .inv-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #invest-modal .inv-two { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 520px) {
+  #invest-modal .inv-sheet { border-radius: 0; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+  #invest-modal .inv-grid2 { grid-template-columns: 1fr; }
+  #invest-modal .inv-stat-val { font-size: 20px; }
+  #invest-modal .inv-confirm { padding: 28px 20px 20px; }
+  #invest-modal .inv-confirm-actions { gap: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #invest-modal .inv-sheet, #invest-modal .inv-stat-tip, #invest-modal .inv-line-tip { transition: none; }
+}

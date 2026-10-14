@@ -56,6 +56,7 @@ import {
 } from './growth/trajectory.js';
 import { closeOpenDropdowns, registerUiActions } from './bind-ui.js';
 import { openRunway, closeRunway } from './runway/index.js';
+import { openInvest, closeInvest } from './invest/index.js';
 import {
   debtRemainingInMonth,
   forecastFinish,
@@ -190,6 +191,7 @@ import {
         budget: 'Бюджет',
         tracks: 'Мої треки',
         runway: 'Внески',
+        invest: 'Інвестиції',
         tree: 'Сімейне дерево',
     };
     let currentSkryniaModule = 'budget';
@@ -1236,7 +1238,7 @@ async function fetchAvailableProfiles() {
 
     function getSkryniaModules() {
         const ids = isPersonalSkrynia()
-            ? ['budget', ...['tracks', 'runway', 'tree'].filter((id) => extraModules.includes(id))]
+            ? ['budget', ...['tracks', 'runway', 'invest', 'tree'].filter((id) => extraModules.includes(id))]
             : ['budget'];
         return ids.map((id) => ({ id, label: SKRYNIA_MODULE_LABELS[id] }));
     }
@@ -1356,6 +1358,7 @@ async function fetchAvailableProfiles() {
             closeYearTracks();
             closeFamilyTree();
             closeRunway();
+            closeInvest();
         } catch (e) {
         } finally {
             suppressSkryniaCloseHook = false;
@@ -1383,6 +1386,7 @@ async function fetchAvailableProfiles() {
             closeYearTracks();
             closeFamilyTree();
             closeRunway();
+            closeInvest();
         } catch (e) {
         } finally {
             suppressSkryniaCloseHook = false;
@@ -1393,6 +1397,7 @@ async function fetchAvailableProfiles() {
 
         if (next === 'tracks') openYearTracks();
         else if (next === 'runway') openRunway();
+        else if (next === 'invest') openInvest();
         else if (next === 'tree') openFamilyTree();
     }
 
@@ -1902,6 +1907,7 @@ function logout() {
         hideSkryniaHub();
         try { closeYearTracks(); } catch (e) {}
         try { closeFamilyTree(); } catch (e) {}
+        try { closeInvest(); } catch (e) {}
         
         const appContainer = document.getElementById('app-container');
         appContainer.style.opacity = '0';
@@ -10320,6 +10326,8 @@ const uiActions = {
   closeYearTracks,
   closeRunway,
   openRunway,
+  closeInvest,
+  openInvest,
   openGrowthModal,
   openInvoicesModal,
   handleExpenseCardClick,
