@@ -5,7 +5,7 @@ const PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'groq', 'xai']
 /** @type {Record<string, Array<{ id: string, label: string }>>} */
 export const LLM_MODELS = {
   gemini: [
-    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash — щоденний чат' },
+    { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash — щоденний чат' },
     { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash — швидка' },
     { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro — глибше, мало запитів/день' },
     { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro — майже без безкоштовної квоти' },
