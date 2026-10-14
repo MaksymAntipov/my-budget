@@ -662,17 +662,25 @@ function setLlmSettingsStatus(text, isError = false) {
   status.style.color = isError ? 'var(--sys-red)' : 'var(--text-secondary)';
 }
 
+/**
+ * Notes live on the last message: the log is re-rendered from `thread` on every
+ * streamed chunk, so a note appended to the DOM alone vanished at once.
+ */
 function appendSystemNote(text) {
-  const log = document.getElementById('ai-chat-log');
-  if (!log) return;
-  const pinned = isNearBottom(log);
-  const keepTop = log.scrollTop;
-  const note = document.createElement('div');
-  note.className = 'ai-chat-note';
-  note.textContent = text;
-  log.appendChild(note);
-  if (pinned) log.scrollTop = log.scrollHeight;
-  else log.scrollTop = keepTop;
+  const last = [...thread].reverse().find((m) => m.kind !== 'context');
+  if (!last) {
+    const log = document.getElementById('ai-chat-log');
+    if (!log) return;
+    const note = document.createElement('div');
+    note.className = 'ai-chat-note';
+    note.textContent = text;
+    log.appendChild(note);
+    log.scrollTop = log.scrollHeight;
+    return;
+  }
+  const notes = Array.isArray(last.notes) ? last.notes : [];
+  if (notes[notes.length - 1] !== text) last.notes = [...notes, text];
+  renderAiThread({ stick: true });
 }
 
 function isNearBottom(el) {
@@ -704,12 +712,17 @@ function renderAiThread(opts = {}) {
       const chips = m.role === 'assistant' ? renderSuggestChips(m, i) : '';
       const usage = m.role === 'assistant' && !live ? tokenUsageLabel(m.promptTokens, m.content) : '';
       const usageHtml = usage ? `<div class="ai-chat-tokens">${usage}</div>` : '';
-      return `<div class="ai-chat-bubble ${cls}"><div class="ai-chat-who">${who}</div><div class="ai-chat-text">${formatAiHtml(m.content)}${caret}</div>${usageHtml}</div>${chips}`;
+      return `<div class="ai-chat-bubble ${cls}"><div class="ai-chat-who">${who}</div><div class="ai-chat-text">${formatAiHtml(m.content)}${caret}</div>${usageHtml}</div>${notesHtml(m)}${chips}`;
     })
     .join('');
   if (pinned) log.scrollTop = log.scrollHeight;
   else log.scrollTop = keepTop;
   schedulePersistAiChat();
+}
+
+function notesHtml(m) {
+  if (!Array.isArray(m?.notes) || !m.notes.length) return '';
+  return m.notes.map((n) => `<div class="ai-chat-note">${escapeHtml(n)}</div>`).join('');
 }
 
 function formatAiHtml(text) {
@@ -941,6 +954,8 @@ async function streamAssistant(opts = {}) {
     busy = false;
     abortCtrl = null;
     setComposerBusy(false);
+    // Last paint ran while still busy: drop the caret and show the chips.
+    renderAiThread();
     persistAiChatNow();
   }
 }
