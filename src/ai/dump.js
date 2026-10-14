@@ -53,9 +53,9 @@ export function capItems(items, cap) {
   return { shown, restCount: rest.length, restSum: rest.reduce((sum, item) => sum + amount(item), 0) };
 }
 
-/** Rough token count for Cyrillic-heavy text (~3 chars per token). */
+/** Rough token count for our prompts (~4 chars per token; Groq counted 4.3 on a real one). */
 export function approxTokens(text) {
-  return Math.ceil(String(text || '').length / 3);
+  return Math.ceil(String(text || '').length / 4);
 }
 
 /** Request tokens of the whole call: system prompt plus every message. */
