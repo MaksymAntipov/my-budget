@@ -2,10 +2,14 @@ const BRIEFING_SUMMARY_MAX = 3600;
 const TAIL_ASSISTANT_MAX = 1500;
 const TAIL_TURNS = 4;
 
+/** For error strings from the backend only — never run it on model text. */
 export function isProviderCapacityError(text) {
-  return /high demand|try again later|UNAVAILABLE|overloaded|resource.?exhausted|перевантажен/i.test(
-    String(text || ''),
-  );
+  return /high demand|try again later|UNAVAILABLE|overloaded|перевантажен/i.test(String(text || ''));
+}
+
+/** Gemini's overload notice streamed as answer text: only that exact sentence. */
+export function isGeminiBusyText(text) {
+  return /This model is currently experiencing high demand/i.test(String(text || ''));
 }
 
 export function isTransientAiError(text) {
@@ -19,7 +23,7 @@ export function isTransientAiError(text) {
     s.startsWith('Скриня зупинилась') ||
     s.startsWith('Провайдер перевантажений') ||
     /Thinking level/i.test(s) ||
-    isProviderCapacityError(s)
+    isGeminiBusyText(s)
   );
 }
 

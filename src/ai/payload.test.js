@@ -4,6 +4,7 @@ import {
   buildChatApiMessages,
   clipContextForContinue,
   defaultSuggestions,
+  isTransientAiError,
   looksTruncatedAiReply,
   stripProviderNoise,
   summarizeBriefing,
@@ -186,5 +187,31 @@ describe('capital report', () => {
     const long = sections.map((name) => `## ${name}\n${'а'.repeat(1500)}`).join('\n\n');
     const out = summarizeBriefing(long, 2500);
     sections.forEach((name) => assert.match(out, new RegExp(name)));
+  });
+});
+
+describe('isTransientAiError', () => {
+  it('keeps a real answer that talks about overload', () => {
+    assert.equal(isTransientAiError('Бюджет перевантажений боргами: 45% доходу йде на платежі.'), false);
+    assert.equal(isTransientAiError('Try again later with a smaller goal.'), false);
+  });
+
+  it('still drops provider errors', () => {
+    assert.equal(isTransientAiError('Провайдер перевантажений (код 503). Зачекайте хвилину і спробуйте знову.'), true);
+    assert.equal(isTransientAiError('Ліміт провайдера (код 429). Спробуйте пізніше'), true);
+    assert.equal(isTransientAiError('This model is currently experiencing high demand. Please try again later.'), true);
+  });
+});
+
+describe('buildChatApiMessages keeps answers about overload', () => {
+  it('sends the previous turn even when it says «перевантажений»', () => {
+    const thread = [
+      { role: 'user', kind: 'context', content: 'ДАНІ' },
+      { role: 'user', kind: 'user', content: 'Що з боргами?' },
+      { role: 'assistant', kind: 'assistant', content: 'Бюджет перевантажений боргами.' },
+      { role: 'user', kind: 'user', content: 'А що робити?' },
+    ];
+    const text = buildChatApiMessages(thread).map((m) => m.content).join('\n');
+    assert.match(text, /перевантажений боргами/);
   });
 });

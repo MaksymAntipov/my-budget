@@ -21,6 +21,7 @@ import {
   briefingKindFromThread,
   buildChatApiMessages,
   defaultSuggestions,
+  isGeminiBusyText,
   isProviderCapacityError,
   isTransientAiError,
   looksTruncatedAiReply,
@@ -878,14 +879,15 @@ async function streamAssistant(opts = {}) {
           if (json.error) {
             providerFailed = true;
             const err = String(json.error);
-            appendSystemNote(isProviderCapacityError(err) ? PROVIDER_BUSY_NOTE : err);
+            // The backend already words it (with the provider's status code).
+            appendSystemNote(err);
             if (isProviderCapacityError(err) || /Ліміт провайдера|Забагато запитів|Денна квота/.test(err)) {
               applyProviderLock(parseWaitSecFromText(err) || 45);
             }
           } else if (json.truncated) {
             providerTruncated = true;
           } else if (json.t) {
-            if (isProviderCapacityError(json.t)) {
+            if (isGeminiBusyText(json.t)) {
               providerFailed = true;
               appendSystemNote(PROVIDER_BUSY_NOTE);
               applyProviderLock(45);
