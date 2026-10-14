@@ -27,8 +27,8 @@ export const LLM_MODELS = {
     { id: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
   ],
   groq: [
-    { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
-    { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B' },
+    { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B — аналіз' },
+    { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B — швидка' },
   ],
   xai: [
     { id: 'grok-3', label: 'Grok 3' },
