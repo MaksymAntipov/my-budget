@@ -492,7 +492,7 @@
             <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.45; margin: 0 0 12px 0;">
                 Відкрийте <a href="https://api.monobank.ua/" target="_blank" rel="noopener noreferrer">api.monobank.ua</a>, увійдіть у застосунку Монобанку і скопіюйте персональний токен.
             </p>
-            <input type="password" id="mono-token-input" class="ios-input" autocomplete="off" placeholder="Токен Монобанку" style="margin-bottom: 8px; height: 52px;">
+            <input type="text" id="mono-token-input" class="ios-input secret-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-bwignore placeholder="Токен Монобанку" style="margin-bottom: 8px; height: 52px;">
             <p id="mono-form-error" style="color: var(--sys-red); font-size: 13px; min-height: 18px; margin: 0 0 12px 0;"></p>
             <button type="button" class="btn-init-primary" style="margin: 0;" data-action="connectMonobank">Підключити</button>
         </div>
@@ -932,7 +932,7 @@
         </div>
         <div id="llm-key-entry">
             <label class="ai-field-label">API-ключ</label>
-            <input type="password" id="llm-api-key" class="ios-input" autocomplete="off" style="margin-bottom: 8px;" placeholder="Вставте ключ сюди">
+            <input type="text" id="llm-api-key" class="ios-input secret-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-bwignore style="margin-bottom: 8px;" placeholder="Вставте ключ сюди">
             <p style="color: var(--text-tertiary); font-size: 12px; margin: 0 0 16px 0;">Ключ не відправляється на сервер Скрині.</p>
         </div>
         <p id="llm-key-status" style="color: var(--text-secondary); font-size: 13px; margin: 0 0 16px 0;"></p>

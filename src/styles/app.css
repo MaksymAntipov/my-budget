@@ -3520,3 +3520,10 @@
             .mr-chip { max-width: 48%; }
             .mr-group-name { flex-wrap: wrap; }
         }
+
+/* API keys and bank tokens: masked like a password, but not a password field,
+   so the browser does not offer to save them with spending names as the login. */
+.secret-input {
+    -webkit-text-security: disc;
+    text-security: disc;
+}
