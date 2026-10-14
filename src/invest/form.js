@@ -409,7 +409,7 @@ export function createInvestForm({ host, getBonds, todayIso, onSave, onDelete })
 
   function onDropdownPick(name, value) {
     if (!s) return;
-    if (name === 'kind') { s.kind = value; applyKind(); return; }
+    if (name === 'kind') { s.kind = value; setDropdown('kind', value); applyKind(); return; }
     if (name === 'ccy') { s.ccy = value; rateTouched = false; if (value === 'UAH') s.rate = ''; syncCurrency(); maybeAutoRate(); updateSums(); renderSchedule(); renderPreview(); return; }
     s[name] = value;
     setDropdown(name, value);
