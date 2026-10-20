@@ -3158,6 +3158,28 @@ function convertCurrency() {
         return `<div class="expense-limit-bar ${state}" aria-hidden="true"><span style="width: ${share.toFixed(1)}%"></span></div>`;
     }
 
+    /** Fills the card background by the share of the limit spent; the fill turns from green to red near the cap. */
+    function applyLimitFill(card, category) {
+        const limited = !isLedgerCategory(category) && categoryLimitMode(category) !== 'none';
+        card.classList.toggle('has-limit-fill', limited);
+        if (!limited) {
+            card.style.removeProperty('--limit-fill');
+            card.style.removeProperty('--limit-hue');
+            return;
+        }
+        const limit = categoryLimitNumber(category);
+        const total = getCategoryTotal(category);
+        const share = limit > 0 ? Math.min(1, total / limit) : (total > 0 ? 1 : 0);
+        card.style.setProperty('--limit-fill', (share * 100).toFixed(1) + '%');
+        card.style.setProperty('--limit-hue', Math.round(4 + 136 * (1 - share * share)));
+    }
+
+    /** Newest bank operations first; items without a date (added by hand) keep their order below. */
+    function sortItemsByDate(items) {
+        if (!Array.isArray(items)) return items;
+        return items.sort((a, b) => (Number(b.time) || 0) - (Number(a.time) || 0));
+    }
+
     function syncCategoryLimitState(category) {
         if (!category) return;
         const card = document.querySelector(`.expense-card-pro[data-category-id="${CSS.escape(String(category.id))}"]`);
@@ -3166,6 +3188,7 @@ function convertCurrency() {
         if (chip) chip.outerHTML = limitChipHtml(category);
         const bar = card.querySelector('.expense-limit-bar');
         if (bar) bar.outerHTML = limitBarHtml(category);
+        applyLimitFill(card, category);
         const over = categoryIsOverLimit(category);
         card.classList.toggle('is-over-limit', over);
         let note = card.querySelector('.expense-limit-over');
@@ -3688,6 +3711,7 @@ function getHistoricalIncome(year, month) {
             const paidHtml = allItemsPaid ? `<div style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: var(--sys-green); border-radius: 50%; margin-left: 10px; box-shadow: 0 2px 8px rgba(46, 160, 67, 0.4); flex-shrink: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>` : '';
             
             // 2. Повертаємо тултип з підкатегоріями
+            sortItemsByDate(exp.items);
             let tooltipHtml = exp.items.length > 0 
                 ? exp.items.map(i => `<div class="preview-item"><span class="preview-item-name">${escapeHtml(i.name || 'Без назви')}</span><span class="preview-item-amount">${formatMoney(parseFloat(i.amount)||0)} ₴${i.isPaid ? '<span style="color: var(--sys-green); margin-left:4px;">✓</span>' : ''}</span></div>`).join('')
                 : '<div style="opacity:0.7;">Немає доданих статей</div>';
@@ -3715,6 +3739,7 @@ function getHistoricalIncome(year, month) {
             const div = document.createElement('div');
             div.className = `expense-card-pro ${rankClass} ${paidCardClass}${overLimit ? ' is-over-limit' : ''}`;
             div.dataset.categoryId = String(exp.id);
+            applyLimitFill(div, exp);
             div.innerHTML = `
                 <div class="expense-pro-main" data-action="handleExpenseCardClick" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([exp.id]))}" style="cursor: pointer; position: relative;">
                     <div class="expense-pro-header">
@@ -4006,6 +4031,7 @@ function getHistoricalIncome(year, month) {
         if (!category || !list) return;
         list.innerHTML = '';
         const tops = getTop3SubItems(category);
+        sortItemsByDate(category.items);
 
         category.items.forEach(item => {
             let amt = parseFloat(item.amount) || 0, rankClass = '', badgeClass = '', badgeText = '';
@@ -5347,6 +5373,12 @@ function renderEnvelopes() {
     // 11. ГРАФИКИ И ДИНАМИКА
     // ==========================================
     let googleChartsLoaded = false;
+    let sankeyExpanded = false;
+    const SANKEY_BASE_HEIGHT = 340;
+    const SANKEY_EXPENSE_LIMIT = 7;
+    const SANKEY_INCOME_LIMIT = 4;
+    const SANKEY_OTHER_EXPENSE = 'Інше';
+    const SANKEY_OTHER_INCOME = 'Інші доходи';
 
     function bootGoogleCharts() {
         if (typeof google === 'undefined' || !google.charts) {
@@ -5394,15 +5426,20 @@ function renderEnvelopes() {
 
         const roundNum = (num) => Math.round(num);
 
+        const incomeItems = [];
         if (currentMonthData.incomes) {
             currentMonthData.incomes.forEach(inc => {
                 let amt = inc.currency === 'USD' ? inc.amount * currentExchangeRate : inc.amount;
                 if (amt > 0) {
-                    rows.push([inc.name + ' (Дохід)', 'Ваш Бюджет', roundNum(amt)]); 
+                    incomeItems.push({ name: inc.name + ' (Дохід)', amount: amt });
                     totalIncome += amt;
                 }
             });
         }
+        let canExpand = false;
+        const incomeGroup = groupSankeyTail(incomeItems, SANKEY_INCOME_LIMIT, SANKEY_OTHER_INCOME);
+        canExpand = canExpand || incomeGroup.grouped;
+        incomeGroup.items.forEach(it => rows.push([it.name, 'Ваш Бюджет', roundNum(it.amount)]));
 
         if (totalIncome <= 0) {
             container.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding-top:150px; font-weight:600;">Додайте доходи для графіка</div>';
@@ -5423,13 +5460,17 @@ let cogsAmount = 0;
         }
 
         let totalExp = 0;
+        const expenseItems = [];
         expenses.forEach(exp => {
             const catTotal = getCategoryTotal(exp);
             if (catTotal > 0) {
-                rows.push(['Ваш Бюджет', exp.name, roundNum(catTotal)]);
+                expenseItems.push({ name: exp.name, amount: catTotal });
                 totalExp += catTotal;
             }
         });
+        const expenseGroup = groupSankeyTail(expenseItems, SANKEY_EXPENSE_LIMIT, SANKEY_OTHER_EXPENSE);
+        canExpand = canExpand || expenseGroup.grouped;
+        expenseGroup.items.forEach(it => rows.push(['Ваш Бюджет', it.name, roundNum(it.amount)]));
 
         if (isBiz) {
             payTotal = getPayrollAccruedFromList(currentMonthData.payroll);
@@ -5461,6 +5502,7 @@ let cogsAmount = 0;
                     colors: colors,
                     nodePadding: 24,
                     width: 12,
+                    interactivity: true,
                     label: { color: '#ffffff', fontSize: 13, bold: true, fontName: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }
                 },
                 link: {
@@ -5470,9 +5512,44 @@ let cogsAmount = 0;
             }
         };
 
+        // Expanded view grows with the number of nodes so thin flows stay readable.
+        const chartBox = document.getElementById('budgetChartContainer');
+        const outNodes = rows.filter(r => r[0] === 'Ваш Бюджет').length;
+        const inNodes = rows.length - outNodes;
+        const height = sankeyExpanded ? Math.max(SANKEY_BASE_HEIGHT, Math.max(outNodes, inNodes) * 34) : SANKEY_BASE_HEIGHT;
+        if (chartBox) chartBox.style.height = height + 'px';
+        updateSankeyToggle(canExpand || sankeyExpanded);
+
         const chart = new google.visualization.Sankey(container);
+        google.visualization.events.addListener(chart, 'select', () => {
+            const sel = chart.getSelection();
+            const name = sel && sel[0] && sel[0].name;
+            if (name === SANKEY_OTHER_EXPENSE || name === SANKEY_OTHER_INCOME) toggleSankeyExpanded();
+        });
         chart.draw(data, options);
     }
+
+    /** Keeps the `limit` biggest items; the rest collapse into one «other» node unless the chart is expanded. */
+    function groupSankeyTail(items, limit, otherName) {
+        if (sankeyExpanded || items.length <= limit + 1) return { items, grouped: false };
+        const sorted = [...items].sort((a, b) => b.amount - a.amount);
+        const tail = sorted.slice(limit);
+        const otherAmount = tail.reduce((sum, it) => sum + it.amount, 0);
+        return { items: [...sorted.slice(0, limit), { name: otherName, amount: otherAmount }], grouped: true };
+    }
+
+    function updateSankeyToggle(visible) {
+        const btn = document.getElementById('sankey-toggle');
+        if (!btn) return;
+        btn.style.display = visible ? '' : 'none';
+        btn.textContent = sankeyExpanded ? 'Згорнути' : 'Показати всі';
+    }
+
+    function toggleSankeyExpanded() {
+        sankeyExpanded = !sankeyExpanded;
+        updateChart();
+    }
+    document.getElementById('sankey-toggle')?.addEventListener('click', toggleSankeyExpanded);
 
     function openAnalyticsModal() { document.getElementById('analytics-modal').classList.add('active'); renderAnalyticsChart(); }
     function closeAnalyticsModal(e) { if (!e || e.target.id === 'analytics-modal' || e.target.className === 'btn-close-modal') document.getElementById('analytics-modal').classList.remove('active'); }

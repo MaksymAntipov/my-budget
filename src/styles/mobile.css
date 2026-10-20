@@ -426,7 +426,8 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
     .is-compact .cf-row { font-size: 14px; }
 }
 
-.is-compact #budgetChartContainer { display: none; }
+.is-compact #budgetChartContainer,
+.is-compact #sankey-toggle { display: none !important; }
 .flow-bar { margin: 4px 0 8px; }
 .flow-bar-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .flow-bar-deficit { color: #ff6961; font-size: 13px; }
