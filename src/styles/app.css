@@ -1297,6 +1297,9 @@
         .chart-container:hover { transform: scale(1.03); }
         .sankey-toggle { display: block; margin: 4px auto 0; padding: 6px 14px; background: transparent; border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; color: var(--sys-blue); font-size: 13px; font-weight: 600; cursor: pointer; }
         .sankey-toggle:hover { background: rgba(10,132,255,0.1); }
+        /* Full-screen budget flow: no scale-in, so the chart measures its real width when drawn. */
+        .sankey-modal .modal-content, .sankey-modal.active .modal-content { width: 96vw; max-width: 1400px; height: 92vh; max-height: 92vh; padding: 24px 28px; transform: none; }
+        .sankey-modal-body { flex: 1; min-height: 0; overflow-y: auto; }
         .currency-symbol { font-weight: 600; opacity: 0.7; margin-left: 2px;}
 
         .top-expense-1 { border: 1px solid rgba(255, 69, 58, 0.4) !important; background: linear-gradient(135deg, rgba(255, 69, 58, 0.1), rgba(255, 69, 58, 0.05)) !important; position: relative; }

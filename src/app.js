@@ -5373,8 +5373,6 @@ function renderEnvelopes() {
     // 11. ГРАФИКИ И ДИНАМИКА
     // ==========================================
     let googleChartsLoaded = false;
-    let sankeyExpanded = false;
-    const SANKEY_BASE_HEIGHT = 340;
     const SANKEY_EXPENSE_LIMIT = 7;
     const SANKEY_INCOME_LIMIT = 4;
     const SANKEY_OTHER_EXPENSE = 'Інше';
@@ -5394,7 +5392,7 @@ function renderEnvelopes() {
     bootGoogleCharts();
 
     window.addEventListener('resize', () => {
-        if (googleChartsLoaded && document.getElementById('sankey_basic').innerHTML !== '') updateChart();
+        if (googleChartsLoaded && (document.getElementById('sankey_basic').innerHTML !== '' || isSankeyModalOpen())) updateChart();
     });
 
     function initChart() {
@@ -5404,10 +5402,13 @@ function renderEnvelopes() {
 
     function updateChart() {
         if (!googleChartsLoaded) return;
-        
         const container = document.getElementById('sankey_basic');
-        if (!container) return;
+        if (container) updateSankeyToggle(drawSankey(container, false));
+        if (isSankeyModalOpen()) drawSankey(document.getElementById('sankey_full'), true);
+    }
 
+    /** Draws the budget flow; collapsed, the small flows fold into «Інше». Returns whether anything was folded. */
+    function drawSankey(container, expanded) {
         let totalIncome = 0;
         const currentMonthData = appData[currentYear] ? appData[currentYear][currentMonth] : null;
         
@@ -5437,7 +5438,7 @@ function renderEnvelopes() {
             });
         }
         let canExpand = false;
-        const incomeGroup = groupSankeyTail(incomeItems, SANKEY_INCOME_LIMIT, SANKEY_OTHER_INCOME);
+        const incomeGroup = groupSankeyTail(incomeItems, SANKEY_INCOME_LIMIT, SANKEY_OTHER_INCOME, expanded);
         canExpand = canExpand || incomeGroup.grouped;
         incomeGroup.items.forEach(it => rows.push([it.name, 'Ваш Бюджет', roundNum(it.amount)]));
 
@@ -5468,7 +5469,7 @@ let cogsAmount = 0;
                 totalExp += catTotal;
             }
         });
-        const expenseGroup = groupSankeyTail(expenseItems, SANKEY_EXPENSE_LIMIT, SANKEY_OTHER_EXPENSE);
+        const expenseGroup = groupSankeyTail(expenseItems, SANKEY_EXPENSE_LIMIT, SANKEY_OTHER_EXPENSE, expanded);
         canExpand = canExpand || expenseGroup.grouped;
         expenseGroup.items.forEach(it => rows.push(['Ваш Бюджет', it.name, roundNum(it.amount)]));
 
@@ -5512,26 +5513,35 @@ let cogsAmount = 0;
             }
         };
 
-        // Expanded view grows with the number of nodes so thin flows stay readable.
-        const chartBox = document.getElementById('budgetChartContainer');
-        const outNodes = rows.filter(r => r[0] === 'Ваш Бюджет').length;
-        const inNodes = rows.length - outNodes;
-        const height = sankeyExpanded ? Math.max(SANKEY_BASE_HEIGHT, Math.max(outNodes, inNodes) * 34) : SANKEY_BASE_HEIGHT;
-        if (chartBox) chartBox.style.height = height + 'px';
-        updateSankeyToggle(canExpand || sankeyExpanded);
+        // Full-screen view grows with the number of nodes (and scrolls) so thin flows stay readable.
+        if (expanded) {
+            const outNodes = rows.filter(r => r[0] === 'Ваш Бюджет').length;
+            const inNodes = rows.length - outNodes;
+            const fit = (container.parentElement?.clientHeight || 0) - 8;
+            container.style.height = Math.max(fit, Math.max(outNodes, inNodes) * 34) + 'px';
+        }
 
         const chart = new google.visualization.Sankey(container);
-        google.visualization.events.addListener(chart, 'select', () => {
-            const sel = chart.getSelection();
-            const name = sel && sel[0] && sel[0].name;
-            if (name === SANKEY_OTHER_EXPENSE || name === SANKEY_OTHER_INCOME) toggleSankeyExpanded();
-        });
+        if (!expanded) {
+            google.visualization.events.addListener(chart, 'select', () => {
+                const sel = chart.getSelection();
+                const name = sel && sel[0] && sel[0].name;
+                if (name === SANKEY_OTHER_EXPENSE || name === SANKEY_OTHER_INCOME) openSankeyModal();
+            });
+            // The chart selects a node only by its bar; let the «Інше» labels open the full view too.
+            // Pointerdown: the chart redraws its labels on hover, so a click may land on a detached node.
+            container.onpointerdown = (e) => {
+                const label = e.target.closest?.('text')?.textContent;
+                if (label === SANKEY_OTHER_EXPENSE || label === SANKEY_OTHER_INCOME) openSankeyModal();
+            };
+        }
         chart.draw(data, options);
+        return canExpand;
     }
 
     /** Keeps the `limit` biggest items; the rest collapse into one «other» node unless the chart is expanded. */
-    function groupSankeyTail(items, limit, otherName) {
-        if (sankeyExpanded || items.length <= limit + 1) return { items, grouped: false };
+    function groupSankeyTail(items, limit, otherName, expanded) {
+        if (expanded || items.length <= limit + 1) return { items, grouped: false };
         const sorted = [...items].sort((a, b) => b.amount - a.amount);
         const tail = sorted.slice(limit);
         const otherAmount = tail.reduce((sum, it) => sum + it.amount, 0);
@@ -5540,16 +5550,27 @@ let cogsAmount = 0;
 
     function updateSankeyToggle(visible) {
         const btn = document.getElementById('sankey-toggle');
-        if (!btn) return;
-        btn.style.display = visible ? '' : 'none';
-        btn.textContent = sankeyExpanded ? 'Згорнути' : 'Показати всі';
+        if (btn) btn.style.display = visible ? '' : 'none';
     }
 
-    function toggleSankeyExpanded() {
-        sankeyExpanded = !sankeyExpanded;
-        updateChart();
+    function isSankeyModalOpen() {
+        return Boolean(document.getElementById('sankey-modal')?.classList.contains('active'));
     }
-    document.getElementById('sankey-toggle')?.addEventListener('click', toggleSankeyExpanded);
+
+    function openSankeyModal() {
+        if (!googleChartsLoaded) return;
+        document.getElementById('sankey-modal').classList.add('active');
+        drawSankey(document.getElementById('sankey_full'), true);
+    }
+
+    function closeSankeyModal(e) {
+        if (e && e.target.id !== 'sankey-modal' && e.target.className !== 'btn-close-modal') return;
+        document.getElementById('sankey-modal').classList.remove('active');
+    }
+    document.getElementById('sankey-toggle')?.addEventListener('click', openSankeyModal);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isSankeyModalOpen()) document.getElementById('sankey-modal').classList.remove('active');
+    });
 
     function openAnalyticsModal() { document.getElementById('analytics-modal').classList.add('active'); renderAnalyticsChart(); }
     function closeAnalyticsModal(e) { if (!e || e.target.id === 'analytics-modal' || e.target.className === 'btn-close-modal') document.getElementById('analytics-modal').classList.remove('active'); }
@@ -10243,6 +10264,7 @@ const uiActions = {
   clearCurrentMonth,
   closeAiExportModal,
   closeAnalyticsModal,
+  closeSankeyModal,
   closeChangelogModal,
   closeConfirmModal,
   closeDebtsModal,
