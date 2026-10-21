@@ -1637,8 +1637,14 @@
             box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.28);
         }
 
-        /* Card with a limit: the background fills with the spent share, hue goes green → red (set in JS). */
+        /* Card with a limit: the background fills with the spent share, hue goes green → red (set in JS).
+           Registered so the gradient can animate as the fill grows when the card comes into view. */
+        @property --limit-fill { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+        @property --limit-hue { syntax: '<number>'; inherits: false; initial-value: 140; }
         .expense-card-pro.has-limit-fill {
+            transition: transform 0.2s, border-color 0.2s,
+                --limit-fill 1.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+                --limit-hue 1.6s cubic-bezier(0.25, 0.8, 0.25, 1);
             background:
                 linear-gradient(90deg,
                     hsla(var(--limit-hue, 140), 80%, 50%, 0.26) 0,

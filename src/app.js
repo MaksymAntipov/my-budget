@@ -27,7 +27,7 @@ import {
   txKey,
 } from './mono/routing.js';
 import { apiFetch } from './api.js';
-import { animateIn, animateOut, animateMoney, enableSheetSwipe } from './motion.js';
+import { animateIn, animateOut, animateMoney, enableSheetSwipe, reducedMotion } from './motion.js';
 import { syncFamilyTreeNavVisibility, openFamilyTree, closeFamilyTree } from './family-tree/index.js';
 import {
   syncYearTracksNavVisibility,
@@ -3158,6 +3158,31 @@ function convertCurrency() {
         return `<div class="expense-limit-bar ${state}" aria-hidden="true"><span style="width: ${share.toFixed(1)}%"></span></div>`;
     }
 
+    // Cards whose limit fill already played its entrance (per month), so re-renders do not replay it.
+    const revealedLimitFills = new Set();
+    let limitFillObserver = null;
+
+    function setLimitFillVars(card, fill, hue) {
+        card.style.setProperty('--limit-fill', fill);
+        card.style.setProperty('--limit-hue', hue);
+    }
+
+    /** First time a limited card scrolls into view, its fill grows from empty to the spent share. */
+    function revealLimitFillOnScroll(card) {
+        if (!limitFillObserver) {
+            limitFillObserver = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) return;
+                    const el = entry.target;
+                    limitFillObserver.unobserve(el);
+                    revealedLimitFills.add(el.dataset.limitKey);
+                    requestAnimationFrame(() => setLimitFillVars(el, el.dataset.limitFill, el.dataset.limitHue));
+                });
+            }, { threshold: 0.4 });
+        }
+        limitFillObserver.observe(card);
+    }
+
     /** Fills the card background by the share of the limit spent; the fill turns from green to red near the cap. */
     function applyLimitFill(card, category) {
         const limited = !isLedgerCategory(category) && categoryLimitMode(category) !== 'none';
@@ -3170,8 +3195,22 @@ function convertCurrency() {
         const limit = categoryLimitNumber(category);
         const total = getCategoryTotal(category);
         const share = limit > 0 ? Math.min(1, total / limit) : (total > 0 ? 1 : 0);
-        card.style.setProperty('--limit-fill', (share * 100).toFixed(1) + '%');
-        card.style.setProperty('--limit-hue', Math.round(4 + 136 * (1 - share * share)));
+        const fill = (share * 100).toFixed(1) + '%';
+        const hue = String(Math.round(4 + 136 * (1 - share * share)));
+        const key = `${currentYear}-${currentMonth}-${category.id}`;
+        if (revealedLimitFills.has(key) || reducedMotion() || !('IntersectionObserver' in window)) {
+            setLimitFillVars(card, fill, hue);
+            return;
+        }
+        // Not shown yet: start empty and let the observer play the fill once the card is on screen.
+        card.dataset.limitKey = key;
+        card.dataset.limitFill = fill;
+        card.dataset.limitHue = hue;
+        if (!card.dataset.limitPending) {
+            card.dataset.limitPending = '1';
+            setLimitFillVars(card, '0%', '140');
+            revealLimitFillOnScroll(card);
+        }
     }
 
     /** Newest bank operations first; items without a date (added by hand) keep their order below. */
