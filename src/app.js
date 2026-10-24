@@ -27,7 +27,7 @@ import {
   txKey,
 } from './mono/routing.js';
 import { apiFetch } from './api.js';
-import { animateIn, animateOut, animateMoney, enableSheetSwipe, reducedMotion } from './motion.js';
+import { animateIn, animateOut, animateMoney, morphContent, enableSheetSwipe, reducedMotion } from './motion.js';
 import { syncFamilyTreeNavVisibility, openFamilyTree, closeFamilyTree } from './family-tree/index.js';
 import {
   syncYearTracksNavVisibility,
@@ -2361,12 +2361,19 @@ function logout() {
     }
 
     let financialPlanSaveTimer = null;
+    let financialPlanEditing = false;
     function updateFinancialPlanField(field, value) {
         const fp = getFinancialPlan();
         fp[field] = parseFloat(value) || 0;
         if (financialPlanSaveTimer) clearTimeout(financialPlanSaveTimer);
         financialPlanSaveTimer = setTimeout(() => saveFinancialPlan(), 600);
-        renderFinancialPlanBlock();
+        // While typing, refresh only the preview so the field keeps its focus.
+        const preview = document.getElementById('fp-preview');
+        if (financialPlanEditing && preview) {
+            preview.innerHTML = financialPlanPreviewHtml(fp, uahToUsd(recommendedSaveUah(currentIncomeUah || 0)));
+        } else {
+            renderFinancialPlanBlock();
+        }
     }
 
     async function saveFinancialPlan() {
@@ -2578,21 +2585,80 @@ function logout() {
         return `~${Math.round(years)} ${years >= 5 ? 'років' : years >= 2 ? 'роки' : 'рік'}`;
     }
 
-    function fpProgressBar(pct, color) {
-        const w = Math.min(100, Math.max(0, pct));
-        return `<div class="fp-progress"><div class="fp-progress-fill" style="width:${w}%;background:${color}"></div></div>`;
+    const FP_RING_LEN = 125.66; // 2π × r=20
+    const FP_INFO_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+    const FP_GEAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+
+    function fpShort(n) {
+        return n ? formatNumberShort(n) : '0';
     }
 
-    function toggleRule502030Details(e) {
-        if (e) e.stopPropagation();
-        const panel = document.getElementById('rule-502030-details');
-        if (panel) panel.classList.toggle('open');
+    function fpRing(pct, color) {
+        const p = Math.min(100, Math.max(0, pct || 0));
+        const label = p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%`;
+        const arc = p > 0
+            ? `<circle cx="24" cy="24" r="20" class="fp-ring-arc" stroke="${color}" stroke-dasharray="${(p / 100 * FP_RING_LEN).toFixed(1)} ${FP_RING_LEN}" transform="rotate(-90 24 24)"></circle>`
+            : '';
+        return `<span class="fp-ring"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" class="fp-ring-track"></circle>${arc}</svg><span class="fp-ring-label tabular">${label}</span></span>`;
     }
 
-    function toggleFinancialPlanSettings(e) {
-        if (e) e.stopPropagation();
-        const panel = document.getElementById('fp-settings-panel');
-        if (panel) panel.classList.toggle('open');
+    function financialPlanCapital(fp, monthlyInvestUsd) {
+        const targetUsd = (fp.desiredMonthlyUsd || 0) * 12 * 25;
+        const currentUsd = (fp.brokerBalanceUsd || 0) + uahToUsd(getInvestmentJarsBalanceUah());
+        return {
+            targetUsd,
+            currentUsd,
+            pct: targetUsd > 0 ? (currentUsd / targetUsd) * 100 : 0,
+            years: calcYearsToCapital(targetUsd, currentUsd, monthlyInvestUsd, fp.returnRatePct),
+        };
+    }
+
+    function financialPlanPreviewHtml(fp, monthlyInvestUsd) {
+        const cap = financialPlanCapital(fp, monthlyInvestUsd);
+        return `
+            ${fpRing(cap.pct, 'var(--sys-green)')}
+            <div class="fp-preview-text">
+                <span class="fp-caption">Капітал ×25</span>
+                <span class="fp-preview-value tabular">${fpShort(cap.currentUsd)} / ${cap.targetUsd > 0 ? fpShort(cap.targetUsd) : '—'} $</span>
+                <span class="fp-caption tabular">${formatMoney(fp.desiredMonthlyUsd || 0)} × 12 × 25</span>
+            </div>
+            <span class="fp-chip is-green">${formatYearsLabel(cap.years)}</span>
+        `;
+    }
+
+    function fpField(field, label, hint, value) {
+        return `
+            <label class="fp-form-row">
+                <span class="fp-form-label">${label}<span class="fp-caption">${hint}</span></span>
+                <input type="number" inputmode="decimal" class="fp-form-input tabular" value="${value}" data-input-action="updateFinancialPlanField" data-args="${escapeAttr(JSON.stringify([field]))}">
+            </label>
+        `;
+    }
+
+    function fpTile({ ring, title, value, sub, chip, tip, tipLabel }) {
+        return `
+            <div class="fp-tile">
+                <div class="fp-tile-top">
+                    ${ring}
+                    <button type="button" class="rate-info" data-stop-propagation="1" aria-label="${tipLabel}">${FP_INFO_ICON}<span class="rate-info__tip">${tip}</span></button>
+                </div>
+                <div class="fp-tile-body">
+                    <span class="fp-tile-title">${title}</span>
+                    <span class="fp-tile-value tabular">${value}</span>
+                    <span class="fp-caption tabular">${sub}</span>
+                </div>
+                ${chip}
+            </div>
+        `;
+    }
+
+    function toggleFinancialPlanSettings() {
+        const block = document.getElementById('rule-502030-block');
+        financialPlanEditing = !financialPlanEditing;
+        morphContent(block, () => {
+            renderFinancialPlanBlock();
+            block?.querySelector('[data-action="toggleFinancialPlanSettings"]')?.focus({ preventScroll: true });
+        });
     }
 
     function renderFinancialPlanBlock() {
@@ -2613,87 +2679,85 @@ function logout() {
 
         if (income <= 0) {
             block.innerHTML = `
-                <div class="rule-502030-header">
-                    <span class="rule-502030-title">Фінансовий план</span>
+                <div class="fp-head">
+                    <span class="fp-title">Фінансовий план</span>
                 </div>
-                <div class="rule-502030-empty">Додайте доходи, щоб побачити, скільки варто відкласти цього місяця.</div>
+                <div class="fp-empty">Додайте доходи, щоб побачити, скільки варто відкласти цього місяця.</div>
             `;
             return;
         }
 
         const saveRec = recommendedSaveUah(income);
+        const monthlyInvestUsd = uahToUsd(saveRec);
+        const returnRate = fp.returnRatePct || 7;
+
+        if (financialPlanEditing) {
+            block.innerHTML = `
+                <div class="fp-head">
+                    <span class="fp-title is-strong">Налаштування плану</span>
+                    <button type="button" class="fp-done-btn" data-action="toggleFinancialPlanSettings">Готово</button>
+                </div>
+                <div class="fp-form">
+                    <div class="fp-form-row">
+                        <span class="fp-form-label">Внесок на місяць<span class="fp-caption">= «Відкласти цього місяця»</span></span>
+                        <span class="fp-form-value tabular">${currentExchangeRate > 0 ? `${formatMoney(monthlyInvestUsd)} $` : `${formatMoney(saveRec)} ₴`}</span>
+                    </div>
+                    ${fpField('desiredMonthlyUsd', 'Бажані витрати', '$/міс на пенсії', fp.desiredMonthlyUsd || '')}
+                    ${fpField('brokerBalanceUsd', 'Брокерський рахунок', '$ поза конвертами', fp.brokerBalanceUsd || '')}
+                    ${fpField('returnRatePct', 'Дохідність', '% на рік', returnRate)}
+                </div>
+                <div id="fp-preview" class="fp-preview">${financialPlanPreviewHtml(fp, monthlyInvestUsd)}</div>
+            `;
+            return;
+        }
+
         const essentialsMarked = hasEssentialCategories();
         const monthlyNeedsForCushion = monthlyCushionBaseUah(income);
         const cushionTarget = essentialsMarked ? monthlyNeedsForCushion * 6 : 0;
         const cushionActual = getCushionBalanceUah();
         const cushionPct = cushionTarget > 0 ? (cushionActual / cushionTarget) * 100 : 0;
-        const cushionBasisLabel = essentialsMarked
-            ? `6 × обов'язкові витрати цього місяця (${formatMoney(monthlyNeedsForCushion)} ₴/міс)`
+        const cushionBasis = essentialsMarked
+            ? `6 × обов'язкові витрати цього місяця (${formatMoney(monthlyNeedsForCushion)} ₴/міс).`
             : `Позначте обов'язкові витрати в категоріях — тоді з'явиться ціль подушки (6 місяців).`;
-        const cushionTargetLabel = essentialsMarked ? `${formatMoney(cushionTarget)} ₴` : '—';
 
-        const capitalTargetUsd = (fp.desiredMonthlyUsd || 0) * 12 * 25;
-        const capitalCurrentUsd = (fp.brokerBalanceUsd || 0) + uahToUsd(getInvestmentJarsBalanceUah());
-        const capitalPct = capitalTargetUsd > 0 ? (capitalCurrentUsd / capitalTargetUsd) * 100 : 0;
-
-        const monthlyInvestUsd = uahToUsd(saveRec);
-        const yearsToCapital = calcYearsToCapital(capitalTargetUsd, capitalCurrentUsd, monthlyInvestUsd, fp.returnRatePct);
+        const cap = financialPlanCapital(fp, monthlyInvestUsd);
+        const capitalTip = [
+            `Правило ×25: ${formatMoney(fp.desiredMonthlyUsd || 0)} $ × 12 × 25 = ${formatMoney(cap.targetUsd)} $`,
+            currentExchangeRate > 0 ? `≈ ${formatMoney(usdToUah(cap.targetUsd))} ₴ за курсом НБУ` : '',
+            `Строк — якщо щомісяця відкладати ${formatMoney(monthlyInvestUsd)} $ під ${returnRate}% річних.`,
+        ].filter(Boolean).join('\n');
 
         block.innerHTML = `
-            <div class="rule-502030-header">
-                <span class="rule-502030-title">Фінансовий план</span>
-                <div style="display:flex;gap:6px;">
-                    <button type="button" class="rule-502030-info-btn" data-action="toggleFinancialPlanSettings" data-pass-event="1" title="Налаштування">⚙</button>
-                </div>
+            <div class="fp-head">
+                <span class="fp-title">Фінансовий план</span>
+                <button type="button" class="fp-icon-btn" data-action="toggleFinancialPlanSettings" aria-label="Налаштування плану" title="Налаштування">${FP_GEAR_ICON}</button>
             </div>
-            <div class="rule-502030-row">
-                <span class="rule-502030-row-label">Рекомендовано відкласти цього місяця</span>
-                <span class="rule-502030-row-amount tabular">${formatMoney(saveRec)} ₴</span>
+            <div class="fp-save">
+                <span class="fp-save-label">Відкласти цього місяця${currentExchangeRate > 0 ? `<span class="fp-caption tabular">≈ ${formatMoney(monthlyInvestUsd)} $</span>` : ''}</span>
+                <span class="fp-save-amount tabular">${formatMoney(saveRec)} ₴</span>
             </div>
-
-            <div id="fp-settings-panel" class="rule-502030-details">
-                <div class="fp-input-row">
-                    <div class="fp-input-wrap">
-                        <label>Бажані витрати на місяць ($)</label>
-                        <input type="number" value="${fp.desiredMonthlyUsd || ''}" data-change-action="updateFinancialPlanField" data-args="${escapeAttr(JSON.stringify(['desiredMonthlyUsd']))}">
-                    </div>
-                    <div class="fp-input-wrap">
-                        <label>Брокерський рахунок ($)</label>
-                        <input type="number" value="${fp.brokerBalanceUsd || ''}" data-change-action="updateFinancialPlanField" data-args="${escapeAttr(JSON.stringify(['brokerBalanceUsd']))}">
-                    </div>
-                    <div class="fp-input-wrap">
-                        <label>Очікувана дохідність (%/рік)</label>
-                        <input type="number" value="${fp.returnRatePct || 7}" data-change-action="updateFinancialPlanField" data-args="${escapeAttr(JSON.stringify(['returnRatePct']))}">
-                    </div>
-                </div>
-                <div class="rule-502030-detail-item"><strong>Правило ×25:</strong> ${formatMoney(fp.desiredMonthlyUsd || 0)} × 12 × 25 = ${formatMoney(capitalTargetUsd)} $ цільовий капітал</div>
+            <div class="fp-tiles">
+                ${fpTile({
+                    ring: fpRing(cushionPct, 'var(--sys-blue)'),
+                    title: 'Подушка безпеки',
+                    value: `${fpShort(cushionActual)} ₴`,
+                    sub: essentialsMarked ? `з ${fpShort(cushionTarget)} ₴` : 'ціль не задана',
+                    chip: essentialsMarked
+                        ? '<span class="fp-chip is-blue">6 міс. витрат</span>'
+                        : '<span class="fp-chip">Позначте обов\'язкові</span>',
+                    tip: `${cushionBasis}\nНедоторканна: конверти типу «Подушка безпеки».`,
+                    tipLabel: 'Як рахується подушка безпеки',
+                })}
+                ${fpTile({
+                    ring: fpRing(cap.pct, 'var(--sys-green)'),
+                    title: 'Капітал ×25',
+                    value: `${fpShort(cap.currentUsd)} $`,
+                    sub: cap.targetUsd > 0 ? `з ${fpShort(cap.targetUsd)} $` : 'ціль не задана',
+                    chip: `<span class="fp-chip is-green">${formatYearsLabel(cap.years)}</span>`,
+                    tip: capitalTip,
+                    tipLabel: 'Як рахується особистий капітал',
+                })}
             </div>
-
-            <div class="fp-section">
-                <div class="fp-section-title">Подушка безпеки (6 міс. обов'язкових витрат)</div>
-                <div class="fp-stat-row">
-                    <span class="fp-stat-label">Накопичено / ціль</span>
-                    <span class="fp-stat-value tabular">${formatMoney(cushionActual)} / ${cushionTargetLabel}</span>
-                </div>
-                ${essentialsMarked ? fpProgressBar(cushionPct, 'var(--sys-blue)') : ''}
-                <div class="rule-502030-detail-item" style="margin:0;">${cushionBasisLabel}</div>
-                <div class="rule-502030-detail-item" style="margin:0;"><strong>Недоторканна:</strong> конверти типу «Подушка безпеки»</div>
-            </div>
-
-            <div class="fp-section">
-                <div class="fp-section-title">Особистий капітал (правило ×25)</div>
-                <div class="fp-stat-row">
-                    <span class="fp-stat-label">Накопичено / ціль</span>
-                    <span class="fp-stat-value tabular">${formatMoney(capitalCurrentUsd)} / ${formatMoney(capitalTargetUsd)} $</span>
-                </div>
-                ${fpProgressBar(capitalPct, 'var(--sys-green)')}
-                <div class="fp-stat-row">
-                    <span class="fp-stat-label">При ${formatMoney(monthlyInvestUsd)} $/міс (рекомендовано відкласти)</span>
-                    <span class="fp-stat-value">${formatYearsLabel(yearsToCapital)}</span>
-                </div>
-                ${currentExchangeRate > 0 ? `<div class="fp-stat-row"><span class="fp-stat-label">≈ в ₴</span><span class="fp-stat-value tabular">${formatMoney(usdToUah(capitalTargetUsd))} ₴</span></div>` : ''}
-            </div>
-
         `;
     }
 
@@ -10367,7 +10431,6 @@ const uiActions = {
   formatMoney,
   formatNumberShort,
   formatYearsLabel,
-  fpProgressBar,
   generateAiDataForMonth,
   generateAiFinancialPlanSection,
   generateAndCopyAiPrompt,
@@ -10545,7 +10608,6 @@ const uiActions = {
   toggleFinancialPlanSettings,
   togglePaidStatus,
   toggleProfileSwitcher,
-  toggleRule502030Details,
   toggleSchedulePaid,
   toggleSkryniaSwitcher,
   toggleSerenityEasterEgg,

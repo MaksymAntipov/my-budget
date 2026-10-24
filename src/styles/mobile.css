@@ -244,7 +244,15 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .is-compact .info-block { padding: 0 16px; }
 .is-compact .info-row { gap: 12px; }
 .is-compact .text-value, .is-compact .cf-val { white-space: nowrap; }
-.is-compact .rule-502030-info-btn { width: 36px; height: 36px; }
+.is-compact .fp-icon-btn { width: 36px; height: 36px; }
+.is-compact .fp-done-btn { height: 36px; }
+.is-compact .fp-tile { padding: 12px; }
+.is-compact .fp-tile-value { font-size: 16px; }
+.is-compact .fp-save { padding: 12px 14px; }
+.is-compact .fp-save-amount { font-size: 20px; }
+.is-compact .fp-form-input { width: 92px; }
+/* The tiles already show the ring; on a phone the preview keeps its width for the numbers. */
+.is-compact .fp-preview .fp-ring { display: none; }
 .is-compact .rate-info { width: 36px; height: 36px; }
 
 /* Income sources: two light lines instead of three stacked blocks.

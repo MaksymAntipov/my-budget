@@ -67,6 +67,38 @@ export function animateMoney(el, value) {
     el._moneyRaf = requestAnimationFrame(step);
 }
 
+/**
+ * Re-renders a block whose height changes (a view ⇄ its settings) without a jump:
+ * the old content fades, the box glides to its new height, the new content rises in.
+ * The box must be `box-sizing: border-box` so its offsetHeight is the height it animates.
+ */
+export function morphContent(el, render) {
+    if (!el || reducedMotion() || !el.animate || !el.offsetParent) return render();
+    if (el._morphing) return; // the pending swap renders whatever state is current by then
+    el._morphing = true;
+    const fadeOut = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' });
+    fadeOut.oncancel = () => { el._morphing = false; };
+    fadeOut.onfinish = () => {
+        const from = el.offsetHeight;
+        render();
+        const to = el.offsetHeight;
+        for (const child of el.children) {
+            child.animate(
+                [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
+                { duration: 320, delay: 120, easing: EASE_OUT, fill: 'backwards' }
+            );
+        }
+        fadeOut.cancel();
+        if (from === to || !el.offsetParent) return;
+        el.style.overflow = 'hidden';
+        const grow = el.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: 420, easing: EASE_IN_OUT });
+        el._grow = grow;
+        grow.onfinish = grow.oncancel = () => {
+            if (el._grow === grow) el.style.overflow = '';
+        };
+    };
+}
+
 /* ---------- Swipe-down to close a bottom sheet (phones) ---------- */
 
 const FULLSCREEN = '.yt-modal-content, .ft-modal-content, .rw-modal-content';
