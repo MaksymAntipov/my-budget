@@ -244,6 +244,7 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .is-compact .info-block { padding: 0 16px; }
 .is-compact .info-row { gap: 12px; }
 .is-compact .text-value, .is-compact .cf-val { white-space: nowrap; }
+.is-compact .info-block.rule-502030 { padding: 16px; }
 .is-compact .fp-icon-btn { width: 36px; height: 36px; }
 .is-compact .fp-done-btn { height: 36px; }
 .is-compact .fp-tile { padding: 12px; }

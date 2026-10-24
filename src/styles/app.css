@@ -560,11 +560,10 @@
         }
 
         /* Фінансовий план у «Доходах»: плитки цілей ⇄ налаштування (перемикання — morphContent) */
-        .rule-502030 {
+        /* Its own card under the day/hour rates; the padding beats the phone `.info-block` overrides. */
+        .info-block.rule-502030 {
             box-sizing: border-box;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px 24px;
         }
         .fp-head {
             display: flex;
