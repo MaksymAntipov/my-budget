@@ -23,5 +23,7 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false,
+    // Local API (`npm run dev` in my-budget-backend) on the same origin as the page.
+    proxy: { '/api': 'http://127.0.0.1:8787' },
   },
 });

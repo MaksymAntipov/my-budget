@@ -1,3 +1,4 @@
+// `vite dev` proxies /api to the local worker (vite.config.js): same origin, so no CORS and the session cookie just works.
 export const API_URL = import.meta.env.DEV
-  ? 'http://127.0.0.1:8787'
+  ? window.location.origin
   : 'https://api.myskrynia.com.ua';
