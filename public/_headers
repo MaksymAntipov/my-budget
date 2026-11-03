@@ -23,3 +23,14 @@
 /crm/*
   X-Robots-Tag: noindex, nofollow, noarchive
   Cache-Control: no-cache
+
+# Cheese shop demo for a client (single self-contained page): open by link, kept out of search engines.
+# Own CSP instead of the app's: inline script, three.js r128 from CDNs, Google Fonts, GLB textures via blob:.
+/syrokarpaty
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/syrokarpaty/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-cache
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/ https://cdn.jsdelivr.net/npm/three@0.128.0/; connect-src 'self' data: blob:; worker-src 'self' blob:; upgrade-insecure-requests
