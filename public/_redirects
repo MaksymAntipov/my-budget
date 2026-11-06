@@ -1,0 +1,5 @@
+# Removed client demos: Pages keeps serving files of past deployments from its cache, so send them home.
+/crm            /  301
+/crm/*          /  301
+/syrokarpaty    /  301
+/syrokarpaty/*  /  301
