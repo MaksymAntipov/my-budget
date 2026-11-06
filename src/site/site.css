@@ -1,0 +1,182 @@
+/* Public pages (/pro-proekt/, /konfidentsiinist/, /onovlennya/, /kalkulyatory/*, 404). Dark like the app. */
+:root {
+    color-scheme: dark;
+    --site-bg: #000000;
+    --site-card: rgba(30, 30, 32, 0.75);
+    --site-border: rgba(255, 255, 255, 0.1);
+    --site-text: #ffffff;
+    --site-muted: #a1a1a6;
+    --site-blue: #0a84ff;
+    --site-green: #2ea043;
+    --site-orange: #ff9f0a;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--site-bg);
+    color: var(--site-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+a { color: var(--site-blue); }
+
+.site-header {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.site-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    color: var(--site-text);
+    font-weight: 700;
+    font-size: 18px;
+    text-decoration: none;
+}
+.site-logo img { border-radius: 8px; }
+.site-nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.site-nav a, .site-footer nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 10px;
+    color: var(--site-muted);
+    text-decoration: none;
+    font-size: 15px;
+    border-radius: 12px;
+}
+.site-nav a:hover, .site-footer nav a:hover { color: var(--site-text); background: rgba(255, 255, 255, 0.06); }
+.site-login {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 14px;
+    background: var(--site-blue);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.site-main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+}
+.site-main h1 { font-size: 34px; line-height: 1.2; letter-spacing: -0.5px; margin: 8px 0 16px; }
+.site-main h2 { font-size: 22px; line-height: 1.3; margin: 40px 0 12px; }
+.site-main h3 { font-size: 18px; margin: 24px 0 8px; }
+.site-main p, .site-main li { color: #d1d1d6; }
+.site-main ul, .site-main ol { padding-left: 22px; }
+.site-lead { font-size: 18px; color: var(--site-muted) !important; }
+.site-updated { font-size: 14px; color: var(--site-muted) !important; }
+
+.site-card {
+    background: var(--site-card);
+    border: 1px solid var(--site-border);
+    border-radius: 24px;
+    padding: 24px;
+    margin: 24px 0;
+}
+
+.site-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 24px;
+    margin-top: 8px;
+    border-radius: 16px;
+    background: var(--site-blue);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.site-grid {
+    list-style: none;
+    padding: 0 !important;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+.site-grid > li { margin: 0; }
+.site-grid a.site-card { display: block; margin: 0; height: 100%; color: inherit; text-decoration: none; }
+.site-grid a.site-card:hover { border-color: rgba(255, 255, 255, 0.25); }
+.site-grid h2, .site-grid h3 { margin: 0 0 6px; font-size: 18px; }
+.site-grid p { margin: 0; font-size: 15px; }
+
+.site-shots { display: grid; gap: 16px; margin: 24px 0; }
+.site-shots img { width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--site-border); display: block; }
+.site-shots figure { margin: 0; }
+.site-shots figcaption { font-size: 14px; color: var(--site-muted); margin-top: 8px; }
+.site-shots-phone { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); max-width: 520px; }
+
+/* Calculators */
+.calc-form { display: grid; gap: 16px; }
+.calc-field { display: grid; gap: 6px; }
+.calc-field label { font-size: 15px; font-weight: 600; color: var(--site-text); }
+.calc-field input, .calc-field select {
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+    font-size: 18px;
+    color: var(--site-text);
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--site-border);
+    border-radius: 14px;
+    font-family: inherit;
+}
+.calc-field input:focus, .calc-field select:focus { outline: none; border-color: var(--site-blue); box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2); }
+.calc-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.calc-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 8px; }
+.calc-result {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--site-border);
+    border-radius: 16px;
+    padding: 16px;
+    min-width: 0;
+}
+.calc-result-label { display: block; font-size: 14px; color: var(--site-muted); }
+.calc-result-value { display: block; font-size: 24px; font-weight: 700; overflow-wrap: break-word; font-variant-numeric: tabular-nums; }
+.calc-result-value.is-long { font-size: 19px; }
+.calc-result-value.is-very-long { font-size: 15px; }
+.calc-result-value.is-huge { font-size: 12px; }
+.calc-result.is-blue { border-color: rgba(10, 132, 255, 0.4); }
+.calc-result.is-orange { border-color: rgba(255, 159, 10, 0.4); }
+.calc-result.is-green { border-color: rgba(46, 160, 67, 0.5); }
+
+/* Changelog */
+.site-release { border-left: 2px solid var(--site-border); padding-left: 16px; margin: 24px 0; }
+.site-release h2 { font-size: 18px; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.site-release-version { font-size: 12px; padding: 2px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: var(--site-muted); }
+
+.site-footer {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 40px;
+    border-top: 1px solid var(--site-border);
+    color: var(--site-muted);
+    font-size: 14px;
+}
+.site-footer nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 -10px 8px; }
+
+@media (max-width: 600px) {
+    .site-main h1 { font-size: 28px; }
+    .site-nav { order: 3; flex-basis: 100%; margin: 0 -10px; }
+    .site-login { margin-left: auto; }
+}

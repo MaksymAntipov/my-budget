@@ -2,6 +2,34 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://myskrynia.com.ua/</loc>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://myskrynia.com.ua/kalkulyatory/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://myskrynia.com.ua/kalkulyatory/50-30-20/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://myskrynia.com.ua/kalkulyatory/vartist-zvychky/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://myskrynia.com.ua/kalkulyatory/vartist-hodyny/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://myskrynia.com.ua/pro-proekt/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://myskrynia.com.ua/onovlennya/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://myskrynia.com.ua/konfidentsiinist/</loc>
+    <lastmod>2026-11-06</lastmod>
   </url>
 </urlset>

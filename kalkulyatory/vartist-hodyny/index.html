@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>Вартість години роботи — калькулятор | MySkrynia</title>
+    <meta name="description" content="Скільки ви заробляєте за годину і за день, і скільки годин роботи коштує покупка. Безкоштовний калькулятор вартості робочої години.">
+    <link rel="canonical" href="https://myskrynia.com.ua/kalkulyatory/vartist-hodyny/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="MySkrynia">
+    <meta property="og:locale" content="uk_UA">
+    <meta property="og:url" content="https://myskrynia.com.ua/kalkulyatory/vartist-hodyny/">
+    <meta property="og:title" content="Вартість години вашої роботи">
+    <meta property="og:description" content="Скільки ви заробляєте за годину — і скільки годин роботи коштує покупка.">
+    <meta property="og:image" content="https://myskrynia.com.ua/img/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg?v=2">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2">
+    <link rel="stylesheet" href="/src/site/site.css">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebApplication",
+                "name": "Калькулятор вартості години роботи",
+                "url": "https://myskrynia.com.ua/kalkulyatory/vartist-hodyny/",
+                "applicationCategory": "FinanceApplication",
+                "operatingSystem": "Web",
+                "inLanguage": "uk",
+                "isAccessibleForFree": true,
+                "offers": { "@type": "Offer", "price": "0", "priceCurrency": "UAH" },
+                "publisher": { "@id": "https://myskrynia.com.ua/#app" }
+            },
+            {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    { "@type": "ListItem", "position": 1, "name": "MySkrynia", "item": "https://myskrynia.com.ua/" },
+                    { "@type": "ListItem", "position": 2, "name": "Калькулятори", "item": "https://myskrynia.com.ua/kalkulyatory/" },
+                    { "@type": "ListItem", "position": 3, "name": "Вартість години" }
+                ]
+            }
+        ]
+    }
+    </script>
+</head>
+<body>
+<!--site:header-->
+
+<main class="site-main">
+    <h1>Вартість години вашої роботи</h1>
+    <p class="site-lead">Скільки ви насправді заробляєте за годину — і скільки годин роботи коштує річ, яку хочете купити.</p>
+
+    <form class="site-card calc-form" data-calc="rate">
+        <div class="calc-row">
+            <div class="calc-field">
+                <label for="income">Дохід за місяць, ₴</label>
+                <input id="income" name="income" type="text" inputmode="decimal" autocomplete="off" value="42000">
+            </div>
+            <div class="calc-field">
+                <label for="days">Робочих днів</label>
+                <input id="days" name="days" type="text" inputmode="decimal" autocomplete="off" value="21">
+            </div>
+            <div class="calc-field">
+                <label for="hours">Годин на день</label>
+                <input id="hours" name="hours" type="text" inputmode="decimal" autocomplete="off" value="8">
+            </div>
+        </div>
+        <div class="calc-field">
+            <label for="price">Ціна покупки, ₴ (необов'язково)</label>
+            <input id="price" name="price" type="text" inputmode="decimal" autocomplete="off" value="5000">
+        </div>
+        <div class="calc-results" aria-live="polite">
+            <div class="calc-result">
+                <span class="calc-result-label">За день</span>
+                <span class="calc-result-value"><span data-out="perDay">0</span>&nbsp;₴</span>
+            </div>
+            <div class="calc-result is-blue">
+                <span class="calc-result-label">За годину</span>
+                <span class="calc-result-value"><span data-out="perHour">0</span>&nbsp;₴</span>
+            </div>
+            <div class="calc-result is-orange">
+                <span class="calc-result-label">Покупка коштує</span>
+                <span class="calc-result-value"><span data-out="priceHours" data-format="hours">0</span>&nbsp;год роботи</span>
+            </div>
+        </div>
+    </form>
+
+    <h2>Як рахується</h2>
+    <p>Місячний дохід ділиться на кількість робочих днів — це заробіток за день. Далі — на години роботи на день: це вартість години. Ціна покупки, поділена на вартість години, показує, скільки часу вашого життя вона коштує.</p>
+
+    <h2>Приклад</h2>
+    <p>Дохід 42&nbsp;000&nbsp;₴, 21 робочий день по 8 годин: 2&nbsp;000&nbsp;₴ за день і 250&nbsp;₴ за годину. Тоді навушники за 5&nbsp;000&nbsp;₴ — це 20 годин роботи, тобто два з половиною робочі дні.</p>
+
+    <h2>Навіщо це знати</h2>
+    <ul>
+        <li>Легше вирішувати про покупки: «20 годин роботи» відчувається інакше, ніж «5&nbsp;000&nbsp;₴».</li>
+        <li>Зрозуміло, скільки брати за підробіток чи фриланс, щоб не працювати дешевше за основну роботу.</li>
+        <li>Видно, як змінюється ваша ставка з місяця в місяць.</li>
+    </ul>
+
+    <div class="site-card">
+        <h2 style="margin-top: 0;">Ставка рахується сама щомісяця</h2>
+        <p>У MySkrynia вартість вашої години та дня оновлюється автоматично з доходів місяця — разом із бюджетом, категоріями витрат і аналітикою. Безкоштовно.</p>
+        <a class="site-cta" href="/">Спробувати MySkrynia</a>
+    </div>
+</main>
+
+<!--site:footer-->
+<script type="module" src="/src/site/calculators.js"></script>
+</body>
+</html>

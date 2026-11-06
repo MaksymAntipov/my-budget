@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
     <title>MySkrynia — безкоштовний облік особистих фінансів</title>
-    <meta name="description" content="Безкоштовний сервіс обліку фінансів українською: бюджет по місяцях, доходи й витрати за категоріями, конверти, борги, інтеграція з Monobank, аналітика та AI-помічник. Окремий профіль для бізнесу.">
+    <meta name="description" content="Безкоштовний сервіс обліку фінансів: бюджет по місяцях, доходи й витрати за категоріями, конверти, борги, інтеграція з Monobank, аналітика та AI-помічник. Окремий профіль для бізнесу.">
     <link rel="canonical" href="https://myskrynia.com.ua/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="MySkrynia">
@@ -13,8 +13,10 @@
     <meta property="og:url" content="https://myskrynia.com.ua/">
     <meta property="og:title" content="MySkrynia — безкоштовний облік особистих фінансів">
     <meta property="og:description" content="Бюджет по місяцях, категорії витрат, конверти, Monobank, аналітика та AI-помічник. Для себе і для бізнесу.">
-    <meta property="og:image" content="https://myskrynia.com.ua/icons/icon-512.png?v=2">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="https://myskrynia.com.ua/img/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -25,7 +27,9 @@
                 "name": "MySkrynia",
                 "alternateName": ["Скриня", "МояСкриня"],
                 "url": "https://myskrynia.com.ua/",
-                "description": "Безкоштовний веб-застосунок для обліку особистих фінансів і бюджету бізнесу українською мовою.",
+                "image": "https://myskrynia.com.ua/img/og-image.png",
+                "screenshot": "https://myskrynia.com.ua/img/screen-desktop-month.png",
+                "description": "Безкоштовний веб-застосунок для обліку особистих фінансів і бюджету бізнесу.",
                 "applicationCategory": "FinanceApplication",
                 "operatingSystem": "Web, iOS, Android",
                 "inLanguage": "uk",
@@ -70,8 +74,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="MySkrynia">
     <meta name="application-name" content="MySkrynia">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script defer src="https://www.gstatic.com/charts/loader.js"></script>
     </head>
 <body>
 
@@ -1289,7 +1293,7 @@
                 <h2 class="auth-title" style="font-size: 24px; margin-bottom: 4px;">Що нового?</h2>
                 <p class="auth-subtitle">Останні оновлення сервісу</p>
             </div>
-            <button class="btn-close-modal" style="margin: 0; align-self: flex-start; border: 1px solid rgba(255,255,255,0.1);" data-action="closeChangelogModal">✕</button>
+            <button type="button" class="btn-close-modal" aria-label="Закрити" style="margin: 0; align-self: flex-start; border: 1px solid rgba(255,255,255,0.1);" data-action="closeChangelogModal">✕</button>
         </div>
         
         <div id="changelog-list" style="overflow-y: auto; padding-right: 8px; flex: 1; margin-bottom: 16px;"></div>
@@ -1351,7 +1355,7 @@
 
     <section class="auth-about" aria-labelledby="auth-about-title">
         <h2 id="auth-about-title" class="auth-about-title">Облік особистих фінансів і бюджету бізнесу</h2>
-        <p class="auth-about-lead">MySkrynia — безкоштовний сервіс українською, щоб бачити, скільки ви заробляєте, на що витрачаєте і скільки грошей лишається вільними щомісяця.</p>
+        <p class="auth-about-lead">MySkrynia — безкоштовний сервіс, щоб бачити, скільки ви заробляєте, на що витрачаєте і скільки грошей лишається вільними щомісяця.</p>
 
         <ul class="auth-about-grid">
             <li class="auth-about-item">
@@ -1407,6 +1411,14 @@
                 <p>В інфраструктурі Cloudflare. Дані кожного профілю окремі й доступні лише після входу за кодом з вашої пошти.</p>
             </details>
         </div>
+
+        <nav class="auth-about-links" aria-label="Корисне">
+            <a href="/kalkulyatory/">Фінансові калькулятори</a>
+            <a href="/onovlennya/">Оновлення</a>
+            <a href="/pro-proekt/">Про проєкт</a>
+            <a href="/konfidentsiinist/">Конфіденційність</a>
+            <a href="mailto:hello@myskrynia.com.ua">hello@myskrynia.com.ua</a>
+        </nav>
     </section>
 
 </div>
