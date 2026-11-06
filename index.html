@@ -4,7 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
-    <title>MySkrynia</title>
+    <title>MySkrynia — безкоштовний облік особистих фінансів</title>
+    <meta name="description" content="Безкоштовний сервіс обліку фінансів українською: бюджет по місяцях, доходи й витрати за категоріями, конверти, борги, інтеграція з Monobank, аналітика та AI-помічник. Окремий профіль для бізнесу.">
+    <link rel="canonical" href="https://myskrynia.com.ua/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="MySkrynia">
+    <meta property="og:locale" content="uk_UA">
+    <meta property="og:url" content="https://myskrynia.com.ua/">
+    <meta property="og:title" content="MySkrynia — безкоштовний облік особистих фінансів">
+    <meta property="og:description" content="Бюджет по місяцях, категорії витрат, конверти, Monobank, аналітика та AI-помічник. Для себе і для бізнесу.">
+    <meta property="og:image" content="https://myskrynia.com.ua/icons/icon-512.png?v=2">
+    <meta name="twitter:card" content="summary">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebApplication",
+                "@id": "https://myskrynia.com.ua/#app",
+                "name": "MySkrynia",
+                "alternateName": ["Скриня", "МояСкриня"],
+                "url": "https://myskrynia.com.ua/",
+                "description": "Безкоштовний веб-застосунок для обліку особистих фінансів і бюджету бізнесу українською мовою.",
+                "applicationCategory": "FinanceApplication",
+                "operatingSystem": "Web, iOS, Android",
+                "inLanguage": "uk",
+                "areaServed": { "@type": "Country", "name": "Україна" },
+                "isAccessibleForFree": true,
+                "offers": { "@type": "Offer", "price": "0", "priceCurrency": "UAH" },
+                "featureList": [
+                    "Бюджет по місяцях: доходи, витрати, категорії",
+                    "Перенесення структури бюджету з попереднього місяця",
+                    "Конверти накопичень і борги з графіком платежів",
+                    "Автоматичний розподіл операцій Monobank за категоріями",
+                    "Перерахунок доходів у доларах у гривню за курсом НБУ",
+                    "Аналітика: вільні гроші, топ витрат, діаграма грошових потоків, правило 50/30/20",
+                    "AI-помічник по власному бюджету",
+                    "Бізнес-профіль: обіг, інвойси, собівартість, чистий прибуток, звірка каси, зарплатна відомість",
+                    "Встановлення на телефон як застосунок (PWA)"
+                ]
+            },
+            {
+                "@type": "FAQPage",
+                "@id": "https://myskrynia.com.ua/#faq",
+                "mainEntity": [
+                    { "@type": "Question", "name": "Чи MySkrynia безкоштовна?", "acceptedAnswer": { "@type": "Answer", "text": "Так, сервіс повністю безкоштовний: без платних тарифів і пробних періодів." } },
+                    { "@type": "Question", "name": "Як увійти в MySkrynia?", "acceptedAnswer": { "@type": "Answer", "text": "Вкажіть email — ми надішлемо одноразовий код. Пароль не потрібен. Після першого входу ви створите профіль." } },
+                    { "@type": "Question", "name": "Чи є інтеграція з Monobank?", "acceptedAnswer": { "@type": "Answer", "text": "Так. Підключіть картку через особистий токен з api.monobank.ua — нові операції надходитимуть автоматично й розподілятимуться за категоріями за вашими правилами. Токен зберігається в зашифрованому вигляді." } },
+                    { "@type": "Question", "name": "Чи підходить MySkrynia для бізнесу?", "acceptedAnswer": { "@type": "Answer", "text": "Так. На той самий email можна створити окремий бізнес-профіль: обіг, інвойси постачальників, собівартість, чистий прибуток, звірка каси та зарплатна відомість." } },
+                    { "@type": "Question", "name": "Чи можна користуватися з телефона?", "acceptedAnswer": { "@type": "Answer", "text": "Так. Сайт адаптований під смартфони й планшети, його можна встановити на головний екран iPhone чи Android і відкривати як звичайний застосунок." } },
+                    { "@type": "Question", "name": "Де зберігаються мої дані?", "acceptedAnswer": { "@type": "Answer", "text": "В інфраструктурі Cloudflare. Дані кожного профілю окремі й доступні лише після входу за кодом з вашої пошти." } }
+                ]
+            }
+        ]
+    }
+    </script>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://www.gstatic.com; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/ https://www.gstatic.com/charts/ https://static.cloudflareinsights.com; connect-src 'self' https://api.myskrynia.com.ua http://127.0.0.1:8787 http://localhost:8787 https://bank.gov.ua https://cloudflareinsights.com; font-src 'self' data:; upgrade-insecure-requests;">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg?v=2">
@@ -1294,6 +1348,66 @@
         </svg>
         За безпеку даних відповідає Cloudflare
     </div>
+
+    <section class="auth-about" aria-labelledby="auth-about-title">
+        <h2 id="auth-about-title" class="auth-about-title">Облік особистих фінансів і бюджету бізнесу</h2>
+        <p class="auth-about-lead">MySkrynia — безкоштовний сервіс українською, щоб бачити, скільки ви заробляєте, на що витрачаєте і скільки грошей лишається вільними щомісяця.</p>
+
+        <ul class="auth-about-grid">
+            <li class="auth-about-item">
+                <h3>Бюджет по місяцях</h3>
+                <p>Доходи, витрати й категорії на кожен місяць. Новий місяць можна почати з нуля або перенести структуру з попереднього.</p>
+            </li>
+            <li class="auth-about-item">
+                <h3>Конверти та борги</h3>
+                <p>Накопичення в конвертах і борги з графіком платежів переходять з місяця в місяць самі.</p>
+            </li>
+            <li class="auth-about-item">
+                <h3>Monobank</h3>
+                <p>Операції з картки надходять автоматично й розподіляються за категоріями за вашими правилами.</p>
+            </li>
+            <li class="auth-about-item">
+                <h3>Аналітика</h3>
+                <p>Вільні гроші, топ найдорожчих категорій, діаграма грошових потоків і правило 50/30/20. Доходи в доларах — за курсом НБУ.</p>
+            </li>
+            <li class="auth-about-item">
+                <h3>AI-помічник</h3>
+                <p>Питайте про свій бюджет у чаті: де перевитрати, що оптимізувати, як рости в доході.</p>
+            </li>
+            <li class="auth-about-item">
+                <h3>Для бізнесу</h3>
+                <p>Окремий профіль на той самий email: обіг, інвойси, собівартість, чистий прибуток, звірка каси, зарплатна відомість.</p>
+            </li>
+        </ul>
+
+        <h2 class="auth-about-title auth-about-faq-title">Питання та відповіді</h2>
+        <div class="auth-faq">
+            <details>
+                <summary>Чи MySkrynia безкоштовна?</summary>
+                <p>Так, сервіс повністю безкоштовний: без платних тарифів і пробних періодів.</p>
+            </details>
+            <details>
+                <summary>Як увійти в MySkrynia?</summary>
+                <p>Вкажіть email — ми надішлемо одноразовий код. Пароль не потрібен. Після першого входу ви створите профіль.</p>
+            </details>
+            <details>
+                <summary>Чи є інтеграція з Monobank?</summary>
+                <p>Так. Підключіть картку через особистий токен з api.monobank.ua — нові операції надходитимуть автоматично й розподілятимуться за категоріями за вашими правилами. Токен зберігається в зашифрованому вигляді.</p>
+            </details>
+            <details>
+                <summary>Чи підходить MySkrynia для бізнесу?</summary>
+                <p>Так. На той самий email можна створити окремий бізнес-профіль: обіг, інвойси постачальників, собівартість, чистий прибуток, звірка каси та зарплатна відомість.</p>
+            </details>
+            <details>
+                <summary>Чи можна користуватися з телефона?</summary>
+                <p>Так. Сайт адаптований під смартфони й планшети, його можна встановити на головний екран iPhone чи Android і відкривати як звичайний застосунок.</p>
+            </details>
+            <details>
+                <summary>Де зберігаються мої дані?</summary>
+                <p>В інфраструктурі Cloudflare. Дані кожного профілю окремі й доступні лише після входу за кодом з вашої пошти.</p>
+            </details>
+        </div>
+    </section>
 
 </div>
 

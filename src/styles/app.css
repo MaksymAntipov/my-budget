@@ -896,6 +896,83 @@
         }
         .auth-glass-overlay.active .auth-footer-security { transform: translateY(0); }
 
+        /* ПРО СЕРВІС під формою входу (текст для людей і пошукових систем) */
+        #auth-overlay {
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            justify-content: flex-start;
+            padding-top: max(56px, env(safe-area-inset-top));
+            padding-bottom: max(32px, env(safe-area-inset-bottom));
+        }
+        .auth-about {
+            width: 100%;
+            max-width: 880px;
+            margin: 72px auto 0;
+            color: var(--text-secondary);
+            text-align: left;
+        }
+        .auth-about-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 12px;
+            letter-spacing: -0.4px;
+            text-align: center;
+        }
+        .auth-about-lead {
+            font-size: 16px;
+            line-height: 1.5;
+            max-width: 600px;
+            margin: 0 auto 28px;
+            text-align: center;
+        }
+        .auth-about-grid {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+        }
+        .auth-about-item {
+            background: rgba(30, 30, 32, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 20px;
+        }
+        .auth-about-item h3 { font-size: 16px; font-weight: 700; color: #ffffff; margin: 0 0 6px; }
+        .auth-about-item p { font-size: 14px; line-height: 1.5; margin: 0; }
+        .auth-about-faq-title { margin-top: 48px; margin-bottom: 16px; }
+        .auth-faq { display: flex; flex-direction: column; gap: 8px; max-width: 680px; margin: 0 auto; }
+        .auth-faq details {
+            background: rgba(30, 30, 32, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+        }
+        .auth-faq summary {
+            min-height: 48px;
+            padding: 14px 44px 14px 18px;
+            display: flex;
+            align-items: center;
+            font-size: 15px;
+            font-weight: 600;
+            color: #ffffff;
+            cursor: pointer;
+            list-style: none;
+            position: relative;
+        }
+        .auth-faq summary::-webkit-details-marker { display: none; }
+        .auth-faq summary::after {
+            content: '+';
+            position: absolute;
+            right: 18px;
+            font-size: 20px;
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+        .auth-faq details[open] summary::after { content: '−'; }
+        .auth-faq details p { font-size: 14px; line-height: 1.5; margin: 0; padding: 0 18px 16px; }
+
         /* СТИЛІ ДЛЯ ЛІЧИЛЬНИКА ПРОФІЛІВ */
         .auth-stats-badge {
             position: absolute;
