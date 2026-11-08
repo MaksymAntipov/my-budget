@@ -98,7 +98,7 @@ a { color: var(--site-blue); }
 .site-main strong { color: var(--site-text); }
 .site-main ul, .site-main ol { padding-left: 22px; }
 .site-lead { font-size: 16px; }
-.site-updated { font-size: 14px; color: var(--site-tertiary) !important; }
+.site-updated { font-size: 14px; color: var(--site-muted) !important; }
 
 .site-card {
     background: var(--site-card);
