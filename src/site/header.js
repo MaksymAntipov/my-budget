@@ -1,3 +1,7 @@
+import { initAnalytics } from '../analytics/index.js';
+
+initAnalytics();
+
 // Phones: the sections row scrolls, so bring the current one into view (otherwise it may sit under the fade).
 const nav = document.querySelector('.site-nav');
 const current = nav?.querySelector('a[aria-current="page"]');

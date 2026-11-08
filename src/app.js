@@ -12,6 +12,7 @@ import {
 } from './utils.js';
 import { API_URL } from './config.js';
 import { livenSparkline } from './sparkline-live/index.js';
+import { track } from './analytics/index.js';
 import {
   IGNORED_TARGET,
   categoryKey,
@@ -424,6 +425,7 @@ function loadAuthStats() { /* /api/stats removed */ }
             availableProfiles = data.profiles || [data.user];
             localStorage.setItem('budget_available_profiles', JSON.stringify(availableProfiles));
             document.getElementById('create-profile-overlay').classList.remove('active');
+            track(createProfileMode === 'first' ? 'sign_up' : 'profile_created', { account_type: data.user.account_type });
             if (currentUser) await switchProfile(data.user);
             else await performLogin(data.user, { openHub: true });
         } catch (err) {
@@ -538,6 +540,7 @@ function loadAuthStats() { /* /api/stats removed */ }
                 } else if (data.users.length > 1) {
                     showAccountSelect(data.users);
                 } else {
+                    track('login');
                     await performLogin(data.users ? data.users[0] : data.user, { openHub: true });
                 }
             }
@@ -1104,6 +1107,7 @@ async function fetchAvailableProfiles() {
             });
             if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'subscribe failed');
             writePushEndpoint(subscription.endpoint);
+            track('push_enabled');
             showSaveStatus('Сповіщення увімкнено на цьому пристрої', { tone: 'info', autoHideMs: 3000 });
         } catch (err) {
             console.warn('Push subscribe failed', err);
@@ -1887,6 +1891,7 @@ function logout() {
     }
 
     async function initializeMonth(usePrev) {
+        track('month_started', { mode: usePrev ? 'copy' : 'empty' });
         if (!appData[currentYear]) appData[currentYear] = {};
 
         const prev = usePrev ? getLastInitializedData() : null;
@@ -10023,6 +10028,7 @@ function generatePayrollSparklineHTML(currentTotal) {
                 return;
             }
             if (input) input.value = '';
+            track('bank_connected');
             monobankLink = {
                 connected: true,
                 clientName: data.clientName || '',

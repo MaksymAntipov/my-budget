@@ -1,6 +1,7 @@
 import './styles/app.css';
 import './styles/mobile.css';
 import './site/header.css';
+import { initAnalytics } from './analytics/index.js';
 import './app.js';
 import { bindUiActions } from './bind-ui.js';
 import { initFamilyTree } from './family-tree/index.js';
@@ -9,6 +10,7 @@ import { initRunway } from './runway/index.js';
 import { initInvest } from './invest/index.js';
 import { initSmartSticky } from './smart-sticky/index.js';
 
+initAnalytics();
 bindUiActions(document);
 // Desktop summary card: scrolls along until its bottom shows, then holds (instead of an inner scroll).
 initSmartSticky({ selector: '.right-panel .glass-card' });

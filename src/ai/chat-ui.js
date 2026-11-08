@@ -28,6 +28,7 @@ import { clearAiHistory, clearAllAiHistory, loadAiHistory, saveAiHistory } from 
 import { isWideLookQuestion, parseFocusFromQuestion } from './focus.js';
 import { promptTokens, tokenUsageLabel } from './dump.js';
 import { formatAiMarkdown, splitSuggestions } from './markdown.js';
+import { track } from '../analytics/index.js';
 import {
   briefingKindFromThread,
   buildChatApiMessages,
@@ -425,6 +426,7 @@ export async function saveLlmSettingsFromForm() {
       return;
     }
     syncLlmSettingsForm();
+    track('ai_key_saved', { provider });
     setLlmSettingsStatus(`Збережено · ${providerLabel(provider)} — ключ працює на всіх ваших пристроях`, false);
   } else {
     saveLlmSettings({ provider, apiKey, model, baseUrl: '' });
@@ -591,6 +593,7 @@ export async function startAiBriefing(kind) {
   if (!packed) return;
   lastContextPrompt = packed.prompt;
   lastBriefingKind = kind === 'growth' ? 'growth' : 'analytics';
+  track('ai_report', { kind: lastBriefingKind });
   thread = [{ role: 'user', content: packed.prompt, kind: 'context', label: packed.label, mode: 'briefing' }];
   renderAiThread({ stick: true });
   await streamAssistant({ briefing: true });
@@ -688,6 +691,7 @@ export async function sendAiChatMessage() {
   }
   if (input) input.value = '';
   autoResizeAiInput();
+  track('ai_chat_message');
   if (/^(продовж|продолжи|continue|допиши)[.!?…]*$/i.test(text)) {
     const last = [...thread].reverse().find((m) => m.role === 'assistant' && String(m.content || '').trim());
     if (last) {
