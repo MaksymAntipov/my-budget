@@ -31,13 +31,13 @@ test('habitCost: weekly, several times, unknown period', () => {
     assert.deepEqual(habitCost(150, 2, 'hour'), { perMonth: 0, perYear: 0, tenYears: 0 });
 });
 
-test('workRate: per day, per hour and price in work hours', () => {
-    assert.deepEqual(workRate(42000, 21, 8, 5000), { perDay: 2000, perHour: 250, priceHours: 20 });
+test('workRate: per day and per hour', () => {
+    assert.deepEqual(workRate(42000, 21, 8), { perDay: 2000, perHour: 250 });
 });
 
 test('workRate: zero days or hours give zeros instead of Infinity', () => {
-    assert.deepEqual(workRate(42000, 0, 8, 100), { perDay: 0, perHour: 0, priceHours: 0 });
-    assert.deepEqual(workRate(42000, 21, 0, 100), { perDay: 2000, perHour: 0, priceHours: 0 });
+    assert.deepEqual(workRate(42000, 0, 8), { perDay: 0, perHour: 0 });
+    assert.deepEqual(workRate(42000, 21, 0), { perDay: 2000, perHour: 0 });
 });
 
 test('parseAmount accepts spaces, comma or dot decimals and dot thousands', () => {

@@ -1,5 +1,7 @@
 /* Public pages (/shi-analiz/, /pro-proekt/, /konfidentsiinist/, /onovlennya/, /kalkulyatory/*, 404).
    Same look as the login screen: its font, background, text colours, «про сервіс» cards, white primary button. */
+@import './header.css';
+
 :root {
     color-scheme: dark;
     --site-bg: #000000;
@@ -15,7 +17,8 @@
 
 * { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+/* Room for the scrollbar on every page, long or short: the header doesn't shift sideways between them. */
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
 
 body {
     margin: 0;
@@ -39,52 +42,6 @@ body::before {
 }
 
 a { color: var(--site-blue); }
-
-.site-header {
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-}
-.site-logo {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 44px;
-    color: var(--site-text);
-    font-weight: 700;
-    font-size: 18px;
-    text-decoration: none;
-}
-.site-logo img { border-radius: 8px; }
-.site-nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
-.site-nav a, .site-footer nav a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 10px;
-    color: var(--site-muted);
-    text-decoration: none;
-    font-size: 14px;
-    border-radius: 12px;
-}
-.site-nav a:hover, .site-footer nav a:hover { color: var(--site-text); background: rgba(255, 255, 255, 0.06); }
-.site-nav a[aria-current="page"] { color: var(--site-text); background: rgba(255, 255, 255, 0.08); font-weight: 600; }
-.site-login {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 20px;
-    border-radius: 14px;
-    background: #ffffff;
-    color: #000000;
-    font-weight: 700;
-    font-size: 15px;
-    text-decoration: none;
-}
 
 .site-main {
     max-width: 760px;
@@ -183,7 +140,7 @@ a { color: var(--site-blue); }
 .calc-result.is-green { border-color: rgba(46, 160, 67, 0.5); }
 
 /* Wide pages (/shi-analiz/): header, content and footer share a wider column for the two-column hero. */
-.site-wide .site-header, .site-wide .site-main, .site-wide .site-footer { max-width: 1040px; }
+.site-wide .site-main, .site-wide .site-footer { max-width: 1040px; }
 
 /* /shi-analiz/ — the AI page. The sample report uses the app's chat look (blue question, dark answer, caps sections). */
 .ai-page { --ai-purple: #bf5af2; --ai-green: #32d74b; --ai-red: #ff453a; }
@@ -286,6 +243,4 @@ a { color: var(--site-blue); }
 
 @media (max-width: 600px) {
     .site-main h1 { font-size: 28px; }
-    .site-nav { order: 3; flex-basis: 100%; margin: 0 -10px; }
-    .site-login { margin-left: auto; }
 }

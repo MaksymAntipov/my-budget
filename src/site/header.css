@@ -1,0 +1,90 @@
+/* The one header of the public pages and the login screen (markup: src/site/partials.js).
+   Same box everywhere, so it doesn't move when you switch pages: 1040px wide, 16px padding, 76px tall.
+   Desktop: logo + sections centred; «Увійти» (public pages only) pinned right without shifting the centre.
+   Narrower: one row (logo, sections, «Увійти»); phones keep the logo's icon and scroll the sections. */
+.site-header {
+    box-sizing: border-box;
+    position: relative;
+    width: 100%;
+    max-width: 1040px;
+    min-height: 76px;
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+.site-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    flex-shrink: 0;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 18px;
+    text-decoration: none;
+}
+.site-logo img { border-radius: 8px; }
+.site-nav {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.site-nav::-webkit-scrollbar { display: none; }
+.site-nav a {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 0 10px;
+    border-radius: 12px;
+    color: #a1a1a6;
+    font-size: 14px;
+    white-space: nowrap;
+    text-decoration: none;
+}
+.site-nav a:hover { color: #ffffff; background: rgba(255, 255, 255, 0.06); }
+/* No bold here: a wider label would shift the centred group from page to page. */
+.site-nav a[aria-current="page"] { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+.site-login {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #000000;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+}
+.site-logo:focus-visible, .site-nav a:focus-visible, .site-login:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+
+/* Too narrow to centre the group beside «Увійти»: everything in one row from the left. */
+@media (max-width: 900px) {
+    .site-header { justify-content: flex-start; }
+    .site-nav { flex: 1; }
+    .site-login { position: static; margin-left: auto; flex-shrink: 0; }
+}
+
+@media (max-width: 600px) {
+    .site-header { gap: 8px; }
+    .site-logo { min-width: 44px; justify-content: center; }
+    .site-logo span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .site-nav a { padding: 0 8px; }
+    /* The row fades at the right edge so it reads as scrollable; the end padding lets the last link clear the fade. */
+    .site-nav {
+        padding-right: 24px;
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+        mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    }
+    .site-login { padding: 0 16px; }
+}

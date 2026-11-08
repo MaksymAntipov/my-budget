@@ -37,8 +37,8 @@ export function habitCost(amount, times, period) {
     };
 }
 
-/** Monthly income → earnings per working day and hour; optional `price` → how many work hours it costs. */
-export function workRate(income, workingDays, hoursPerDay, price = 0) {
+/** Monthly income → earnings per working day and hour. */
+export function workRate(income, workingDays, hoursPerDay) {
     const total = positive(income);
     const days = positive(workingDays);
     const hours = days * positive(hoursPerDay);
@@ -46,6 +46,5 @@ export function workRate(income, workingDays, hoursPerDay, price = 0) {
     return {
         perDay: days > 0 ? roundMoney(total / days) : 0,
         perHour: roundMoney(perHour),
-        priceHours: perHour > 0 && positive(price) > 0 ? Math.round((positive(price) / perHour) * 10) / 10 : 0,
     };
 }

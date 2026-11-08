@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
     <title>Вартість години роботи — калькулятор | MySkrynia</title>
-    <meta name="description" content="Скільки ви заробляєте за годину і за день, і скільки годин роботи коштує покупка. Калькулятор вартості робочої години.">
+    <meta name="description" content="Скільки ви заробляєте за годину і за день: калькулятор вартості робочої години за місячним доходом.">
     <link rel="canonical" href="https://myskrynia.com.ua/kalkulyatory/vartist-hodyny/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="MySkrynia">
     <meta property="og:locale" content="uk_UA">
     <meta property="og:url" content="https://myskrynia.com.ua/kalkulyatory/vartist-hodyny/">
     <meta property="og:title" content="Вартість години вашої роботи">
-    <meta property="og:description" content="Скільки ви заробляєте за годину — і скільки годин роботи коштує покупка.">
+    <meta property="og:description" content="Скільки ви насправді заробляєте за годину і за день.">
     <meta property="og:image" content="https://myskrynia.com.ua/img/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg?v=2">
@@ -50,7 +50,7 @@
 
 <main class="site-main">
     <h1>Вартість години вашої роботи</h1>
-    <p class="site-lead">Скільки ви насправді заробляєте за годину — і скільки годин роботи коштує річ, яку хочете купити.</p>
+    <p class="site-lead">Скільки ви насправді заробляєте за годину і за робочий день.</p>
 
     <form class="site-card calc-form" data-calc="rate">
         <div class="calc-row">
@@ -67,10 +67,6 @@
                 <input id="hours" name="hours" type="text" inputmode="decimal" autocomplete="off" value="8">
             </div>
         </div>
-        <div class="calc-field">
-            <label for="price">Ціна покупки, ₴ (необов'язково)</label>
-            <input id="price" name="price" type="text" inputmode="decimal" autocomplete="off" value="5000">
-        </div>
         <div class="calc-results" aria-live="polite">
             <div class="calc-result">
                 <span class="calc-result-label">За день</span>
@@ -80,22 +76,17 @@
                 <span class="calc-result-label">За годину</span>
                 <span class="calc-result-value"><span data-out="perHour">0</span>&nbsp;₴</span>
             </div>
-            <div class="calc-result is-orange">
-                <span class="calc-result-label">Покупка коштує</span>
-                <span class="calc-result-value"><span data-out="priceHours" data-format="hours">0</span>&nbsp;год роботи</span>
-            </div>
         </div>
     </form>
 
     <h2>Як рахується</h2>
-    <p>Місячний дохід ділиться на кількість робочих днів — це заробіток за день. Далі — на години роботи на день: це вартість години. Ціна покупки, поділена на вартість години, показує, скільки часу вашого життя вона коштує.</p>
+    <p>Місячний дохід ділиться на кількість робочих днів — це заробіток за день. Далі — на години роботи на день: це вартість години.</p>
 
     <h2>Приклад</h2>
-    <p>Дохід 42&nbsp;000&nbsp;₴, 21 робочий день по 8 годин: 2&nbsp;000&nbsp;₴ за день і 250&nbsp;₴ за годину. Тоді навушники за 5&nbsp;000&nbsp;₴ — це 20 годин роботи, тобто два з половиною робочі дні.</p>
+    <p>Дохід 42&nbsp;000&nbsp;₴, 21 робочий день по 8 годин: 2&nbsp;000&nbsp;₴ за день і 250&nbsp;₴ за годину.</p>
 
     <h2>Навіщо це знати</h2>
     <ul>
-        <li>Легше вирішувати про покупки: «20 годин роботи» відчувається інакше, ніж «5&nbsp;000&nbsp;₴».</li>
         <li>Зрозуміло, скільки брати за підробіток чи фриланс, щоб не працювати дешевше за основну роботу.</li>
         <li>Видно, як змінюється ваша ставка з місяця в місяць.</li>
     </ul>
@@ -109,5 +100,6 @@
 
 <!--site:footer-->
 <script type="module" src="/src/site/calculators.js"></script>
+<script type="module" src="/src/site/header.js"></script>
 </body>
 </html>

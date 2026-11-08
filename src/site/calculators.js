@@ -5,7 +5,7 @@ import { split503020, habitCost, workRate, parseAmount } from './model.js';
 const CALCS = {
     '503020': (v) => split503020(v.income),
     habit: (v) => habitCost(v.amount, v.times, v.period),
-    rate: (v) => workRate(v.income, v.days, v.hours, v.price),
+    rate: (v) => workRate(v.income, v.days, v.hours),
 };
 
 function readValues(form) {
@@ -25,9 +25,7 @@ function render(form) {
     const result = calc(readValues(form));
     for (const out of form.querySelectorAll('[data-out]')) {
         const value = result[out.dataset.out] ?? 0;
-        out.textContent = out.dataset.format === 'hours'
-            ? value.toLocaleString('uk-UA', { maximumFractionDigits: 1 })
-            : formatMoney(value);
+        out.textContent = formatMoney(value);
         // Long sums get a smaller font so the number and «₴» stay on one line.
         const box = out.closest('.calc-result-value');
         const length = out.textContent.length;
