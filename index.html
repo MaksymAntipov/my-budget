@@ -197,7 +197,7 @@
                         <div class="expense-pro-sparkline" id="income-sparkline-container" style="margin-top: 0; margin-bottom: 12px;"></div>
 
                         <div class="income-year-row" style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 16px;">
-                            <span class="row-label" style="font-weight: 600; color: var(--text-secondary);" title="Дохід цього місяця × 12">За рік (×12):</span>
+                            <span class="row-label" style="font-weight: 600; color: var(--text-secondary);" title="Дохід цього місяця × 12">За рік:</span>
                             <span class="text-value tabular"><span id="yearly-income-display">0.00</span><span class="currency-symbol">₴</span> <span style="color: var(--text-tertiary); font-weight: 500; font-size: 14px; margin-left: 6px;" id="yearly-income-usd-container">($<span id="yearly-income-usd">0.00</span>)</span></span>
                         </div>
                     </div>
@@ -1292,22 +1292,19 @@
         Створено профілів: <span id="auth-stats-count" style="margin-left: 6px; font-weight: 700; color: white;">0</span>
     </div>
 
-    <div class="auth-hero">
-        <h1 class="auth-hero-title">Аналіз та стратегія вашого капіталу</h1>
-        <p class="auth-hero-subtitle">Все в одному рішенні</p>
-        
-<div style="font-size: 14px; color: var(--sys-green); background: rgba(46, 160, 67, 0.1); border: 1px solid rgba(46, 160, 67, 0.2); padding: 14px 20px; border-radius: 20px; max-width: 380px; margin: 0 auto 24px auto; line-height: 1.5; font-weight: 500;">
-            Проєкт на 100% безкоштовний. Створений на чистому ентузіазмі з надією, що він принесе вам реальну користь
+    <!-- The first screen: what Skrynia is on the left, the login form on the right (phones: the form first). -->
+    <div class="auth-split">
+        <div class="auth-pitch">
+            <h1>Бюджет по місяцях і ШІ-аналіз капіталу</h1>
+            <p>Доходи, витрати й конверти в одному місці, а операції з картки надходять самі. ШІ читає ваш бюджет і підказує, де гроші витікають і куди їх спрямувати.</p>
+            <ul class="auth-points">
+                <li>Операції з картки розкладаються по категоріях за вашими правилами</li>
+                <li class="is-ai">Звіт ШІ про капітал і стратегія росту доходу</li>
+                <li>Окремий профіль для бізнесу на той самий email</li>
+            </ul>
+            <p class="auth-pitch-note">Безкоштовно. Дані ваші: не продаються, не йдуть на рекламу й видаляються в один клік.</p>
         </div>
-
-        <!-- Hidden for now; remove `hidden` to bring the guide link back. -->
-        <a href="guide.html" target="_blank" class="auth-hero-guide" hidden>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            <span>Інструкція користувача</span>
-        </a>
-
-    </div>
-
+        <div class="auth-form">
     <div class="auth-card">
         <div class="auth-header">
             <div class="auth-icon">
@@ -1329,6 +1326,8 @@
             <path d="M22.02 11.23C21.46 7.6 18.25 5 14.5 5 10.36 5 7 8.36 7 12.5c0 .35.03.68.08 1.01C4.19 13.9 2 16.7 2 20c0 3.87 3.13 7 7 7h15c4.42 0 8-3.58 8-8 0-3.9-2.76-7.2-6.42-7.89a6.83 6.83 0 0 0-3.56-3.88z" fill="#F38020"/>
         </svg>
         За безпеку даних відповідає Cloudflare
+    </div>
+        </div>
     </div>
 
     <section class="auth-about" aria-labelledby="auth-about-title">

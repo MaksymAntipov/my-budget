@@ -17,59 +17,32 @@
             z-index: 50;
         }
 
-        /* HERO БЛОК АВТОРИЗАЦИЇ */
-        .auth-hero {
-            text-align: center;
-            margin-bottom: 32px;
-            max-width: 420px;
-            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
-        .auth-hero-title {
-            font-size: 34px;
-            font-weight: 300; 
-            color: #ffffff;
-            margin: 0 0 12px 0;
-            line-height: 1.2;
-            letter-spacing: -0.5px;
-        }
-        .auth-hero-subtitle {
-            font-size: 16px;
-            color: var(--text-secondary);
-            margin: 0 0 24px 0;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            opacity: 0.8;
-        }
-
-        /* НОВІ СТИЛІ ДЛЯ КНОПКИ ІНСТРУКЦІЇ */
-        .auth-hero-guide {
-            display: inline-flex;
+        /* Login screen, first screen: a short pitch on the left, the form on the right; phones put the form first. */
+        .auth-split {
+            width: 100%;
+            max-width: 1008px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 380px;
+            gap: 64px;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: rgba(10, 132, 255, 0.1);
-            padding: 12px 24px;
-            border-radius: 24px;
-            border: 1px solid rgba(10, 132, 255, 0.2);
-            font-size: 14px;
-            color: var(--text-primary);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-weight: 600;
+            margin: 24px auto 0;
         }
-        .auth-hero-guide[hidden] { display: none; }
-        .auth-hero-guide:hover {
-            background: rgba(10, 132, 255, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.2);
+        .auth-pitch { display: grid; gap: 18px; text-align: left; min-width: 0; animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        #auth-overlay .auth-pitch h1 { margin: 0; font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -0.8px; color: #ffffff; text-wrap: balance; }
+        .auth-pitch p { margin: 0; font-size: 17px; line-height: 1.55; color: var(--text-secondary); max-width: 46ch; }
+        .auth-points { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; }
+        .auth-points li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; color: #e5e5ea; font-size: 15.5px; line-height: 1.45; }
+        .auth-points li::before { content: '✓'; color: #32d74b; font-weight: 800; }
+        .auth-points li.is-ai::before { color: #bf5af2; }
+        .auth-pitch .auth-pitch-note { font-size: 13.5px; color: var(--text-tertiary); }
+        .auth-form { display: grid; justify-items: center; min-width: 0; }
+        .auth-form .auth-card { margin: 0; }
+        @media (max-width: 900px) {
+            .auth-split { grid-template-columns: minmax(0, 1fr); gap: 32px; margin-top: 8px; }
+            .auth-form { order: -1; }
+            #auth-overlay .auth-pitch h1 { font-size: 30px; }
+            .auth-pitch p { max-width: none; }
         }
-        .auth-hero-guide svg {
-            color: var(--sys-blue);
-        }
-
-        /* СТИЛІ ДЛЯ CHANGELOG */
 
         :root {
             --sys-blue: #0a84ff;
