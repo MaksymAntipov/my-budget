@@ -50,7 +50,12 @@ export function animateMoney(el, value) {
     el._moneyValue = to;
     el._moneyShown = undefined;
     if (el._moneyRaf) cancelAnimationFrame(el._moneyRaf);
-    if (from === undefined || from === to || reducedMotion() || !el.offsetParent) {
+    // Updates in quick succession (typing an amount) jump straight to the value: re-starting the count on every
+    // keystroke kept a layout-and-paint loop running on every total for as long as the user typed.
+    const now = performance.now();
+    const rapid = now - (el._moneyAt || 0) < 400;
+    el._moneyAt = now;
+    if (from === undefined || from === to || rapid || reducedMotion() || !el.offsetParent) {
         el.innerText = formatMoney(to);
         return;
     }

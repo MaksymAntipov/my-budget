@@ -5458,8 +5458,9 @@ function renderEnvelopes() {
     }
     bootGoogleCharts();
 
+    // Debounced like every redraw; also draws the chart the first time it becomes visible (compact → desktop).
     window.addEventListener('resize', () => {
-        if (googleChartsLoaded && (document.getElementById('sankey_basic').innerHTML !== '' || isSankeyModalOpen())) updateChart();
+        if (googleChartsLoaded) updateChart();
     });
 
     function initChart() {
@@ -5467,10 +5468,22 @@ function renderEnvelopes() {
         Chart.defaults.color = '#86868b'; 
     }
 
+    let chartRedrawTimer = null;
+
+    /**
+     * Google Charts rebuilds the whole Sankey SVG on every draw — the heaviest part of updateAll. Bursts (typing an
+     * amount, resizing) are coalesced into one draw after a short pause.
+     */
     function updateChart() {
+        clearTimeout(chartRedrawTimer);
+        chartRedrawTimer = setTimeout(drawCharts, 150);
+    }
+
+    function drawCharts() {
         if (!googleChartsLoaded) return;
         const container = document.getElementById('sankey_basic');
-        if (container) updateSankeyToggle(drawSankey(container, false));
+        // Hidden (compact layout, logged out): nothing to draw; a resize redraws it once it shows up.
+        if (container && container.offsetParent) updateSankeyToggle(drawSankey(container, false));
         if (isSankeyModalOpen()) drawSankey(document.getElementById('sankey_full'), true);
     }
 

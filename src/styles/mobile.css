@@ -34,6 +34,9 @@ html:not(.is-compact) .compact-only { display: none !important; }
     padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px !important;
     gap: 10px;
     background: rgba(12, 12, 14, 0.88);
+    /* Sticky: content scrolls under it, so here the blur is visible (cards themselves have none). */
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    backdrop-filter: blur(40px) saturate(200%);
     opacity: 1;
     animation: none;
 }
@@ -155,7 +158,7 @@ html:not(.is-compact) .compact-only { display: none !important; }
 .is-compact .container { grid-template-columns: minmax(0, 1fr) !important; gap: 12px; width: 100%; max-width: 960px; margin: 0 auto; }
 .is-compact .flow-container,
 .is-compact .flow-track-horizontal { display: none !important; }
-.is-compact .right-panel .glass-card { position: static !important; }
+.is-compact .right-panel .glass-card { position: static !important; max-height: none; overflow: visible; }
 
 html.is-compact[data-tab="income"] [data-tab]:not([data-tab="income"]),
 html.is-compact[data-tab="expenses"] [data-tab]:not([data-tab="expenses"]),

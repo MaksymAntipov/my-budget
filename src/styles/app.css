@@ -203,14 +203,14 @@
             to { opacity: 1; transform: scale(1); }
         }
         @keyframes flowVertical {
-            0% { top: -100%; opacity: 0; }
+            0% { transform: translateY(-150%); opacity: 0; }
             50% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
+            100% { transform: translateY(150%); opacity: 0; }
         }
         @keyframes flowHorizontal {
-            0% { left: -100%; opacity: 0; }
+            0% { transform: translateX(-200%); opacity: 0; }
             50% { opacity: 1; }
-            100% { left: 100%; opacity: 0; }
+            100% { transform: translateX(200%); opacity: 0; }
         }
         @keyframes shake {
             10%, 90% { transform: translate3d(-2px, 0, 0); }
@@ -926,6 +926,7 @@
             margin: 0 auto 28px;
             text-align: center;
         }
+        .auth-about-lead a { color: var(--sys-blue); }
         .auth-about-grid {
             list-style: none;
             margin: 0;
@@ -1050,6 +1051,7 @@
 
         .flow-container { display: flex; justify-content: center; margin: 16px 0; height: 30px; position: relative; }
         .flow-track-vertical { width: 4px; height: 100%; background: rgba(255,255,255,0.05); border-radius: 2px; position: relative; overflow: hidden; }
+        /* Particles move by transform (compositor only); animating top/left re-laid out the page every frame. */
         .flow-particle-vertical {
             position: absolute; top: 0; left: 0; right: 0; height: 20px;
             background: linear-gradient(to bottom, transparent, var(--sys-blue), transparent);
@@ -1228,12 +1230,16 @@
             to { opacity: 0.85; transform: none; }
         }
 
-        .glass-card { background: var(--glass-bg); -webkit-backdrop-filter: blur(40px) saturate(200%); backdrop-filter: blur(40px) saturate(200%); border: 1px solid var(--glass-border); border-radius: 28px; padding: 32px; box-shadow: var(--glass-shadow); opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; position: relative; z-index: 1;}
+        /* No backdrop-filter on in-flow cards: the page behind them is a flat dark gradient, so the blur is invisible
+           (pixel-identical) but re-blurs every card on each scrolled frame — on weak GPUs that halves the frame rate. */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 28px; padding: 32px; box-shadow: var(--glass-shadow); opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; position: relative; z-index: 1;}
         .left-panel .glass-card:nth-child(1) { animation-delay: 0.1s; }
         .left-panel .glass-card:nth-child(3) { animation-delay: 0.2s; } 
         .right-panel .glass-card { animation-delay: 0.3s; }
         .right-panel { position: relative; height: 100%; }
-        .right-panel .glass-card { position: -webkit-sticky; position: sticky; top: 20px; z-index: 100; }
+        /* Sticky summary: capped at the viewport and scrolls inside, else its bottom (Sankey, AI button)
+           stayed below the screen for good on short displays (1440×900). */
+        .right-panel .glass-card { position: -webkit-sticky; position: sticky; top: 20px; z-index: 100; max-height: calc(100vh - 40px); overflow-y: auto; }
 
         h1, h2 { margin-top: 0; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #ffffff 0%, #a1a1a6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         h1 { font-size: 26px; margin-bottom: 24px; }

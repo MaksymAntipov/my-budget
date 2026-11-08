@@ -1,11 +1,13 @@
-/* Public pages (/pro-proekt/, /konfidentsiinist/, /onovlennya/, /kalkulyatory/*, 404). Dark like the app. */
+/* Public pages (/pro-proekt/, /konfidentsiinist/, /onovlennya/, /kalkulyatory/*, 404).
+   Same look as the login screen: its font, background, text colours, «про сервіс» cards, white primary button. */
 :root {
     color-scheme: dark;
     --site-bg: #000000;
-    --site-card: rgba(30, 30, 32, 0.75);
-    --site-border: rgba(255, 255, 255, 0.1);
+    --site-card: rgba(30, 30, 32, 0.6);
+    --site-border: rgba(255, 255, 255, 0.08);
     --site-text: #ffffff;
     --site-muted: #a1a1a6;
+    --site-tertiary: #636366;
     --site-blue: #0a84ff;
     --site-green: #2ea043;
     --site-orange: #ff9f0a;
@@ -18,12 +20,22 @@ html { -webkit-text-size-adjust: 100%; }
 body {
     margin: 0;
     min-height: 100vh;
-    background: var(--site-bg);
+    background-color: var(--site-bg);
     color: var(--site-text);
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     font-size: 16px;
-    line-height: 1.6;
+    line-height: 1.5;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* The app's gradient, as a fixed layer: composited, no repaint of the page on scroll. */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(circle at top right, #2c2c2e 0%, #000000 100%);
+    pointer-events: none;
 }
 
 a { color: var(--site-blue); }
@@ -56,7 +68,7 @@ a { color: var(--site-blue); }
     padding: 0 10px;
     color: var(--site-muted);
     text-decoration: none;
-    font-size: 15px;
+    font-size: 14px;
     border-radius: 12px;
 }
 .site-nav a:hover, .site-footer nav a:hover { color: var(--site-text); background: rgba(255, 255, 255, 0.06); }
@@ -66,9 +78,10 @@ a { color: var(--site-blue); }
     min-height: 44px;
     padding: 0 20px;
     border-radius: 14px;
-    background: var(--site-blue);
-    color: #fff;
-    font-weight: 600;
+    background: #ffffff;
+    color: #000000;
+    font-weight: 700;
+    font-size: 15px;
     text-decoration: none;
 }
 
@@ -77,19 +90,21 @@ a { color: var(--site-blue); }
     margin: 0 auto;
     padding: 24px 16px 48px;
 }
-.site-main h1 { font-size: 34px; line-height: 1.2; letter-spacing: -0.5px; margin: 8px 0 16px; }
-.site-main h2 { font-size: 22px; line-height: 1.3; margin: 40px 0 12px; }
-.site-main h3 { font-size: 18px; margin: 24px 0 8px; }
-.site-main p, .site-main li { color: #d1d1d6; }
+/* Headings as on the login screen: light hero title, bold section titles. */
+.site-main h1 { font-size: 34px; font-weight: 300; line-height: 1.2; letter-spacing: -0.5px; margin: 8px 0 16px; }
+.site-main h2 { font-size: 24px; font-weight: 700; line-height: 1.3; letter-spacing: -0.4px; margin: 40px 0 12px; }
+.site-main h3 { font-size: 16px; font-weight: 700; margin: 24px 0 6px; }
+.site-main p, .site-main li { color: var(--site-muted); }
+.site-main strong { color: var(--site-text); }
 .site-main ul, .site-main ol { padding-left: 22px; }
-.site-lead { font-size: 18px; color: var(--site-muted) !important; }
-.site-updated { font-size: 14px; color: var(--site-muted) !important; }
+.site-lead { font-size: 16px; }
+.site-updated { font-size: 14px; color: var(--site-tertiary) !important; }
 
 .site-card {
     background: var(--site-card);
     border: 1px solid var(--site-border);
-    border-radius: 24px;
-    padding: 24px;
+    border-radius: 20px;
+    padding: 20px;
     margin: 24px 0;
 }
 
@@ -97,15 +112,18 @@ a { color: var(--site-blue); }
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 48px;
-    padding: 0 24px;
+    min-height: 56px;
+    padding: 0 28px;
     margin-top: 8px;
-    border-radius: 16px;
-    background: var(--site-blue);
-    color: #fff;
+    border-radius: 18px;
+    background: #ffffff;
+    color: #000000;
+    font-size: 16px;
     font-weight: 700;
     text-decoration: none;
+    box-shadow: 0 8px 16px rgba(255, 255, 255, 0.15);
 }
+.site-cta:hover { background: #f5f5f7; }
 
 .site-grid {
     list-style: none;
@@ -117,8 +135,8 @@ a { color: var(--site-blue); }
 .site-grid > li { margin: 0; }
 .site-grid a.site-card { display: block; margin: 0; height: 100%; color: inherit; text-decoration: none; }
 .site-grid a.site-card:hover { border-color: rgba(255, 255, 255, 0.25); }
-.site-grid h2, .site-grid h3 { margin: 0 0 6px; font-size: 18px; }
-.site-grid p { margin: 0; font-size: 15px; }
+.site-grid h2, .site-grid h3 { margin: 0 0 6px; font-size: 16px; letter-spacing: 0; }
+.site-grid p { margin: 0; font-size: 14px; }
 
 .site-shots { display: grid; gap: 16px; margin: 24px 0; }
 .site-shots img { width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--site-border); display: block; }
@@ -129,25 +147,28 @@ a { color: var(--site-blue); }
 /* Calculators */
 .calc-form { display: grid; gap: 16px; }
 .calc-field { display: grid; gap: 6px; }
-.calc-field label { font-size: 15px; font-weight: 600; color: var(--site-text); }
+/* Fields like the app's .ios-input. */
+.calc-field label { font-size: 14px; font-weight: 600; color: var(--site-muted); }
 .calc-field input, .calc-field select {
     width: 100%;
-    min-height: 52px;
-    padding: 0 16px;
-    font-size: 18px;
+    min-height: 56px;
+    padding: 0 18px;
+    font-size: 16px;
+    font-weight: 500;
     color: var(--site-text);
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid var(--site-border);
-    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
     font-family: inherit;
+    transition: border-color 0.3s ease, background 0.3s ease;
 }
-.calc-field input:focus, .calc-field select:focus { outline: none; border-color: var(--site-blue); box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2); }
+.calc-field input:focus, .calc-field select:focus { outline: none; background: rgba(0, 0, 0, 0.5); border-color: var(--site-blue); box-shadow: 0 4px 16px rgba(10, 132, 255, 0.15); }
 .calc-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
 .calc-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 8px; }
 .calc-result {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--site-border);
-    border-radius: 16px;
+    border-radius: 18px;
     padding: 16px;
     min-width: 0;
 }

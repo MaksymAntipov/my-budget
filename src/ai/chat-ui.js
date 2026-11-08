@@ -12,7 +12,16 @@ import {
   normalizeProvider,
   providerLabel,
   saveLlmSettings,
+  setServerKeys,
+  setServerKeyHint,
+  serverKeysState,
+  serverKeyHint,
+  chatRequestKey,
+  localKeyToMigrate,
+  preferredServerProvider,
+  shouldDropLocalKey,
 } from './settings.js';
+import { deleteAiKey, fetchAiKeys, saveAiKey } from './keys-api.js';
 import { clearAiHistory, clearAllAiHistory, loadAiHistory, saveAiHistory } from './history.js';
 import { isWideLookQuestion, parseFocusFromQuestion } from './focus.js';
 import { promptTokens, tokenUsageLabel } from './dump.js';
@@ -102,11 +111,47 @@ let persistTimer = null;
 let providerUnlockAt = 0;
 let unlockTimer = null;
 
+let keysLoadedFor = '';
+
+/**
+ * Loads the hints of keys saved on the server for this account; a key still kept in this browser
+ * (from before server storage) is moved there once and dropped locally. Offline or storage off: the
+ * browser key, if any, keeps working.
+ */
+export async function refreshAiKeys(force = false) {
+  const userId = deps?.getUserId?.() || '';
+  if (!userId) {
+    keysLoadedFor = '';
+    return;
+  }
+  if (!force && keysLoadedFor === userId) return;
+  keysLoadedFor = userId;
+  try {
+    const payload = await fetchAiKeys(userId);
+    setServerKeys(payload);
+    const fallback = preferredServerProvider(payload?.keys);
+    if (!normalizeProvider(getLlmSettings().provider) && fallback) {
+      saveLlmSettings({ provider: fallback, model: defaultModelFor(fallback) });
+    }
+    const legacy = localKeyToMigrate(getLlmSettings(), serverKeysState());
+    if (legacy) {
+      const saved = await saveAiKey(userId, legacy.provider, legacy.apiKey);
+      setServerKeyHint(saved.provider, saved.hint);
+      saveLlmSettings({ apiKey: '' });
+    }
+    if (shouldDropLocalKey(getLlmSettings(), serverKeysState())) saveLlmSettings({ apiKey: '' });
+  } catch {
+    if (!serverKeysState().loaded) setServerKeys({ enabled: false, keys: [] });
+  }
+  syncLlmSettingsForm();
+}
+
 export function initAiChat(nextDeps) {
   deps = nextDeps;
   hydrateAiChat();
   syncLlmSettingsForm();
   syncAiEntryButtons();
+  void refreshAiKeys();
   const input = document.getElementById('ai-chat-input');
   input?.addEventListener('keydown', handleAiChatKeydown);
   input?.addEventListener('input', autoResizeAiInput);
@@ -139,6 +184,7 @@ export function hydrateAiChat() {
 }
 
 export function syncAiEntryButtons() {
+  void refreshAiKeys(); // no-op once loaded for this profile
   const keyed = hasLlmKey();
   const prompts = document.getElementById('ai-prompt-buttons');
   const agent = document.getElementById('btn-ai-agent');
@@ -172,6 +218,7 @@ export function openLlmSettings() {
   if (!overlay) return;
   syncLlmSettingsForm();
   overlay.classList.add('active');
+  void refreshAiKeys(true);
 }
 
 export function closeLlmSettings(e) {
@@ -248,13 +295,11 @@ export function selectLlmProvider(event, value) {
   paintProviderDropdown(value);
   fillModelOptions(value);
   paintModelDropdown(defaultModelFor(value));
-  const prev = getLlmSettings();
-  if (prev.apiKey) {
-    saveLlmSettings({ provider: value, model: defaultModelFor(value) });
-    syncLlmSettingsForm();
-    const name = providerLabel(value);
-    setLlmSettingsStatus(name ? `Провайдер: ${name}` : '', false);
-  }
+  // Keys are kept per provider, so choosing one makes it active and shows whether its key is saved.
+  saveLlmSettings({ provider: value, model: defaultModelFor(value) });
+  syncLlmSettingsForm();
+  const name = providerLabel(value);
+  setLlmSettingsStatus(name ? `Провайдер: ${name}` : '', false);
 }
 
 export function selectLlmModel(event, value) {
@@ -262,23 +307,20 @@ export function selectLlmModel(event, value) {
   const provider = formProvider();
   const model = normalizeModel(provider, value);
   paintModelDropdown(model);
-  const prev = getLlmSettings();
-  if (prev.apiKey) {
-    saveLlmSettings({ model });
-    syncLlmSettingsForm();
-    const name = modelLabel(provider, model);
-    setLlmSettingsStatus(name ? `Модель: ${name}` : '', false);
-  }
+  saveLlmSettings({ model });
+  syncLlmSettingsForm();
+  const name = modelLabel(provider, model);
+  setLlmSettingsStatus(name ? `Модель: ${name}` : '', false);
 }
 
-export function saveLlmSettingsFromForm() {
-  if (hasLlmKey()) {
-    setLlmSettingsStatus('Ключ уже збережено. Щоб поставити інший — спочатку видаліть цей.', true);
-    return;
-  }
+export async function saveLlmSettingsFromForm() {
   const provider = formProvider();
   if (!provider) {
     setLlmSettingsStatus('Оберіть провайдера', true);
+    return;
+  }
+  if (hasLlmKey()) {
+    setLlmSettingsStatus('Ключ уже збережено. Щоб поставити інший — спочатку видаліть цей.', true);
     return;
   }
   const apiKey = document.getElementById('llm-api-key')?.value.trim() || '';
@@ -290,14 +332,24 @@ export function saveLlmSettingsFromForm() {
     setLlmSettingsStatus('Ключ занадто короткий', true);
     return;
   }
-  saveLlmSettings({
-    provider,
-    apiKey,
-    model: normalizeModel(provider, document.getElementById('llm-model')?.value),
-    baseUrl: '',
-  });
-  syncLlmSettingsForm();
-  setLlmSettingsStatus(`Збережено · ${providerLabel(provider)}`, false);
+  const model = normalizeModel(provider, document.getElementById('llm-model')?.value);
+  if (serverKeysState().enabled) {
+    setLlmSettingsStatus('Зберігаю…', false);
+    try {
+      const saved = await saveAiKey(deps?.getUserId?.(), provider, apiKey);
+      setServerKeyHint(saved.provider, saved.hint);
+      saveLlmSettings({ provider, model, apiKey: '', baseUrl: '' });
+    } catch (e) {
+      setLlmSettingsStatus(e?.message || 'Не вдалося зберегти ключ', true);
+      return;
+    }
+    syncLlmSettingsForm();
+    setLlmSettingsStatus(`Збережено · ${providerLabel(provider)} — ключ працює на всіх ваших пристроях`, false);
+  } else {
+    saveLlmSettings({ provider, apiKey, model, baseUrl: '' });
+    syncLlmSettingsForm();
+    setLlmSettingsStatus(`Збережено · ${providerLabel(provider)}`, false);
+  }
   if (pendingChatOpen && hasLlmKey()) {
     pendingChatOpen = false;
     closeLlmSettings();
@@ -305,20 +357,42 @@ export function saveLlmSettingsFromForm() {
   }
 }
 
-export function clearLlmSettingsFromForm() {
+export async function clearLlmSettingsFromForm() {
+  const provider = normalizeProvider(getLlmSettings().provider);
+  const keyInput = document.getElementById('llm-api-key');
+  if (serverKeyHint(provider)) {
+    try {
+      await deleteAiKey(deps?.getUserId?.(), provider);
+    } catch (e) {
+      setLlmSettingsStatus(e?.message || 'Не вдалося видалити ключ', true);
+      return;
+    }
+    setServerKeyHint(provider, '');
+    saveLlmSettings({ apiKey: '' });
+    syncLlmSettingsForm();
+    if (keyInput) keyInput.value = '';
+    setLlmSettingsStatus(`Ключ ${providerLabel(provider)} видалено`, false);
+    return;
+  }
   if (!getLlmSettings().apiKey) {
     setLlmSettingsStatus('Немає ключа для видалення', true);
     return;
   }
   clearLlmSettings();
   syncLlmSettingsForm();
-  const keyInput = document.getElementById('llm-api-key');
   if (keyInput) keyInput.value = '';
   setLlmSettingsStatus('Ключ видалено з цього пристрою', false);
 }
 
 export function openAiChat(opts = {}) {
   if (!deps?.isLoggedIn()) return;
+  // First open after login: learn which keys the server holds before deciding to ask for one.
+  if (!serverKeysState().loaded) {
+    void refreshAiKeys().then(() => {
+      if (serverKeysState().loaded) openAiChat(opts);
+    });
+    return;
+  }
   hydrateAiChat();
   syncAiEntryButtons();
   if (!hasLlmKey()) {
@@ -610,8 +684,10 @@ export async function copyLastAiPrompt() {
 
 function syncLlmSettingsForm() {
   const s = getLlmSettings();
-  const hasKey = Boolean(s.apiKey);
   const provider = normalizeProvider(s.provider);
+  const hint = serverKeyHint(provider) || maskLlmKey(s.apiKey);
+  const hasKey = hasLlmKey();
+  const onServer = serverKeysState().enabled;
   const keyEl = document.getElementById('llm-api-key');
   const status = document.getElementById('llm-key-status');
   const card = document.getElementById('llm-key-card');
@@ -628,9 +704,17 @@ function syncLlmSettingsForm() {
   fillModelOptions(provider);
   paintModelDropdown(model);
   if (intro) {
-    intro.textContent = hasKey
-      ? 'На цьому пристрої вже є один ключ. Провайдера і модель можна змінити в списках. Щоб поставити інший ключ — видаліть цей.'
-      : 'Вставте ключ, оберіть провайдера і модель. Зберігається лише один ключ — у цьому браузері.';
+    intro.textContent = onServer
+      ? 'Ключ зберігається зашифрованим на сервері Скрині: вставили один раз — і він працює на всіх ваших пристроях та в обох профілях. Для кожного провайдера — свій ключ.'
+      : hasKey
+        ? 'На цьому пристрої вже є один ключ. Провайдера і модель можна змінити в списках. Щоб поставити інший ключ — видаліть цей.'
+        : 'Вставте ключ, оберіть провайдера і модель. Зберігається лише один ключ — у цьому браузері.';
+  }
+  const note = document.getElementById('llm-key-note');
+  if (note) {
+    note.textContent = onServer
+      ? 'Ключ шифрується на сервері й більше не показується — лише його початок і кінець.'
+      : 'Ключ зберігається лише в цьому браузері.';
   }
   if (card) {
     if (hasKey) {
@@ -638,11 +722,13 @@ function syncLlmSettingsForm() {
       const name = providerLabel(provider);
       const chosen = modelLabel(provider, model);
       card.textContent = name
-        ? `Активний ключ ${maskLlmKey(s.apiKey)} · ${name}${chosen ? ` · ${chosen}` : ''}`
-        : `Активний ключ ${maskLlmKey(s.apiKey)} — оберіть провайдера`;
+        ? `Активний ключ ${hint} · ${name}${chosen ? ` · ${chosen}` : ''}`
+        : `Активний ключ ${hint} — оберіть провайдера`;
     } else {
       card.classList.remove('is-on');
-      card.textContent = 'Ключа немає — оберіть провайдера, вставте ключ і збережіть';
+      card.textContent = provider
+        ? `Для ${providerLabel(provider)} ключа немає — вставте ключ і збережіть`
+        : 'Ключа немає — оберіть провайдера, вставте ключ і збережіть';
     }
   }
   if (entry) entry.hidden = hasKey;
@@ -785,7 +871,7 @@ async function streamAssistant(opts = {}) {
   const userId = deps?.getUserId();
   if (!userId) return;
   const settings = getLlmSettings();
-  if (!settings.apiKey) {
+  if (!hasLlmKey()) {
     openLlmSettings();
     return;
   }
@@ -825,7 +911,8 @@ async function streamAssistant(opts = {}) {
       signal: abortCtrl.signal,
       body: JSON.stringify({
         userId,
-        apiKey: settings.apiKey,
+        // Saved on the server for this provider → the server uses its own copy; the key stays out of the request.
+        apiKey: chatRequestKey(settings, serverKeyHint(provider)) || undefined,
         provider,
         model: normalizeModel(provider, settings.model),
         // Reports are short by design now; a 16k cap mostly paid for padding.

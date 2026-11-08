@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
-    <title>MySkrynia — безкоштовний облік особистих фінансів</title>
-    <meta name="description" content="Безкоштовний сервіс обліку фінансів: бюджет по місяцях, доходи й витрати за категоріями, конверти, борги, інтеграція з Monobank, аналітика та AI-помічник. Окремий профіль для бізнесу.">
+    <title>MySkrynia — облік особистих фінансів</title>
+    <meta name="description" content="Облік особистих фінансів: бюджет по місяцях, доходи й витрати за категоріями, конверти, борги, інтеграція з Monobank, аналітика та AI-помічник. Окремий профіль для бізнесу.">
     <link rel="canonical" href="https://myskrynia.com.ua/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="MySkrynia">
     <meta property="og:locale" content="uk_UA">
     <meta property="og:url" content="https://myskrynia.com.ua/">
-    <meta property="og:title" content="MySkrynia — безкоштовний облік особистих фінансів">
+    <meta property="og:title" content="MySkrynia — облік особистих фінансів">
     <meta property="og:description" content="Бюджет по місяцях, категорії витрат, конверти, Monobank, аналітика та AI-помічник. Для себе і для бізнесу.">
     <meta property="og:image" content="https://myskrynia.com.ua/img/og-image.png">
     <meta property="og:image:width" content="1200">
@@ -29,7 +29,7 @@
                 "url": "https://myskrynia.com.ua/",
                 "image": "https://myskrynia.com.ua/img/og-image.png",
                 "screenshot": "https://myskrynia.com.ua/img/screen-desktop-month.png",
-                "description": "Безкоштовний веб-застосунок для обліку особистих фінансів і бюджету бізнесу.",
+                "description": "Веб-застосунок для обліку особистих фінансів і бюджету бізнесу.",
                 "applicationCategory": "FinanceApplication",
                 "operatingSystem": "Web, iOS, Android",
                 "inLanguage": "uk",
@@ -52,7 +52,6 @@
                 "@type": "FAQPage",
                 "@id": "https://myskrynia.com.ua/#faq",
                 "mainEntity": [
-                    { "@type": "Question", "name": "Чи MySkrynia безкоштовна?", "acceptedAnswer": { "@type": "Answer", "text": "Так, сервіс повністю безкоштовний: без платних тарифів і пробних періодів." } },
                     { "@type": "Question", "name": "Як увійти в MySkrynia?", "acceptedAnswer": { "@type": "Answer", "text": "Вкажіть email — ми надішлемо одноразовий код. Пароль не потрібен. Після першого входу ви створите профіль." } },
                     { "@type": "Question", "name": "Чи є інтеграція з Monobank?", "acceptedAnswer": { "@type": "Answer", "text": "Так. Підключіть картку через особистий токен з api.monobank.ua — нові операції надходитимуть автоматично й розподілятимуться за категоріями за вашими правилами. Токен зберігається в зашифрованому вигляді." } },
                     { "@type": "Question", "name": "Чи підходить MySkrynia для бізнесу?", "acceptedAnswer": { "@type": "Answer", "text": "Так. На той самий email можна створити окремий бізнес-профіль: обіг, інвойси постачальників, собівартість, чистий прибуток, звірка каси та зарплатна відомість." } },
@@ -1003,7 +1002,7 @@
         <div id="llm-key-entry">
             <label class="ai-field-label">API-ключ</label>
             <input type="text" id="llm-api-key" class="ios-input secret-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-bwignore style="margin-bottom: 8px;" placeholder="Вставте ключ сюди">
-            <p style="color: var(--text-tertiary); font-size: 12px; margin: 0 0 16px 0;">Ключ не відправляється на сервер Скрині.</p>
+            <p id="llm-key-note" style="color: var(--text-tertiary); font-size: 12px; margin: 0 0 16px 0;">Ключ зберігається лише в цьому браузері.</p>
         </div>
         <p id="llm-key-status" style="color: var(--text-secondary); font-size: 13px; margin: 0 0 16px 0;"></p>
         <button type="button" id="btn-llm-save" class="btn-init-primary" style="margin: 0 0 10px 0;" data-action="saveLlmSettingsFromForm">Зберегти</button>
@@ -1355,7 +1354,7 @@
 
     <section class="auth-about" aria-labelledby="auth-about-title">
         <h2 id="auth-about-title" class="auth-about-title">Облік особистих фінансів і бюджету бізнесу</h2>
-        <p class="auth-about-lead">MySkrynia — безкоштовний сервіс, щоб бачити, скільки ви заробляєте, на що витрачаєте і скільки грошей лишається вільними щомісяця.</p>
+        <p class="auth-about-lead">Доходи, витрати й вільні гроші за кожен місяць — в одному місці, щоб спокійно планувати бюджет. Ваші дані належать лише вам: вони доступні тільки після входу, не продаються й не використовуються для реклами, а профіль можна видалити в один клік. Детальніше — у <a href="/konfidentsiinist/">політиці конфіденційності</a>.</p>
 
         <ul class="auth-about-grid">
             <li class="auth-about-item">
@@ -1386,10 +1385,6 @@
 
         <h2 class="auth-about-title auth-about-faq-title">Питання та відповіді</h2>
         <div class="auth-faq">
-            <details>
-                <summary>Чи MySkrynia безкоштовна?</summary>
-                <p>Так, сервіс повністю безкоштовний: без платних тарифів і пробних періодів.</p>
-            </details>
             <details>
                 <summary>Як увійти в MySkrynia?</summary>
                 <p>Вкажіть email — ми надішлемо одноразовий код. Пароль не потрібен. Після першого входу ви створите профіль.</p>

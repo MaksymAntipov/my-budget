@@ -62,8 +62,80 @@ export function getLlmSettings() {
   }
 }
 
+// Keys saved on the server (encrypted, per email and provider): only hints like «gsk_…WXYZ» reach the browser.
+let serverKeys = { enabled: false, loaded: false, hints: /** @type {Record<string, string>} */ ({}) };
+
+/** @param {{ enabled?: boolean, keys?: Array<{ provider: string, hint: string }> }} payload */
+export function setServerKeys(payload) {
+  const hints = {};
+  for (const k of payload?.keys || []) {
+    if (k && typeof k.provider === 'string' && typeof k.hint === 'string') hints[k.provider] = k.hint;
+  }
+  serverKeys = { enabled: Boolean(payload?.enabled), loaded: true, hints };
+}
+
+/** @param {string} provider @param {string} hint ('' removes it) */
+export function setServerKeyHint(provider, hint) {
+  const hints = { ...serverKeys.hints };
+  if (hint) hints[provider] = hint;
+  else delete hints[provider];
+  serverKeys = { ...serverKeys, hints };
+}
+
+export function serverKeysState() {
+  return serverKeys;
+}
+
+/** @param {string} provider */
+export function serverKeyHint(provider) {
+  return serverKeys.hints[normalizeProvider(provider)] || '';
+}
+
+/**
+ * Which key the chat request carries: none when the server holds one for this provider (it uses its own),
+ * otherwise the key kept in this browser (server storage off, or not migrated yet).
+ * @param {LlmSettings} settings @param {string} hint
+ */
+export function chatRequestKey(settings, hint) {
+  return hint ? '' : String(settings?.apiKey || '').trim();
+}
+
+/**
+ * A key left in this browser from before server storage, to move to the server once:
+ * only when storage is on, the provider is known and the server has no key for it yet.
+ * @param {LlmSettings} settings @param {{ enabled: boolean, loaded: boolean, hints: Record<string, string> }} state
+ */
+export function localKeyToMigrate(settings, state) {
+  const key = String(settings?.apiKey || '').trim();
+  const provider = normalizeProvider(settings?.provider);
+  if (!state?.loaded || !state.enabled || key.length < 8 || !provider || state.hints[provider]) return null;
+  return { provider, apiKey: key };
+}
+
+/**
+ * A browser copy of a key the server already holds for that provider (e.g. a migration whose clean-up was cut
+ * short by a reload): the server copy wins and the browser one is dropped.
+ * @param {LlmSettings} settings @param {{ enabled: boolean, loaded: boolean, hints: Record<string, string> }} state
+ */
+export function shouldDropLocalKey(settings, state) {
+  const provider = normalizeProvider(settings?.provider);
+  return Boolean(state?.loaded && state.enabled && String(settings?.apiKey || '').trim() && provider && state.hints[provider]);
+}
+
+/**
+ * On a device where no provider is chosen yet: the provider of the most recently saved server key,
+ * so a key saved elsewhere works here without picking anything.
+ * @param {Array<{ provider: string, updatedAt?: number }>} keys
+ */
+export function preferredServerProvider(keys) {
+  const known = (keys || []).filter((k) => normalizeProvider(k?.provider));
+  if (!known.length) return '';
+  return normalizeProvider(known.reduce((a, b) => ((b.updatedAt || 0) > (a.updatedAt || 0) ? b : a)).provider);
+}
+
 export function hasLlmKey() {
-  return getLlmSettings().apiKey.trim().length >= 8;
+  const s = getLlmSettings();
+  return Boolean(serverKeyHint(s.provider)) || s.apiKey.trim().length >= 8;
 }
 
 /** @param {string} value */

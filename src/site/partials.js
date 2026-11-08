@@ -31,7 +31,7 @@ export function siteFooter() {
         ${NAV.map(([href, label]) => `<a href="${href}">${label}</a>`).join('\n        ')}
         <a href="/konfidentsiinist/">Конфіденційність</a>
     </nav>
-    <p>MySkrynia — безкоштовний облік особистих фінансів. Питання: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
+    <p>MySkrynia — облік особистих фінансів. Питання: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
 </footer>`;
 }
 
