@@ -2,6 +2,21 @@ const STORAGE_KEY = 'myskrynia.llm.v1';
 
 const PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'groq', 'xai'];
 
+/** Where each provider hands out API keys (the «Де взяти ключ» link in the key dialog). */
+const KEY_PAGES = {
+    gemini: 'https://aistudio.google.com/app/apikey',
+    groq: 'https://console.groq.com/keys',
+    openai: 'https://platform.openai.com/api-keys',
+    anthropic: 'https://console.anthropic.com/settings/keys',
+    openrouter: 'https://openrouter.ai/keys',
+    xai: 'https://console.x.ai/',
+};
+
+/** The provider's API-key page, or '' for an unknown provider. */
+export function keyPageUrl(provider) {
+    return KEY_PAGES[provider] || '';
+}
+
 /** @type {Record<string, Array<{ id: string, label: string }>>} */
 export const LLM_MODELS = {
   gemini: [

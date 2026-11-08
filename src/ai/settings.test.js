@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chatRequestKey, localKeyToMigrate, preferredServerProvider, shouldDropLocalKey, serverKeyHint, setServerKeyHint, setServerKeys } from './settings.js';
+import { chatRequestKey, keyPageUrl, localKeyToMigrate, preferredServerProvider, shouldDropLocalKey, serverKeyHint, setServerKeyHint, setServerKeys } from './settings.js';
 
 const loaded = (hints = {}, enabled = true) => ({ enabled, loaded: true, hints });
 const local = (apiKey, provider = 'groq') => ({ provider, apiKey, model: '', baseUrl: '' });
@@ -48,4 +48,12 @@ test('a browser key is dropped once the server holds a key for its provider', ()
     assert.equal(shouldDropLocalKey(local('gsk_local_key_123'), loaded({ gemini: 'AIza…1234' })), false);
     assert.equal(shouldDropLocalKey(local('gsk_local_key_123'), loaded({ groq: 'gsk_…WXYZ' }, false)), false);
     assert.equal(shouldDropLocalKey(local(''), loaded({ groq: 'gsk_…WXYZ' })), false);
+});
+
+test('every provider in the key dialog has a page to get a key; unknown ones have none', () => {
+    for (const provider of ['openai', 'anthropic', 'gemini', 'openrouter', 'groq', 'xai']) {
+        assert.match(keyPageUrl(provider), /^https:\/\//, provider);
+    }
+    assert.equal(keyPageUrl('gemini'), 'https://aistudio.google.com/app/apikey');
+    assert.equal(keyPageUrl('nope'), '');
 });

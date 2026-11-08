@@ -977,6 +977,19 @@
             Вставте ключ, оберіть провайдера і модель. Зберігається лише один ключ — у цьому браузері.
         </p>
         <div id="llm-key-card" class="llm-key-card">Ключа немає</div>
+        <!-- No key yet: how to get a free Gemini key in a minute. The button also picks Gemini below. -->
+        <div id="llm-key-guide" class="llm-key-guide" hidden>
+            <p class="llm-key-guide-title">Безкоштовний ключ Gemini за хвилину</p>
+            <ol>
+                <li>Відкрийте Google AI Studio й увійдіть акаунтом Google.</li>
+                <li>Натисніть «Create API key» і скопіюйте ключ.</li>
+                <li>Вставте його в поле нижче: Gemini вже буде обрано.</li>
+            </ol>
+            <div class="llm-key-guide-links">
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" data-action="selectLlmProvider" data-pass-event="1" data-args='["gemini"]'>Отримати ключ Gemini ↗</a>
+            </div>
+            <p class="llm-key-guide-note">Без банківської картки. Google обмежує кількість запитів на день.</p>
+        </div>
         <label class="ai-field-label">Провайдер</label>
         <input type="hidden" id="llm-provider" value="">
         <div class="custom-dropdown" id="llm-provider-dd" data-stop-propagation="1" data-toggle-open="1" style="height: 48px; margin-bottom: 16px;">
@@ -1002,7 +1015,8 @@
         <div id="llm-key-entry">
             <label class="ai-field-label">API-ключ</label>
             <input type="text" id="llm-api-key" data-enter="saveLlmSettingsFromForm" class="ios-input secret-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-bwignore style="margin-bottom: 8px;" placeholder="Вставте ключ сюди">
-            <p id="llm-key-note" style="color: var(--text-tertiary); font-size: 12px; margin: 0 0 16px 0;">Ключ зберігається лише в цьому браузері.</p>
+            <p id="llm-key-note" style="color: var(--text-tertiary); font-size: 12px; margin: 0 0 6px 0;">Ключ зберігається лише в цьому браузері.</p>
+            <a id="llm-key-page" class="llm-key-page" href="#" target="_blank" rel="noopener" hidden>Де взяти ключ ↗</a>
         </div>
         <p id="llm-key-status" style="color: var(--text-secondary); font-size: 13px; margin: 0 0 16px 0;"></p>
         <button type="button" id="btn-llm-save" class="btn-init-primary" style="margin: 0 0 10px 0;" data-action="saveLlmSettingsFromForm">Зберегти</button>

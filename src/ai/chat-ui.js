@@ -20,6 +20,7 @@ import {
   localKeyToMigrate,
   preferredServerProvider,
   shouldDropLocalKey,
+  keyPageUrl,
 } from './settings.js';
 import { deleteAiKey, fetchAiKeys, saveAiKey } from './keys-api.js';
 import { balanceMarkdown, nextRevealLength } from './reveal.js';
@@ -786,6 +787,18 @@ function syncLlmSettingsForm() {
     keyEl.placeholder = 'Вставте ключ сюди';
   }
   paintProviderDropdown(provider);
+  // No key anywhere yet: show how to get one; under the field, the chosen provider's key page.
+  const guide = document.getElementById('llm-key-guide');
+  if (guide) guide.hidden = hasKey;
+  const keyPage = document.getElementById('llm-key-page');
+  if (keyPage) {
+    const url = hasKey ? '' : keyPageUrl(provider);
+    keyPage.hidden = !url;
+    if (url) {
+      keyPage.href = url;
+      keyPage.textContent = `Де взяти ключ ${providerLabel(provider)} ↗`;
+    }
+  }
   const model = normalizeModel(provider, s.model);
   fillModelOptions(provider);
   paintModelDropdown(model);
