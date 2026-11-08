@@ -47,6 +47,31 @@ function renderTable(lines) {
   return `<table>${thead}${tbody}</table>`;
 }
 
+// Report sections the prompts ask for (chat-ui.js); the growth ones get their own colour.
+const SECTIONS = ['ГОЛОВНЕ', 'КАПІТАЛ ЗАРАЗ', 'ДИНАМІКА', 'РИЗИКИ', 'КУДИ СПРЯМУВАТИ ГРОШІ', 'ДЕ КАПІТАЛ ВИТІКАЄ', 'HELICOPTER VIEW', 'ТАКТИКА', 'НА ПОДУМАТИ'];
+const GROWTH_SECTIONS = ['HELICOPTER VIEW', 'ТАКТИКА', 'НА ПОДУМАТИ'];
+const INLINE_SECTION_RE = new RegExp(
+  `^\\s*(?:\\*\\*)?(${SECTIONS.join('|')})(?:\\*\\*)?\\s*[:—–-]\\s*(?:\\*\\*\\s*)?(\\S.*)$`,
+);
+
+/**
+ * A line that is only a caps title → its text; otherwise ''. Marked-up caps (`## ТАКТИКА`, `**РИЗИКИ**`) count
+ * as titles; bare caps only for the known sections, so «ОК, ПДФО 18%» stays text.
+ */
+export function sectionTitle(line) {
+  const raw = String(line || '').trim().replace(/:$/, '');
+  const unmarked = raw.replace(/^#{1,3}\s+/, '').replace(/^(\*\*|__)(.+)\1$/, '$2');
+  const text = unmarked.replace(/:$/, '').trim();
+  if (!text || text.length > 48 || /\p{Ll}/u.test(text) || (text.match(/\p{Lu}/gu) || []).length < 4) return '';
+  if (unmarked !== raw) return text;
+  return SECTIONS.some((name) => text.startsWith(name)) ? text : '';
+}
+
+function sectionHtml(title) {
+  const growth = GROWTH_SECTIONS.some((name) => title.startsWith(name));
+  return `<h3 class="ai-sec${growth ? ' ai-sec--growth' : ''}">${inline(title)}</h3>`;
+}
+
 const BLOCK_START =
   /^(?:#{1,3}\s|\s*```|\s*\| |\s*\|[^\n]+\||\s*[-*•]\s+\S|\s*\d+[.)]\s+\S)/;
 
@@ -79,6 +104,21 @@ export function formatAiMarkdown(text) {
         i += 1;
       }
       html.push(renderTable(table));
+      continue;
+    }
+
+    const title = sectionTitle(line);
+    if (title) {
+      html.push(sectionHtml(title));
+      i += 1;
+      continue;
+    }
+
+    // «ГОЛОВНЕ: Вільні гроші…» on one line: the title, then the rest as ordinary text.
+    const inlineSection = INLINE_SECTION_RE.exec(line);
+    if (inlineSection) {
+      html.push(sectionHtml(inlineSection[1]));
+      lines[i] = inlineSection[2];
       continue;
     }
 
@@ -117,7 +157,7 @@ export function formatAiMarkdown(text) {
 
     const para = [line];
     i += 1;
-    while (i < lines.length && lines[i].trim() && !BLOCK_START.test(lines[i])) {
+    while (i < lines.length && lines[i].trim() && !BLOCK_START.test(lines[i]) && !sectionTitle(lines[i]) && !INLINE_SECTION_RE.test(lines[i])) {
       para.push(lines[i]);
       i += 1;
     }

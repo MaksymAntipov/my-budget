@@ -6,6 +6,7 @@ import { CHANGELOG } from './src/changelog.js';
 /** Public pages (SEO): each is its own HTML entry next to the app's index.html. */
 const SITE_PAGES = [
   '404.html',
+  'shi-analiz/index.html',
   'pro-proekt/index.html',
   'konfidentsiinist/index.html',
   'onovlennya/index.html',

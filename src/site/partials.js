@@ -6,6 +6,7 @@ import { escapeHtml } from '../utils.js';
 export const CONTACT_EMAIL = 'hello@myskrynia.com.ua';
 
 const NAV = [
+    ['/shi-analiz/', 'ШІ-аналіз'],
     ['/kalkulyatory/', 'Калькулятори'],
     ['/onovlennya/', 'Оновлення'],
     ['/pro-proekt/', 'Про проєкт'],

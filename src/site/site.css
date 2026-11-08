@@ -1,4 +1,4 @@
-/* Public pages (/pro-proekt/, /konfidentsiinist/, /onovlennya/, /kalkulyatory/*, 404).
+/* Public pages (/shi-analiz/, /pro-proekt/, /konfidentsiinist/, /onovlennya/, /kalkulyatory/*, 404).
    Same look as the login screen: its font, background, text colours, «про сервіс» cards, white primary button. */
 :root {
     color-scheme: dark;
@@ -180,6 +180,93 @@ a { color: var(--site-blue); }
 .calc-result.is-blue { border-color: rgba(10, 132, 255, 0.4); }
 .calc-result.is-orange { border-color: rgba(255, 159, 10, 0.4); }
 .calc-result.is-green { border-color: rgba(46, 160, 67, 0.5); }
+
+/* Wide pages (/shi-analiz/): header, content and footer share a wider column for the two-column hero. */
+.site-wide .site-header, .site-wide .site-main, .site-wide .site-footer { max-width: 1040px; }
+
+/* /shi-analiz/ — the AI page. The sample report uses the app's chat look (blue question, dark answer, caps sections). */
+.ai-page { --ai-purple: #bf5af2; --ai-green: #32d74b; --ai-red: #ff453a; }
+.ai-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 32px; align-items: center; margin-bottom: 16px; }
+.ai-hero-text { display: grid; gap: 4px; min-width: 0; }
+.ai-eyebrow { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ai-purple) !important; }
+.ai-page .ai-hero h1 { font-size: 40px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; margin: 4px 0 8px; text-wrap: balance; }
+.ai-cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.ai-cta-note { font-size: 14px; color: var(--site-muted); margin-top: 8px; }
+
+.ai-report {
+    background: linear-gradient(180deg, rgba(191, 90, 242, 0.07), rgba(30, 30, 32, 0.8) 140px);
+    border: 1px solid rgba(191, 90, 242, 0.3);
+    border-radius: 28px;
+    padding: 22px;
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+}
+.ai-report-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.ai-report-title { font-size: 17px; }
+.ai-tabs { display: inline-flex; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--site-border); border-radius: 999px; padding: 3px; gap: 2px; }
+.ai-tab {
+    appearance: none; border: 0; background: none; cursor: pointer;
+    min-height: 44px; padding: 0 14px; border-radius: 999px;
+    color: var(--site-muted); font: 600 14px/1 inherit; font-family: inherit;
+}
+.ai-tab[aria-selected="true"] { background: rgba(191, 90, 242, 0.12); color: var(--ai-purple); box-shadow: inset 0 0 0 1px rgba(191, 90, 242, 0.3); }
+.ai-tab--growth[aria-selected="true"] { background: rgba(50, 215, 75, 0.1); color: var(--ai-green); box-shadow: inset 0 0 0 1px rgba(50, 215, 75, 0.28); }
+.ai-tab:focus-visible { outline: 2px solid var(--site-blue); outline-offset: 2px; }
+.ai-panel { display: grid; gap: 12px; }
+.ai-panel[hidden] { display: none; }
+.ai-ask { justify-self: end; max-width: 85%; background: var(--site-blue); color: #ffffff; padding: 9px 14px; border-radius: 18px 18px 4px 18px; font-size: 15px; }
+.ai-answer { background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 4px 18px 18px 18px; padding: 16px 18px; }
+.ai-page .ai-answer p, .ai-page .ai-answer li { color: #e5e5ea; font-size: 15px; margin: 0; }
+.ai-page .ai-answer ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.ai-answer b { color: var(--site-text); font-weight: 700; }
+.ai-answer .ai-leak { color: var(--ai-red); }
+.ai-sec { margin: 14px 0 4px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.08em; color: var(--ai-purple); }
+.ai-sec:first-child { margin-top: 0; }
+.ai-answer--growth .ai-sec { color: var(--ai-green); }
+.ai-page .ai-report-foot { list-style: none; margin: 0; padding: 0 !important; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.ai-page .ai-report-foot li { font-size: 13px; color: var(--site-tertiary); }
+
+.ai-modes, .ai-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.ai-mode { border-radius: 24px; padding: 22px; background: rgba(191, 90, 242, 0.1); border: 1px solid rgba(191, 90, 242, 0.28); min-width: 0; }
+.ai-mode--growth { background: rgba(50, 215, 75, 0.08); border-color: rgba(50, 215, 75, 0.26); }
+.ai-page .ai-mode h3 { margin: 0 0 8px; font-size: 19px; color: var(--ai-purple); }
+.ai-page .ai-mode--growth h3 { color: var(--ai-green); }
+.ai-page .ai-mode p { color: #e5e5ea; margin: 0 0 12px; }
+.ai-page .ai-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.ai-chips span { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); color: var(--site-muted); }
+.ai-split .site-card { margin: 0; }
+.ai-page .ai-list h3 { margin: 0 0 10px; }
+.ai-page .ai-list ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.ai-page .ai-list li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; color: #e5e5ea; }
+.ai-list--yes li::before { content: '✓'; color: var(--ai-green); font-weight: 800; }
+.ai-list--no li::before { content: '✕'; color: var(--site-tertiary); font-weight: 800; }
+.ai-page .ai-steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; counter-reset: step; }
+.ai-page .ai-steps li { counter-increment: step; display: grid; gap: 6px; padding-top: 16px; border-top: 1px solid var(--site-border); }
+.ai-steps li::before { content: counter(step); font-size: 13px; font-weight: 800; color: var(--ai-purple); }
+.ai-steps strong { font-size: 17px; }
+.ai-page .ai-steps span { color: var(--site-muted); font-size: 15px; }
+.ai-page .ai-questions { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-page .ai-questions li { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 999px; padding: 9px 14px; font-size: 15px; color: #e5e5ea; }
+.ai-faq { display: grid; gap: 8px; }
+.ai-faq details { background: var(--site-card); border: 1px solid var(--site-border); border-radius: 18px; padding: 0 18px; }
+.ai-faq summary { cursor: pointer; list-style: none; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600; }
+.ai-faq summary::-webkit-details-marker { display: none; }
+.ai-faq summary::after { content: '+'; color: var(--site-tertiary); font-weight: 700; }
+.ai-faq details[open] summary::after { content: '−'; }
+.ai-faq summary:focus-visible { outline: 2px solid var(--site-blue); outline-offset: 4px; border-radius: 8px; }
+.ai-page .ai-faq details p { margin: 0 0 16px; }
+.ai-final { text-align: center; margin-top: 40px; }
+.ai-page .ai-final h2 { margin: 0 0 8px; }
+
+@media (max-width: 900px) {
+    .ai-hero { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+    .ai-page .ai-hero h1 { font-size: 32px; }
+    .ai-report { padding: 16px; border-radius: 24px; }
+    .ai-ask { max-width: 100%; }
+}
 
 /* Changelog */
 .site-release { border-left: 2px solid var(--site-border); padding-left: 16px; margin: 24px 0; }

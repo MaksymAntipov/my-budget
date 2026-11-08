@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>ШІ-аналіз бюджету — MySkrynia</title>
+    <meta name="description" content="ШІ читає ваш бюджет по місяцях і пише звіт про капітал: де гроші витікають, скільки збирати на подушку, куди спрямувати вільні гроші. Плюс стратегія росту доходу з задачами на 48 годин.">
+    <link rel="canonical" href="https://myskrynia.com.ua/shi-analiz/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="MySkrynia">
+    <meta property="og:locale" content="uk_UA">
+    <meta property="og:url" content="https://myskrynia.com.ua/shi-analiz/">
+    <meta property="og:title" content="ШІ-аналіз бюджету в MySkrynia">
+    <meta property="og:description" content="Звіт про капітал і стратегія росту доходу на основі вашого бюджету.">
+    <meta property="og:image" content="https://myskrynia.com.ua/img/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg?v=2">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2">
+    <link rel="stylesheet" href="/src/site/site.css">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebPage",
+                "url": "https://myskrynia.com.ua/shi-analiz/",
+                "name": "ШІ-аналіз бюджету",
+                "inLanguage": "uk",
+                "about": { "@id": "https://myskrynia.com.ua/#app" }
+            },
+            {
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": "Навіщо мій власний ключ ШІ?",
+                        "acceptedAnswer": { "@type": "Answer", "text": "Ви самі обираєте провайдера й модель і бачите, куди йдуть дані. Gemini і Groq видають ключ без банківської картки." }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Куди йдуть мої дані?",
+                        "acceptedAnswer": { "@type": "Answer", "text": "Запит проходить через сервер Скрині до обраного вами провайдера і ніде в Скрині не зберігається. Історія чату лежить лише у браузері на вашому пристрої." }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "ШІ не вигадує цифри?",
+                        "acceptedAnswer": { "@type": "Answer", "text": "Він працює лише з даними Скрині та вашим чатом. Якщо чогось немає в даних, ШІ так і скаже, а ціни ринку не підставлятиме." }
+                    }
+                ]
+            }
+        ]
+    }
+    </script>
+</head>
+<body class="site-wide">
+<!--site:header-->
+
+<main class="site-main ai-page">
+    <section class="ai-hero">
+        <div class="ai-hero-text">
+            <p class="ai-eyebrow">ШІ-аналіз бюджету</p>
+            <h1>Ваш бюджет, прочитаний збоку</h1>
+            <p class="site-lead">Скриня передає ШІ ваші місяці, категорії й накопичення. У відповідь ви отримуєте звіт про капітал: що працює, де гроші витікають і куди їх спрямувати. А з анкетою росту ще й план, як вийти на цільовий дохід.</p>
+            <div class="ai-cta-row">
+                <a class="site-cta" href="/">Увійти й спробувати</a>
+                <span class="ai-cta-note">Потрібен ваш ключ ШІ, налаштування за хвилину</span>
+            </div>
+        </div>
+
+        <div class="ai-report" id="ai-sample">
+            <div class="ai-report-top">
+                <strong class="ai-report-title">Так відповідає ШІ Скрині</strong>
+                <div class="ai-tabs" role="tablist" aria-label="Режим звіту">
+                    <button type="button" class="ai-tab" role="tab" id="ai-tab-capital" aria-selected="true" aria-controls="ai-panel-capital">Аналіз капіталу</button>
+                    <button type="button" class="ai-tab ai-tab--growth" role="tab" id="ai-tab-growth" aria-selected="false" aria-controls="ai-panel-growth" tabindex="-1">Стратегія росту</button>
+                </div>
+            </div>
+
+            <div class="ai-panel" id="ai-panel-capital" role="tabpanel" aria-labelledby="ai-tab-capital">
+                <div class="ai-ask">Подивись на мої гроші збоку</div>
+                <div class="ai-answer">
+                    <div class="ai-sec">ГОЛОВНЕ</div>
+                    <p>Вільні гроші: <b>10 600 ₴</b> на місяць, 17% доходу. Подушка покриває <b>2,3</b> місяця обов'язкових витрат із шести.</p>
+                    <div class="ai-sec">ДЕ КАПІТАЛ ВИТІКАЄ</div>
+                    <p>Оренда <b>16 000 ₴</b> на місяць: за 10 років це <b class="ai-leak">1,92 млн ₴</b>. Варто порівняти з іпотекою. Кафе й доставка: <b class="ai-leak">744 тис. ₴</b> за 10 років.</p>
+                    <div class="ai-sec">КУДИ СПРЯМУВАТИ ГРОШІ</div>
+                    <p>Спершу закрити кредитку: 4 платежі по <b>6 000 ₴</b>. Потім <b>8 000 ₴</b> на місяць у конверт «Подушка», і ціль <b>208 800 ₴</b> буде за 16 місяців.</p>
+                </div>
+            </div>
+
+            <div class="ai-panel" id="ai-panel-growth" role="tabpanel" aria-labelledby="ai-tab-growth" hidden>
+                <div class="ai-ask">Як мені вийти на 120 000 ₴ за 18 місяців?</div>
+                <div class="ai-answer ai-answer--growth">
+                    <div class="ai-sec">HELICOPTER VIEW</div>
+                    <p>Розрив до цілі: <b>58 000 ₴</b> на місяць. Самою зарплатою його не закрити за 18 місяців, потрібен другий дохід з міжнародних клієнтів, як ви вказали в анкеті.</p>
+                    <div class="ai-sec">ТАКТИКА · НАЙБЛИЖЧІ 48 ГОДИН</div>
+                    <ol>
+                        <li>Зібрати 3 кейси в портфоліо з цифрами результату.</li>
+                        <li>Відгукнутися на 5 remote-вакансій продуктового дизайнера.</li>
+                        <li>Відкрити конверт «Навчання»: 2 000 ₴ на місяць на англійську.</li>
+                    </ol>
+                    <div class="ai-sec">НА ПОДУМАТИ</div>
+                    <p>Без 10 годин на тиждень під новий напрям термін зсувається приблизно до 30 місяців.</p>
+                </div>
+            </div>
+
+            <ul class="ai-report-foot">
+                <li>Працює з вашим ключем Gemini, ChatGPT, Claude або Groq</li>
+                <li>ШІ отримує лише цифри бюджету, без імені й email</li>
+            </ul>
+        </div>
+    </section>
+
+    <h2>Два режими</h2>
+    <div class="ai-modes">
+        <article class="ai-mode">
+            <h3>Аналіз капіталу</h3>
+            <p>Погляд збоку на гроші за кожен місяць. Подушка рахується від обов'язкових витрат, а великі потоки ШІ перераховує на 10 років, щоб було видно їхню справжню ціну.</p>
+            <p class="ai-chips"><span>ГОЛОВНЕ</span><span>КАПІТАЛ ЗАРАЗ</span><span>ДИНАМІКА</span><span>РИЗИКИ</span><span>КУДИ СПРЯМУВАТИ</span><span>ДЕ ВИТІКАЄ</span></p>
+        </article>
+        <article class="ai-mode ai-mode--growth">
+            <h3>Стратегія росту</h3>
+            <p>Ви заповнюєте коротку анкету: ціль доходу, термін, навички, мобільність. ШІ зіставляє її з бюджетом і дає roadmap, ризики та задачі на найближчі 48 годин.</p>
+            <p class="ai-chips"><span>HELICOPTER VIEW</span><span>ТАКТИКА</span><span>НА ПОДУМАТИ</span></p>
+        </article>
+    </div>
+
+    <h2>Що бачить ШІ</h2>
+    <div class="ai-split">
+        <div class="site-card ai-list ai-list--yes">
+            <h3>Отримує</h3>
+            <ul>
+                <li>Доходи й витрати по місяцях і категоріях</li>
+                <li>Конверти, борги й позначки «обов'язкові»</li>
+                <li>Відповіді з анкети росту, якщо ви її заповнили</li>
+            </ul>
+        </div>
+        <div class="site-card ai-list ai-list--no">
+            <h3>Не отримує</h3>
+            <ul>
+                <li>Ваше ім'я та email</li>
+                <li>Токен Monobank</li>
+                <li>Нічого, поки ви самі не запустите аналіз</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>Як почати</h2>
+    <ol class="ai-steps">
+        <li><strong>Заповніть місяць</strong><span>Вручну або підключіть Monobank, і операції підтягнуться самі.</span></li>
+        <li><strong>Додайте ключ ШІ</strong><span>Gemini, ChatGPT, Claude або Groq. Ключ зберігається зашифрованим.</span></li>
+        <li><strong>Натисніть «Аналіз капіталу»</strong><span>Звіт прийде за хвилину. Далі питайте в чаті що завгодно про свої гроші.</span></li>
+    </ol>
+
+    <h2>Що можна спитати</h2>
+    <ul class="ai-questions">
+        <li>Де я перевитрачаю цього місяця?</li>
+        <li>Скільки мені збирати на подушку?</li>
+        <li>Що закрити першим: кредитку чи розстрочку?</li>
+        <li>Чи потягну іпотеку замість оренди?</li>
+        <li>Як вийти на 100 000 ₴ на місяць?</li>
+    </ul>
+
+    <h2>Питання та відповіді</h2>
+    <div class="ai-faq">
+        <details>
+            <summary>Навіщо мій власний ключ ШІ?</summary>
+            <p>Ви самі обираєте провайдера й модель і бачите, куди йдуть дані. Gemini і Groq видають ключ без банківської картки.</p>
+        </details>
+        <details>
+            <summary>Куди йдуть мої дані?</summary>
+            <p>Запит проходить через сервер Скрині до обраного вами провайдера і ніде в Скрині не зберігається. Історія чату лежить лише у браузері на вашому пристрої. Детальніше — у <a href="/konfidentsiinist/">політиці конфіденційності</a>.</p>
+        </details>
+        <details>
+            <summary>ШІ не вигадує цифри?</summary>
+            <p>Він працює лише з даними Скрині та вашим чатом. Якщо чогось немає в даних, ШІ так і скаже, а ціни ринку не підставлятиме.</p>
+        </details>
+    </div>
+
+    <div class="site-card ai-final">
+        <h2>Спробуйте на своєму бюджеті</h2>
+        <p>Вхід за кодом з пошти, пароль не потрібен.</p>
+        <a class="site-cta" href="/">Увійти</a>
+    </div>
+</main>
+
+<!--site:footer-->
+<script type="module" src="/src/site/ai-page.js"></script>
+</body>
+</html>

@@ -945,6 +945,7 @@
         }
         .auth-about-item h3 { font-size: 16px; font-weight: 700; color: #ffffff; margin: 0 0 6px; }
         .auth-about-item p { font-size: 14px; line-height: 1.5; margin: 0; }
+        .auth-about-item a { color: var(--sys-blue); font-weight: 600; text-underline-offset: 3px; white-space: nowrap; }
         .auth-about-faq-title { margin-top: 48px; margin-bottom: 16px; }
         .auth-faq { display: flex; flex-direction: column; gap: 8px; max-width: 680px; margin: 0 auto; }
         .auth-faq details {
@@ -2716,6 +2717,7 @@
             border: 1px solid rgba(191, 90, 242, 0.2);
             color: #d3a4ff;
         }
+        #ai-chat-chip-growth { background: rgba(50, 215, 75, 0.1); border-color: rgba(50, 215, 75, 0.28); color: #32d74b; }
         .ai-chat-chip:disabled {
             opacity: 0.4;
             cursor: not-allowed;
@@ -2737,14 +2739,36 @@
             min-height: 0;
         }
         .ai-chat-bubble {
-            border-radius: 16px;
-            padding: 12px 14px;
-            font-size: 14px;
+            position: relative;
+            border-radius: 18px;
+            padding: 14px 16px;
+            font-size: 14.5px;
             line-height: 1.5;
             max-width: 100%;
+            min-width: 0;
+            /* A long number or link breaks inside the bubble instead of running past it. */
+            overflow-wrap: anywhere;
         }
-        .ai-chat-bubble--user { background: rgba(10, 132, 255, 0.16); align-self: flex-end; }
-        .ai-chat-bubble--bot { background: rgba(255,255,255,0.06); }
+        /* A message thread: the question is a solid blue bubble on the right, the answer a dark card on the left. */
+        .ai-chat-bubble--user {
+            background: var(--sys-blue);
+            color: #fff;
+            align-self: flex-end;
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 18px 18px 4px 18px;
+        }
+        .ai-chat-bubble--bot {
+            background: rgba(0, 0, 0, 0.32);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 4px 18px 18px 18px;
+            color: #e5e5ea;
+        }
+        /* «ШІ» / «Ви» stay for screen readers; the bubble side already says who is talking. */
+        .ai-chat-who {
+            position: absolute; width: 1px; height: 1px; overflow: hidden;
+            clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+        }
         .ai-chat-bubble--context {
             background: rgba(191, 90, 242, 0.12);
             color: #d3a4ff;
@@ -2846,18 +2870,35 @@
             color: #d3a4ff;
             font-weight: 700;
         }
+        .ai-chat-text strong { color: var(--text-primary); font-weight: 700; }
+        /* Report sections (markdown.js): small caps labels, purple for the capital report, green for growth. */
+        .ai-chat-text h3.ai-sec {
+            margin: 16px 0 4px;
+            font-size: 11.5px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #bf5af2;
+        }
+        .ai-chat-text h3.ai-sec--growth { color: #32d74b; }
+        .ai-chat-text h3.ai-sec:first-child { margin-top: 0; }
         .ai-chat-text h1 { font-size: 16px; }
         .ai-chat-text h2 { font-size: 15px; }
         .ai-chat-text h3 { font-size: 14px; }
         .ai-chat-text h1:first-child, .ai-chat-text h2:first-child, .ai-chat-text h3:first-child { margin-top: 0; }
         .ai-chat-text ul, .ai-chat-text ol { margin: 6px 0 10px; padding-left: 1.25em; }
         .ai-chat-text li { margin: 3px 0; }
+        /* Wide tables scroll inside the bubble; cells keep whole words and amounts. */
         .ai-chat-text table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
             border-collapse: collapse;
             font-size: 13px;
             margin: 8px 0 10px;
-            width: 100%;
+            overflow-wrap: normal;
         }
+        .ai-chat-text td { white-space: nowrap; }
         .ai-chat-text th, .ai-chat-text td {
             border: 1px solid rgba(255,255,255,0.12);
             padding: 5px 8px;
