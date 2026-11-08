@@ -1239,7 +1239,8 @@
         .right-panel { position: relative; height: 100%; }
         /* Sticky summary: capped at the viewport and scrolls inside, else its bottom (Sankey, AI button)
            stayed below the screen for good on short displays (1440×900). */
-        .right-panel .glass-card { position: -webkit-sticky; position: sticky; top: 20px; z-index: 100; max-height: calc(100vh - 40px); overflow-y: auto; }
+        .right-panel .glass-card { position: -webkit-sticky; position: sticky; top: 20px; z-index: 100; max-height: calc(100vh - 40px); overflow-y: auto; scrollbar-width: none; }
+        .right-panel .glass-card::-webkit-scrollbar { display: none; } /* scrolls by wheel/touchpad, no visible bar */
 
         h1, h2 { margin-top: 0; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #ffffff 0%, #a1a1a6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         h1 { font-size: 26px; margin-bottom: 24px; }
