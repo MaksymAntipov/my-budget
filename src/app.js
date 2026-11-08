@@ -13,6 +13,7 @@ import {
 import { API_URL } from './config.js';
 import { livenSparkline } from './sparkline-live/index.js';
 import { track } from './analytics/index.js';
+import { pushSyncAction } from './push/model.js';
 import {
   IGNORED_TARGET,
   categoryKey,
@@ -1117,6 +1118,47 @@ async function fetchAvailableProfiles() {
         }
     }
 
+    /**
+     * After login: if iOS dropped or replaced this device's push subscription, renew it quietly (no «увімкнено»
+     * push) and drop the dead address on the server; if notifications were forbidden, show them as off.
+     */
+    async function healPushSubscription() {
+        if (!currentUser || !pushSupported()) return;
+        const stored = readPushEndpoint();
+        if (!stored) return;
+        const userId = currentUser.id;
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (!registration) return;
+            const current = await registration.pushManager.getSubscription();
+            const action = pushSyncAction({ stored, permission: Notification.permission, current: current?.endpoint || '' });
+            if (action === 'none') return;
+            if (action === 'forget') {
+                await disablePushNotifications({ quiet: true });
+                return;
+            }
+            let subscription = current;
+            if (action === 'resubscribe') {
+                const { publicKey } = await (await apiFetch('/api/push/key')).json();
+                if (!publicKey) return;
+                subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToBytes(publicKey) });
+            }
+            const response = await apiFetch('/api/push/subscribe', {
+                method: 'POST',
+                body: JSON.stringify({ userId, subscription: subscription.toJSON(), quiet: true }),
+            });
+            if (!response.ok || currentUser?.id !== userId) return;
+            writePushEndpoint(subscription.endpoint);
+            await apiFetch('/api/push/unsubscribe', { method: 'POST', body: JSON.stringify({ userId, endpoint: stored }) });
+        } catch (err) {
+            // Could not renew without a tap (some browsers want one): show pushes as off so «Увімкнути» fixes it.
+            console.warn('Push subscription refresh failed', err);
+            if (currentUser?.id === userId) writePushEndpoint('');
+        } finally {
+            syncPushMenuItem();
+        }
+    }
+
     /** Stops pushes for this profile on this device; the browser subscription may serve the other profile. */
     async function disablePushNotifications({ quiet = false } = {}) {
         const endpoint = readPushEndpoint();
@@ -1370,6 +1412,7 @@ async function performLogin(user, { openHub = false } = {}) {
         updateSkryniaSwitcherUI();
         hydrateAiChat();
         noteInstallPromoVisit();
+        void healPushSubscription();
 
         if (openHub && getSkryniaModules().length > 1) {
             showSkryniaHub();
