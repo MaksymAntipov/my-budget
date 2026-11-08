@@ -1,0 +1,30 @@
+/* Live summary sparklines (index.js): breathing area, soft glow along the line, pulsing current-month point.
+   Opacity/transform only, so it stays on the compositor; nothing moves under «reduce motion». */
+.expense-pro-sparkline.is-live .spark-area { animation: spark-breathe 3.2s ease-in-out infinite; }
+.expense-pro-sparkline.is-live .spark-glow { opacity: 0; animation: spark-glow 3.2s ease-in-out infinite; }
+.spark-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--spark-color, #32d74b);
+    box-shadow: 0 0 0 2px rgba(20, 20, 22, 0.9);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+.spark-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--spark-color, #32d74b);
+    animation: spark-ring 2s ease-out infinite;
+}
+@keyframes spark-breathe { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@keyframes spark-glow { 0%, 100% { opacity: 0; } 50% { opacity: 0.22; } }
+@keyframes spark-ring { 0% { transform: scale(1); opacity: 0.55; } 80%, 100% { transform: scale(3.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+    .expense-pro-sparkline.is-live .spark-area,
+    .expense-pro-sparkline.is-live .spark-glow,
+    .spark-dot::after { animation: none; }
+}

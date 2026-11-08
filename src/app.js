@@ -11,6 +11,7 @@ import {
   countWeekdaysInMonth,
 } from './utils.js';
 import { API_URL } from './config.js';
+import { livenSparkline } from './sparkline-live/index.js';
 import {
   IGNORED_TARGET,
   categoryKey,
@@ -4422,6 +4423,7 @@ let payrollAccruedTotal = 0;
             const sparkContainerEl = document.getElementById('invoices-sparkline-container');
             if (trendBadgeEl) trendBadgeEl.innerHTML = invSparkData.trendHtml;
             if (sparkContainerEl) sparkContainerEl.innerHTML = invSparkData.sparklineSvg + `<div class="sparkline-labels">${invSparkData.labelsHtml}</div>`;
+            livenSparkline(sparkContainerEl);
 
             const cogsPercent = currentIncomeUah > 0 ? ((cogsAmount / currentIncomeUah) * 100).toFixed(1).replace('.', ',') : 0;
             const grossProfit = currentIncomeUah - cogsAmount;
@@ -4466,13 +4468,15 @@ let payrollAccruedTotal = 0;
             const trendBadgeEl = document.getElementById('payroll-trend-badge');
             const sparkContainerEl = document.getElementById('payroll-sparkline-container');
             if (trendBadgeEl) trendBadgeEl.innerHTML = sparkData.trendHtml;
-            if (sparkContainerEl) sparkContainerEl.innerHTML = sparkData.sparklineSvg + `<div class="sparkline-labels">${sparkData.labelsHtml}</div>`;    
+            if (sparkContainerEl) sparkContainerEl.innerHTML = sparkData.sparklineSvg + `<div class="sparkline-labels">${sparkData.labelsHtml}</div>`;
+            livenSparkline(sparkContainerEl);
         // НОВИЙ КОД: Рендер графіка доходів (обігу)
         const incSparkData = generateIncomeSparklineHTML(displayIncomeUah);
         const incTrendBadgeEl = document.getElementById('income-trend-badge');
         const incSparkContainerEl = document.getElementById('income-sparkline-container');
         if (incTrendBadgeEl) incTrendBadgeEl.innerHTML = incSparkData.trendHtml;
         if (incSparkContainerEl) incSparkContainerEl.innerHTML = incSparkData.sparklineSvg + `<div class="sparkline-labels">${incSparkData.labelsHtml}</div>`;
+        livenSparkline(incSparkContainerEl);
 
         renderFinancialPlanBlock();
 
@@ -4506,6 +4510,7 @@ let payrollAccruedTotal = 0;
         const profSparkContainerEl = document.getElementById('profit-sparkline-container');
         if (profTrendBadgeEl) profTrendBadgeEl.innerHTML = profSparkData.trendHtml;
         if (profSparkContainerEl) profSparkContainerEl.innerHTML = profSparkData.sparklineSvg + `<div class="sparkline-labels" style="color: inherit; opacity: 0.7;">${profSparkData.labelsHtml}</div>`;
+        livenSparkline(profSparkContainerEl);
         document.getElementById('yearly-remaining').innerText = formatMoney(remaining * 12);
         if (isBiz) {
             let totalActualUah = 0;
@@ -6834,6 +6839,7 @@ function generatePayrollSparklineHTML(currentTotal) {
         const sparkContainerEl = document.getElementById('payroll-sparkline-container');
         if (trendBadgeEl) trendBadgeEl.innerHTML = sparkData.trendHtml;
         if (sparkContainerEl) sparkContainerEl.innerHTML = sparkData.sparklineSvg + `<div class="sparkline-labels">${sparkData.labelsHtml}</div>`;
+        livenSparkline(sparkContainerEl);
     }
 
     let draggedPayrollEmpId = null;
