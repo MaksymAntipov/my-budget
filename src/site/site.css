@@ -72,6 +72,7 @@ a { color: var(--site-blue); }
     border-radius: 12px;
 }
 .site-nav a:hover, .site-footer nav a:hover { color: var(--site-text); background: rgba(255, 255, 255, 0.06); }
+.site-nav a[aria-current="page"] { color: var(--site-text); background: rgba(255, 255, 255, 0.08); font-weight: 600; }
 .site-login {
     display: inline-flex;
     align-items: center;

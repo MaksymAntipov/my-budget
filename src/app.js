@@ -11,7 +11,6 @@ import {
   countWeekdaysInMonth,
 } from './utils.js';
 import { API_URL } from './config.js';
-import { CHANGELOG } from './changelog.js';
 import {
   IGNORED_TARGET,
   categoryKey,
@@ -93,11 +92,6 @@ import {
   syncAiEntryButtons,
   launchAiAgent,
 } from './ai/chat-ui.js';
-
-// ==========================================
-    // НОВИНИ / CHANGELOG
-    // ==========================================
-    const changelogData = CHANGELOG;
 
     // ==========================================
     // 1. КОНСТАНТИ ТА ГЛОБАЛЬНІ ЗМІННІ
@@ -189,41 +183,6 @@ import {
 
 function loadAuthStats() { /* /api/stats removed */ }
 
-
-    function renderChangelog() {
-        const list = document.getElementById('changelog-list');
-        list.innerHTML = '';
-        
-        changelogData.forEach(item => {
-            let lis = item.changes.map(c => `<li>${c}</li>`).join('');
-            list.innerHTML += `
-                <div class="changelog-item">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div class="changelog-date">${item.date}</div>
-                        <div style="font-size: 11px; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 8px; color: white; font-weight: 700;">${item.version}</div>
-                    </div>
-                    <ul class="changelog-content">
-                        ${lis}
-                    </ul>
-                </div>
-            `;
-        });
-    }
-
-    function openChangelogModal() {
-        renderChangelog();
-        document.getElementById('changelog-modal').classList.add('active');
-    }
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeChangelogModal();
-    });
-
-    function closeChangelogModal(e) {
-        if (!e || e.target.id === 'changelog-modal' || e.target.className === 'btn-close-modal' || (e.target.tagName.toLowerCase() === 'button' && e.target.innerText === 'Зрозуміло')) {
-            document.getElementById('changelog-modal').classList.remove('active');
-        }
-    }
 
     // ==========================================
     // 2. УТИЛІТИ ТА БАЗОВІ ФУНКЦІЇ
@@ -10359,7 +10318,6 @@ const uiActions = {
   closeAiExportModal,
   closeAnalyticsModal,
   closeSankeyModal,
-  closeChangelogModal,
   closeConfirmModal,
   closeDebtsModal,
   closeEmployeeModal,
@@ -10496,7 +10454,6 @@ const uiActions = {
   selectLlmModel,
   syncAiEntryButtons,
   openAnalyticsModal,
-  openChangelogModal,
   openDebtsModal,
   openEmployeeModal,
   openEnvelopesModal,
@@ -10538,7 +10495,6 @@ const uiActions = {
   prevGrowthStep,
   renderAnalyticsChart,
   renderCalendar,
-  renderChangelog,
   renderDebts,
   renderEnvelopes,
   renderExpenses,

@@ -1285,23 +1285,8 @@
     </div>
 </div>
 
-<div id="changelog-modal" class="auth-glass-overlay" style="z-index: 10000; background: rgba(0,0,0,0.7) !important; -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px);" data-action="closeChangelogModal" data-pass-event="1">
-    <div class="auth-card" style="max-width: 500px; max-height: 85vh; display: flex; flex-direction: column;" data-stop-propagation="1">
-        <div class="auth-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; text-align: left;">
-            <div>
-                <h2 class="auth-title" style="font-size: 24px; margin-bottom: 4px;">Що нового?</h2>
-                <p class="auth-subtitle">Останні оновлення сервісу</p>
-            </div>
-            <button type="button" class="btn-close-modal" aria-label="Закрити" style="margin: 0; align-self: flex-start; border: 1px solid rgba(255,255,255,0.1);" data-action="closeChangelogModal">✕</button>
-        </div>
-        
-        <div id="changelog-list" style="overflow-y: auto; padding-right: 8px; flex: 1; margin-bottom: 16px;"></div>
-        
-        <button class="btn-init-primary" data-action="closeChangelogModal">Зрозуміло</button>
-    </div>
-</div>
-
 <div id="auth-overlay" class="auth-glass-overlay">
+    <!--site:auth-header-->
     <div class="auth-stats-badge" id="auth-stats-badge" style="display: none;">
         <div class="pulse-dot" style="display: inline-block;"></div>
         Створено профілів: <span id="auth-stats-count" style="margin-left: 6px; font-weight: 700; color: white;">0</span>
@@ -1321,12 +1306,6 @@
             <span>Інструкція користувача</span>
         </a>
 
-        <div style="margin-top: 16px;">
-            <button class="auth-hero-changelog" data-action="openChangelogModal">
-                <span class="pulse-dot" style="margin-right: 8px; width: 6px; height: 6px; box-shadow: 0 0 6px var(--sys-green); display: inline-block;"></span>
-                Оновлення
-            </button>
-        </div>
     </div>
 
     <div class="auth-card">
@@ -1408,10 +1387,6 @@
         </div>
 
         <nav class="auth-about-links" aria-label="Корисне">
-            <a href="/shi-analiz/">ШІ-аналіз бюджету</a>
-            <a href="/kalkulyatory/">Фінансові калькулятори</a>
-            <a href="/onovlennya/">Оновлення</a>
-            <a href="/pro-proekt/">Про проєкт</a>
             <a href="/konfidentsiinist/">Конфіденційність</a>
             <a href="mailto:hello@myskrynia.com.ua">hello@myskrynia.com.ua</a>
         </nav>

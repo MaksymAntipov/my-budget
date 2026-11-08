@@ -70,52 +70,6 @@
         }
 
         /* СТИЛІ ДЛЯ CHANGELOG */
-        .auth-hero-changelog {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(46, 160, 67, 0.1); 
-            padding: 8px 16px;
-            border-radius: 20px;
-            border: 1px solid rgba(46, 160, 67, 0.2);
-            color: white;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-        .auth-hero-changelog:hover {
-            background: rgba(46, 160, 67, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(46, 160, 67, 0.2);
-        }
-        .changelog-item {
-            padding: 20px;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 20px;
-            margin-bottom: 12px;
-            text-align: left;
-        }
-        .changelog-date {
-            font-size: 12px;
-            color: var(--text-tertiary);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .changelog-content {
-            font-size: 15px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            margin: 12px 0 0 0;
-            padding-left: 20px;
-        }
-        .changelog-content li { margin-bottom: 8px; }
-        .changelog-content li:last-child { margin-bottom: 0; }
 
         :root {
             --sys-blue: #0a84ff;
@@ -903,8 +857,45 @@
             overflow-y: auto;
             overscroll-behavior: contain;
             justify-content: flex-start;
-            padding-top: max(56px, env(safe-area-inset-top));
+            padding-top: max(12px, env(safe-area-inset-top));
             padding-bottom: max(32px, env(safe-area-inset-bottom));
+        }
+        /* The public pages' header (src/site/partials.js) on top of the login screen, without «Увійти». */
+        #auth-overlay .site-header {
+            width: 100%;
+            max-width: 880px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 0 auto 32px;
+        }
+        #auth-overlay .site-logo {
+            display: inline-flex; align-items: center; gap: 10px; min-height: 44px; flex-shrink: 0;
+            color: var(--text-primary); font-weight: 700; font-size: 18px; text-decoration: none;
+        }
+        #auth-overlay .site-logo img { border-radius: 8px; }
+        #auth-overlay .site-nav {
+            display: flex; gap: 4px; flex: 1; min-width: 0;
+            overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+        }
+        #auth-overlay .site-nav::-webkit-scrollbar { display: none; }
+        #auth-overlay .site-nav a {
+            display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; flex-shrink: 0;
+            color: var(--text-secondary); text-decoration: none; font-size: 14px; border-radius: 12px; white-space: nowrap;
+        }
+        #auth-overlay .site-nav a:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.06); }
+        #auth-overlay .site-nav a:focus-visible, #auth-overlay .site-logo:focus-visible { outline: 2px solid var(--sys-blue); outline-offset: 2px; }
+        /* Phones: the logo keeps only its icon so the sections fit one row (it scrolls if they don't). */
+        @media (max-width: 600px) {
+            #auth-overlay .site-header { gap: 8px; margin-bottom: 24px; }
+            #auth-overlay .site-logo span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+            #auth-overlay .site-nav a { padding: 0 8px; }
+            /* The row fades at the right edge so it reads as scrollable; the end padding lets the last link clear the fade. */
+            #auth-overlay .site-nav {
+                padding-right: 24px;
+                -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+                mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+            }
         }
         .auth-about {
             width: 100%;

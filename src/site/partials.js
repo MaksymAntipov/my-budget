@@ -12,27 +12,30 @@ const NAV = [
     ['/pro-proekt/', 'Про проєкт'],
 ];
 
-export function siteHeader() {
+/** Page path at build ('/kalkulyatory/50-30-20/index.html') → the NAV entry it belongs to, or ''. */
+export function currentSection(path = '') {
+    const page = String(path).replace(/index\.html$/, '');
+    return NAV.map(([href]) => href).find((href) => page.startsWith(href)) || '';
+}
+
+/** `login: false` on the login screen itself (index.html), where the form is right below. */
+export function siteHeader(path = '', { login = true } = {}) {
+    const current = currentSection(path);
     return `<header class="site-header">
     <a class="site-logo" href="/" aria-label="MySkrynia — на головну">
         <img src="/icons/icon.svg?v=2" width="32" height="32" alt="">
         <span>MySkrynia</span>
     </a>
     <nav class="site-nav" aria-label="Розділи">
-        ${NAV.map(([href, label]) => `<a href="${href}">${label}</a>`).join('\n        ')}
-    </nav>
-    <a class="site-login" href="/">Увійти</a>
+        ${NAV.map(([href, label]) => `<a href="${href}"${href === current ? ' aria-current="page"' : ''}>${label}</a>`).join('\n        ')}
+    </nav>${login ? '\n    <a class="site-login" href="/">Увійти</a>' : ''}
 </header>`;
 }
 
+/** Only what the header lacks: the sections are already up there. */
 export function siteFooter() {
     return `<footer class="site-footer">
-    <nav aria-label="Посилання">
-        <a href="/">Головна</a>
-        ${NAV.map(([href, label]) => `<a href="${href}">${label}</a>`).join('\n        ')}
-        <a href="/konfidentsiinist/">Конфіденційність</a>
-    </nav>
-    <p>MySkrynia — облік особистих фінансів. Питання: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
+    <p>MySkrynia — облік особистих фінансів · <a href="/konfidentsiinist/">Конфіденційність</a> · <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
 </footer>`;
 }
 

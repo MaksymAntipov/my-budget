@@ -16,13 +16,14 @@ const SITE_PAGES = [
   'kalkulyatory/vartist-hodyny/index.html',
 ];
 
-/** Shared header/footer and the changelog for the public pages (see src/site/partials.js). */
+/** Shared header/footer and the changelog for the public pages, and the header of the login screen (src/site/partials.js). */
 function sitePartials() {
   return {
     name: 'site-partials',
-    transformIndexHtml(html) {
+    transformIndexHtml(html, ctx) {
       return html
-        .replace('<!--site:header-->', siteHeader())
+        .replace('<!--site:header-->', siteHeader(ctx.path))
+        .replace('<!--site:auth-header-->', siteHeader('', { login: false }))
         .replace('<!--site:footer-->', siteFooter())
         .replace('<!--site:changelog-->', changelogHtml(CHANGELOG));
     },
