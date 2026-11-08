@@ -158,7 +158,7 @@ html:not(.is-compact) .compact-only { display: none !important; }
 .is-compact .container { grid-template-columns: minmax(0, 1fr) !important; gap: 12px; width: 100%; max-width: 960px; margin: 0 auto; }
 .is-compact .flow-container,
 .is-compact .flow-track-horizontal { display: none !important; }
-.is-compact .right-panel .glass-card { position: static !important; max-height: none; overflow: visible; }
+.is-compact .right-panel .glass-card { position: static !important; }
 
 html.is-compact[data-tab="income"] [data-tab]:not([data-tab="income"]),
 html.is-compact[data-tab="expenses"] [data-tab]:not([data-tab="expenses"]),

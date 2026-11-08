@@ -513,6 +513,7 @@ function loadAuthStats() { /* /api/stats removed */ }
                     document.getElementById('otp-error').style.display = 'none';
                     startOtpCountdown('btn-otp-resend', seconds);
                     document.getElementById('otp-overlay').classList.add('active');
+                    document.getElementById('otp-input').focus();
                     
                 } else {
                     showError(errorDiv, data.error || 'Помилка');
@@ -529,6 +530,7 @@ function loadAuthStats() { /* /api/stats removed */ }
                 document.getElementById('otp-error').style.display = 'none';
                 startOtpCountdown('btn-otp-resend', 600);
                 document.getElementById('otp-overlay').classList.add('active');
+                document.getElementById('otp-input').focus(); // type or paste the code (then Enter) right away
                 btn.innerText = 'Отримати код';
                 btn.disabled = false;
             }

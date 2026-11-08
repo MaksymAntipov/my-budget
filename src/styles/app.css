@@ -852,10 +852,12 @@
             justify-content: center;
             background: transparent !important; 
             z-index: 9999;
-            opacity: 0; visibility: hidden; transition: all 0.4s ease;
+            /* Fade only; visibility flips at once on show (fields are focusable from the first frame — with
+               `transition: all` focus and typing right after the switch could land on <body>) and after the fade on hide. */
+            opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0s linear 0.4s;
             padding: 20px;
         }
-        .auth-glass-overlay.active { opacity: 1; visibility: visible; }
+        .auth-glass-overlay.active { opacity: 1; visibility: visible; transition: opacity 0.4s ease, visibility 0s; }
 
         .auth-card {
             background: rgba(30, 30, 32, 0.7);
@@ -1237,10 +1239,9 @@
         .left-panel .glass-card:nth-child(3) { animation-delay: 0.2s; } 
         .right-panel .glass-card { animation-delay: 0.3s; }
         .right-panel { position: relative; height: 100%; }
-        /* Sticky summary: capped at the viewport and scrolls inside, else its bottom (Sankey, AI button)
-           stayed below the screen for good on short displays (1440×900). */
-        .right-panel .glass-card { position: -webkit-sticky; position: sticky; top: 20px; z-index: 100; max-height: calc(100vh - 40px); overflow-y: auto; scrollbar-width: none; }
-        .right-panel .glass-card::-webkit-scrollbar { display: none; } /* scrolls by wheel/touchpad, no visible bar */
+        /* Sticky summary; when taller than the screen, src/smart-sticky moves its `top` so it scrolls along
+           until its bottom shows (else Sankey and the AI button stayed below the screen on 1440×900). */
+        .right-panel .glass-card { position: -webkit-sticky; position: sticky; top: 20px; z-index: 100; }
 
         h1, h2 { margin-top: 0; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, #ffffff 0%, #a1a1a6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         h1 { font-size: 26px; margin-bottom: 24px; }

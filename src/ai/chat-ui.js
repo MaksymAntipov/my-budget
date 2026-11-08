@@ -22,6 +22,8 @@ import {
   shouldDropLocalKey,
 } from './settings.js';
 import { deleteAiKey, fetchAiKeys, saveAiKey } from './keys-api.js';
+import { balanceMarkdown, nextRevealLength } from './reveal.js';
+import { reducedMotion } from '../motion.js';
 import { clearAiHistory, clearAllAiHistory, loadAiHistory, saveAiHistory } from './history.js';
 import { isWideLookQuestion, parseFocusFromQuestion } from './focus.js';
 import { promptTokens, tokenUsageLabel } from './dump.js';
@@ -112,6 +114,85 @@ let providerUnlockAt = 0;
 let unlockTimer = null;
 
 let keysLoadedFor = '';
+
+// Smooth reveal of the reply being streamed (reveal.js): the live bubble shows content.slice(0, revealShown).
+let revealShown = 0;
+let revealRaf = 0;
+let revealLast = 0;
+let revealDone = null;
+
+function liveBotMessage() {
+  const last = thread[thread.length - 1];
+  return busy && last?.role === 'assistant' ? last : null;
+}
+
+/** The text a bubble shows now: the revealed part of the live reply, the whole content otherwise. */
+function shownText(m) {
+  if (m !== liveBotMessage()) return m.content;
+  return balanceMarkdown(String(m.content || '').slice(0, revealShown));
+}
+
+function scheduleReveal() {
+  if (reducedMotion()) {
+    const bot = liveBotMessage();
+    revealShown = bot ? bot.content.length : 0;
+    renderAiThread();
+    return;
+  }
+  if (!revealRaf) {
+    revealLast = performance.now();
+    revealRaf = requestAnimationFrame(revealFrame);
+  }
+}
+
+function revealFrame(now) {
+  revealRaf = 0;
+  const bot = liveBotMessage();
+  if (!bot) return;
+  const before = revealShown;
+  revealShown = nextRevealLength(revealShown, bot.content, now - revealLast);
+  revealLast = now;
+  if (revealShown !== before) paintLiveBubble(bot);
+  if (revealShown < bot.content.length) revealRaf = requestAnimationFrame(revealFrame);
+  else if (revealDone) {
+    revealDone();
+    revealDone = null;
+  }
+}
+
+/** Repaints only the live bubble (the whole log re-rendered per chunk made the reply jump). */
+function paintLiveBubble(bot) {
+  const log = document.getElementById('ai-chat-log');
+  const bubbles = log?.querySelectorAll('.ai-chat-bubble--bot');
+  const el = bubbles?.[bubbles.length - 1]?.querySelector('.ai-chat-text');
+  if (!el) {
+    renderAiThread(); // still the «Скриня думає…» placeholder: swap it for the bubble
+    return;
+  }
+  const pinned = isNearBottom(log);
+  el.innerHTML = `${formatAiHtml(shownText(bot))}<span class="ai-caret" aria-hidden="true"></span>`;
+  if (pinned) log.scrollTop = log.scrollHeight;
+}
+
+/** Lets the reveal catch up with a finished stream (it lags by under a second), capped at `maxMs`. */
+function finishReveal(maxMs = 1500) {
+  const bot = liveBotMessage();
+  if (!bot || revealShown >= bot.content.length || reducedMotion()) {
+    revealShown = bot ? bot.content.length : 0;
+    return Promise.resolve();
+  }
+  scheduleReveal();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      revealShown = bot.content.length;
+      resolve();
+    }, maxMs);
+    revealDone = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+  });
+}
 
 /**
  * Loads the hints of keys saved on the server for this account; a key still kept in this browser
@@ -782,7 +863,7 @@ function renderAiThread(opts = {}) {
     .map((m, i) => {
       if (m.kind === 'context') return '';
       const live = busy && i === thread.length - 1 && m.role === 'assistant';
-      if (live && !String(m.content || '').trim()) {
+      if (live && !String(shownText(m) || '').trim()) {
         return `<div class="ai-chat-bubble ai-chat-bubble--bot ai-chat-bubble--wait">
           <button type="button" class="ai-skrynia-loader" data-action="stopAiChat" title="Зупинити" aria-label="Зупинити Скриню">
             <span class="ai-skrynia-loader-ring"></span>
@@ -800,7 +881,7 @@ function renderAiThread(opts = {}) {
         ? tokenUsageLabel(m.promptTokens, m.content)
         : '';
       const usageHtml = usage ? `<div class="ai-chat-tokens">${usage}</div>` : '';
-      return `<div class="ai-chat-bubble ${cls}"><div class="ai-chat-who">${who}</div><div class="ai-chat-text">${formatAiHtml(m.content)}${caret}</div>${usageHtml}</div>${notesHtml(m)}${chips}`;
+      return `<div class="ai-chat-bubble ${cls}"><div class="ai-chat-who">${who}</div><div class="ai-chat-text">${formatAiHtml(shownText(m))}${caret}</div>${usageHtml}</div>${notesHtml(m)}${chips}`;
     })
     .join('');
   if (pinned) log.scrollTop = log.scrollHeight;
@@ -963,6 +1044,8 @@ async function streamAssistant(opts = {}) {
     const decoder = new TextDecoder();
     let buf = '';
     const bot = thread[thread.length - 1];
+    // A continuation keeps what is already on screen and reveals only the new text.
+    revealShown = String(bot.content || '').length;
     let providerTruncated = false;
     let providerFailed = false;
     /** Exact wording from the backend, with the status code. */
@@ -1004,8 +1087,9 @@ async function streamAssistant(opts = {}) {
           /* ignore keep-alives */
         }
       }
-      renderAiThread();
+      scheduleReveal();
     }
+    await finishReveal();
     const cleaned = stripProviderNoise(bot.content);
     if (cleaned !== bot.content) {
       providerFailed = true;
@@ -1045,6 +1129,9 @@ async function streamAssistant(opts = {}) {
     }
     renderAiThread();
   } finally {
+    if (revealRaf) cancelAnimationFrame(revealRaf);
+    revealRaf = 0;
+    revealDone = null;
     busy = false;
     abortCtrl = null;
     setComposerBusy(false);

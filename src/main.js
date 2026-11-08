@@ -6,8 +6,11 @@ import { initFamilyTree } from './family-tree/index.js';
 import { initYearTracks } from './year-tracks/index.js';
 import { initRunway } from './runway/index.js';
 import { initInvest } from './invest/index.js';
+import { initSmartSticky } from './smart-sticky/index.js';
 
 bindUiActions(document);
+// Desktop summary card: scrolls along until its bottom shows, then holds (instead of an inner scroll).
+initSmartSticky({ selector: '.right-panel .glass-card' });
 
 // Installable app + offline page (public/sw.js). Not in `vite dev`, where it would cache dev modules.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
