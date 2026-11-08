@@ -3808,15 +3808,19 @@ function getHistoricalIncome(year, month) {
             const div = document.createElement('div');
             div.className = `expense-card-pro ${rankClass} ${paidCardClass}${overLimit ? ' is-over-limit' : ''}`;
             div.dataset.categoryId = String(exp.id);
+            // The whole card opens the category (padding and the actions column too); its own controls stay theirs.
+            div.dataset.action = 'handleExpenseCardClick';
+            div.dataset.passEvent = '1';
+            div.dataset.args = JSON.stringify([exp.id]);
             applyLimitFill(div, exp);
             div.innerHTML = `
-                <div class="expense-pro-main" data-action="handleExpenseCardClick" data-pass-event="1" data-args="${escapeAttr(JSON.stringify([exp.id]))}" style="cursor: pointer; position: relative;">
+                <div class="expense-pro-main" style="position: relative;">
                     <div class="expense-pro-header">
                         <div class="expense-pro-title-group">
                             ${badgeHtml}
                             <div class="expense-pro-name-row">
                                 ${exp.source === 'monobank' ? '<span class="mono-mark" role="img" aria-label="Монобанк">m</span>' : ''}
-                                <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" placeholder="Назва категорії" data-input-action="updateCategoryName" data-args="${escapeAttr(JSON.stringify([exp.id]))}" data-stop-propagation="1" style="${isSavingsClass}">
+                                <input class="expense-pro-input" type="text" value="${escapeHtml(exp.name || '')}" size="${categoryNameSize(exp.name)}" placeholder="Назва категорії" data-input-action="updateCategoryName" data-args="${escapeAttr(JSON.stringify([exp.id]))}" data-stop-propagation="1" style="${isSavingsClass}">
                             </div>
                             <div class="expense-pro-tags">
                                 ${essentialCheckHtml}
@@ -4048,6 +4052,14 @@ function getHistoricalIncome(year, month) {
         saveData();
         renderFinancialPlanBlock();
     }
+
+    /** Width of the name field in characters: on phones and tablets it ends with the name, the rest of the card opens it. */
+    function categoryNameSize(name) {
+        return (String(name || '') || 'Назва категорії').length + 1;
+    }
+    document.addEventListener('input', (event) => {
+        if (event.target.matches?.('.expense-pro-input')) event.target.size = categoryNameSize(event.target.value);
+    });
 
     function handleExpenseCardClick(event, categoryId) {
         if (event.target.closest('.custom-dropdown, .expense-pro-input, button, a, input, select, textarea')) return;

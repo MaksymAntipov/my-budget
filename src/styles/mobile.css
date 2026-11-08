@@ -363,6 +363,8 @@ html.is-compact [data-tab="expenses"] { padding-bottom: 76px; }
 .is-compact .expense-pro-title-group,
 .is-compact .expense-pro-trend { display: contents; }
 .is-compact .expense-pro-name-row { grid-column: 1; grid-row: 1; min-width: 0; }
+/* The name field ends with the name (`size` from app.js; field-sizing where supported): a tap beside it opens the category. */
+.is-compact .expense-pro-input { width: auto; max-width: 100%; min-width: 0; field-sizing: content; }
 .is-compact .expense-pro-amount { grid-column: 2; grid-row: 1; justify-self: end; font-size: 19px; white-space: nowrap; }
 .is-compact .expense-pro-tags { grid-column: 1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
 .is-compact .expense-pro-tags > * { margin: 0 !important; }

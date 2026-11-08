@@ -738,6 +738,7 @@ export function autoResizeAiInput() {
   if (!input) return;
   input.style.height = 'auto';
   input.style.height = `${Math.min(input.scrollHeight, 140)}px`;
+  input.classList.toggle('is-scrollable', input.scrollHeight > 140);
 }
 
 export async function copyLastAiPrompt() {

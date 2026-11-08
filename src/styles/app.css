@@ -1059,9 +1059,10 @@
             background: linear-gradient(to bottom, transparent, var(--sys-blue), transparent);
             animation: flowVertical 1.5s infinite linear; border-radius: 2px;
         }
+        /* Exactly the gap between the two columns (.container gap): wider, it ran over both cards. */
         .flow-track-horizontal {
             display: none; position: absolute; top: 150px; left: 50%; transform: translateX(-50%);
-            width: 40px; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; z-index: 0;
+            width: 24px; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; z-index: 0;
         }
         .flow-particle-horizontal {
             position: absolute; top: 0; bottom: 0; width: 20px; left: 0;
@@ -1609,6 +1610,7 @@
         
 /* НОВИЙ ДИЗАЙН КАРТОК ВИТРАТ (КОМПАКТНИЙ) */
         .expense-card-pro {
+            cursor: pointer;
             background: linear-gradient(135deg, rgba(44, 44, 46, 0.8) 0%, rgba(28, 28, 30, 0.9) 100%);
             border-radius: 18px;
             padding: 12px 16px;
@@ -2892,13 +2894,20 @@
             line-height: 1.35;
         }
         .ai-chat-composer { display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; }
+        /* One line = 48px like the send button; no scrollbar until the text outgrows max-height (chat-ui.js). */
         .ai-chat-composer textarea {
             margin: 0;
             min-height: 48px;
             max-height: 140px;
+            padding: 12px 16px;
+            line-height: 22px;
+            overflow: hidden;
             resize: none;
             flex: 1;
         }
+        .ai-chat-composer textarea.is-scrollable { overflow-y: auto; }
+        /* The hint stays on one line: wrapped, it grew the empty field and showed a scrollbar. */
+        .ai-chat-composer textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ai-chat-composer .btn-init-primary {
             margin: 0;
             width: auto;
