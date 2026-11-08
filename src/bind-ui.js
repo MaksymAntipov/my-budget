@@ -181,8 +181,27 @@ function bindDragActions(root) {
   });
 }
 
+/**
+ * Enter in a field marked `data-enter="actionName"` presses that form's button: the visible, enabled
+ * `button[data-action="actionName"]` in the same dialog — so it runs exactly what a click would.
+ */
+function onDelegatedEnter(event) {
+  if (event.key !== 'Enter' || event.isComposing || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+  const field = event.target.closest?.('[data-enter]');
+  if (!field || field !== event.target || field.tagName === 'TEXTAREA') return;
+  const name = field.getAttribute('data-enter');
+  const scope = field.closest('.modal-content, .auth-card, .modal-overlay, .auth-glass-overlay') || document;
+  const button = [...scope.querySelectorAll('button[data-action]')].find(
+    (b) => b.getAttribute('data-action') === name && !b.disabled && b.offsetParent !== null
+  );
+  if (!button) return;
+  event.preventDefault();
+  button.click();
+}
+
 export function bindUiActions(root = document) {
   root.addEventListener('click', onDelegatedClick);
+  root.addEventListener('keydown', onDelegatedEnter);
   root.addEventListener('input', onDelegatedInput);
   root.addEventListener('change', onDelegatedChange);
   bindDragActions(root);

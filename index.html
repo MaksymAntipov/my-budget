@@ -549,7 +549,7 @@
             <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.45; margin: 0 0 12px 0;">
                 Відкрийте <a href="https://api.monobank.ua/" target="_blank" rel="noopener noreferrer">api.monobank.ua</a>, увійдіть у застосунку Монобанку і скопіюйте персональний токен.
             </p>
-            <input type="text" id="mono-token-input" class="ios-input secret-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-bwignore placeholder="Токен Монобанку" style="margin-bottom: 8px; height: 52px;">
+            <input type="text" id="mono-token-input" data-enter="connectMonobank" class="ios-input secret-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-bwignore placeholder="Токен Монобанку" style="margin-bottom: 8px; height: 52px;">
             <p id="mono-form-error" style="color: var(--sys-red); font-size: 13px; min-height: 18px; margin: 0 0 12px 0;"></p>
             <button type="button" class="btn-init-primary" style="margin: 0;" data-action="connectMonobank">Підключити</button>
         </div>
@@ -588,7 +588,7 @@
         <div id="mono-pick-context"></div>
         <div id="mono-pick-list" class="modal-items-container mr-list" role="radiogroup" aria-labelledby="mono-pick-title"></div>
         <div id="mono-pick-new" class="mr-new" hidden>
-            <input type="text" id="mono-pick-new-name" class="ios-input" maxlength="60" placeholder="Назва нової категорії" autocomplete="off">
+            <input type="text" id="mono-pick-new-name" data-enter="submitMonoPicker" class="ios-input" maxlength="60" placeholder="Назва нової категорії" autocomplete="off">
         </div>
         <p id="mono-pick-convert" class="mr-convert" role="status" hidden></p>
         <label id="mono-pick-remember" class="mr-switch" hidden>
@@ -650,7 +650,7 @@
         
         <div class="usd-input-wrapper" style="margin-bottom: 28px;">
             <span style="color: var(--sys-green); font-size: 24px;">₴</span>
-            <input type="number" id="transfer-amount" style="color: var(--sys-green); font-size: 28px;" placeholder="0">
+            <input type="number" id="transfer-amount" data-enter="executeTransfer" style="color: var(--sys-green); font-size: 28px;" placeholder="0">
         </div>
         <button class="btn-init-primary btn-green" style="margin: 0; height: 60px; font-size: 18px; border: none; color: white;" data-action="executeTransfer">Готово</button>
     </div>
@@ -667,7 +667,7 @@
         
         <div style="background: rgba(0,0,0,0.3); padding: 24px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);">
             <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700;">Створити новий</h4>
-            <input type="text" id="new-jar-name" class="ios-input" placeholder="Назва (наприклад, На авто)" style="margin-bottom: 12px; height: 56px;">
+            <input type="text" id="new-jar-name" data-enter="createNewEnvelope" class="ios-input" placeholder="Назва (наприклад, На авто)" style="margin-bottom: 12px; height: 56px;">
             <div id="new-jar-type-wrap" style="margin-bottom: 12px;">
                 <input type="hidden" id="new-jar-type-value" value="regular">
                 <div class="custom-dropdown compact" data-stop-propagation="1" data-toggle-open="1">
@@ -675,7 +675,7 @@
                     <div class="custom-dropdown-options" id="new-jar-type-options"></div>
                 </div>
             </div>
-            <input type="number" id="new-jar-goal" class="ios-input" placeholder="Ціль (сума, необов'язково)" style="margin-bottom: 20px; height: 56px;">
+            <input type="number" id="new-jar-goal" data-enter="createNewEnvelope" class="ios-input" placeholder="Ціль (сума, необов'язково)" style="margin-bottom: 20px; height: 56px;">
             <button class="btn-init-primary" style="margin: 0; height: 56px;" data-action="createNewEnvelope">Створити</button>
         </div>
     </div>
@@ -696,11 +696,11 @@
         
         <div class="debt-form" style="background: rgba(255, 69, 58, 0.1); padding: 24px; border-radius: 24px; border: 1px solid rgba(255, 69, 58, 0.2); box-shadow: inset 0 2px 4px rgba(255, 69, 58, 0.05);">
             <h4 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: var(--sys-red);">Додати борг / розстрочку</h4>
-            <input type="text" id="new-debt-name" class="ios-input" placeholder="Назва (наприклад, MacBook)" style="margin-bottom: 12px; height: 56px;">
+            <input type="text" id="new-debt-name" data-enter="createNewDebt" class="ios-input" placeholder="Назва (наприклад, MacBook)" style="margin-bottom: 12px; height: 56px;">
             
             <div class="debt-form-row" style="display: flex; gap: 12px; margin-bottom: 20px;">
-                <input type="number" id="new-debt-amount" class="ios-input" placeholder="Сума боргу" style="flex: 2; height: 56px;">
-                <input type="number" id="new-debt-interest" class="ios-input" placeholder="% в міс." style="flex: 1; height: 56px;">
+                <input type="number" id="new-debt-amount" data-enter="createNewDebt" class="ios-input" placeholder="Сума боргу" style="flex: 2; height: 56px;">
+                <input type="number" id="new-debt-interest" data-enter="createNewDebt" class="ios-input" placeholder="% в міс." style="flex: 1; height: 56px;">
                 <div class="custom-dropdown" style="flex: 1;" data-stop-propagation="1" data-toggle-open="1">
                     <div class="custom-dropdown-selected" id="new-debt-currency" style="height: 56px; padding: 0 32px 0 16px; border-radius: 14px;">UAH</div>
                     <div class="custom-dropdown-options">
@@ -726,7 +726,7 @@
         <input type="hidden" id="pay-debt-id">
         <div class="usd-input-wrapper" style="margin-bottom: 28px;">
             <span id="pay-debt-currency-symbol" style="color: var(--sys-red); font-size: 24px;">₴</span>
-            <input type="number" id="pay-debt-amount" style="color: var(--sys-red); font-size: 28px;" placeholder="0">
+            <input type="number" id="pay-debt-amount" data-enter="executeDebtPayment" style="color: var(--sys-red); font-size: 28px;" placeholder="0">
         </div>
         <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" data-action="executeDebtPayment">Погасити</button>
     </div>
@@ -773,8 +773,8 @@
                     <button class="btn-init-secondary" style="width: 48px; height: 48px; padding: 0; margin: 0; border-radius: 14px; flex-shrink: 0;" data-action="openNewSupplierModal" title="Новий постачальник">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
-                    <input type="date" id="new-invoice-date" class="ios-input" style="width: 168px; flex: 0 0 168px; height: 48px; padding: 0 12px; color: white;">
-                    <input type="number" id="new-invoice-amount" class="ios-input tabular" placeholder="Сума (₴)" style="width: 140px; flex: 0 0 140px; height: 48px; padding: 0 12px;">
+                    <input type="date" id="new-invoice-date" data-enter="addInvoice" class="ios-input" style="width: 168px; flex: 0 0 168px; height: 48px; padding: 0 12px; color: white;">
+                    <input type="number" id="new-invoice-amount" data-enter="addInvoice" class="ios-input tabular" placeholder="Сума (₴)" style="width: 140px; flex: 0 0 140px; height: 48px; padding: 0 12px;">
                 </div>
                 <div class="invoice-add-card__row invoice-add-card__row--actions">
                     <div class="type-selector invoice-pay-toggle" style="flex: 0 1 240px; margin: 0; background: rgba(0,0,0,0.2);">
@@ -801,7 +801,7 @@
         <h3 id="supplier-modal-title" style="margin-top: 0; margin-bottom: 16px; font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px;">Новий постачальник</h3>
         <p id="supplier-modal-hint" style="color: var(--text-secondary); font-size: 14px; margin-top: -8px; margin-bottom: 24px;">Введіть назву компанії або ФОП</p>
         <input type="hidden" id="supplier-edit-id" value="">
-        <input type="text" id="new-supplier-name-input" class="ios-input" placeholder="Напр. Епіцентр, ФОП Іванов" style="margin-bottom: 24px; height: 52px; text-align: center;">
+        <input type="text" id="new-supplier-name-input" data-enter="confirmAddSupplier" class="ios-input" placeholder="Напр. Епіцентр, ФОП Іванов" style="margin-bottom: 24px; height: 52px; text-align: center;">
         <div style="display: flex; gap: 12px;">
             <button class="btn-init-secondary" style="margin: 0; flex: 1;" data-action="closeNewSupplierModal">Скасувати</button>
             <button id="supplier-save-btn" class="btn-init-primary" style="margin: 0; background: linear-gradient(135deg, var(--sys-blue), #005bb5); color: white; border: none; flex: 1; box-shadow: 0 8px 16px rgba(10,132,255,0.3);" data-action="confirmAddSupplier">Додати</button>
@@ -848,16 +848,16 @@
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                 <div style="flex: 2; min-width: 180px;">
                     <label class="employee-field-label">ПІБ</label>
-                    <input type="text" id="emp-edit-name" class="ios-input" placeholder="Напр. Іванов І.">
+                    <input type="text" id="emp-edit-name" data-enter="saveEmployee" class="ios-input" placeholder="Напр. Іванов І.">
                 </div>
                 <div style="flex: 1.4; min-width: 140px;">
                     <label class="employee-field-label">Посада</label>
-                    <input type="text" id="emp-edit-position" class="ios-input" placeholder="Напр. касир">
+                    <input type="text" id="emp-edit-position" data-enter="saveEmployee" class="ios-input" placeholder="Напр. касир">
                 </div>
             </div>
             <div>
                 <label class="employee-field-label">ІПН</label>
-                <input type="text" id="emp-edit-tax" class="ios-input" placeholder="0000000000">
+                <input type="text" id="emp-edit-tax" data-enter="saveEmployee" class="ios-input" placeholder="0000000000">
             </div>
 
             <div>
@@ -871,28 +871,28 @@
             <div id="emp-hourly-fields" style="display: flex; gap: 12px;">
                 <div style="flex: 1;">
                     <label class="employee-field-label" id="emp-edit-rate-label">Ставка / год (₴)</label>
-                    <input type="number" id="emp-edit-rate" class="ios-input tabular" placeholder="0">
+                    <input type="number" id="emp-edit-rate" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
                 </div>
                 <div id="emp-hours-wrap" style="flex: 1;">
                     <label class="employee-field-label">Відпрацьовано годин</label>
-                    <input type="number" id="emp-edit-hours" class="ios-input tabular" placeholder="0">
+                    <input type="number" id="emp-edit-hours" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
                 </div>
             </div>
 
             <div style="display: flex; gap: 12px;">
                 <div style="flex: 1;">
                     <label class="employee-field-label" style="color: var(--sys-green);">Премія (₴)</label>
-                    <input type="number" id="emp-edit-bonus" class="ios-input tabular" placeholder="0" style="color: var(--sys-green); border-color: rgba(46,160,67,0.3);">
+                    <input type="number" id="emp-edit-bonus" data-enter="saveEmployee" class="ios-input tabular" placeholder="0" style="color: var(--sys-green); border-color: rgba(46,160,67,0.3);">
                 </div>
                 <div style="flex: 1;">
                     <label class="employee-field-label" style="color: var(--sys-red);">Штраф (₴)</label>
-                    <input type="number" id="emp-edit-penalty" class="ios-input tabular" placeholder="0" style="color: var(--sys-red); border-color: rgba(255,69,58,0.3);">
+                    <input type="number" id="emp-edit-penalty" data-enter="saveEmployee" class="ios-input tabular" placeholder="0" style="color: var(--sys-red); border-color: rgba(255,69,58,0.3);">
                 </div>
             </div>
 
             <div>
                 <label class="employee-field-label">Вже виплачено (₴)</label>
-                <input type="number" id="emp-edit-paid" class="ios-input tabular" placeholder="0">
+                <input type="number" id="emp-edit-paid" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
                 <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 6px; font-weight: 500;">Аванс або часткова виплата — одна сума. Залишок = нараховано − вже виплачено.</div>
             </div>
 
@@ -1001,7 +1001,7 @@
         </div>
         <div id="llm-key-entry">
             <label class="ai-field-label">API-ключ</label>
-            <input type="text" id="llm-api-key" class="ios-input secret-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-bwignore style="margin-bottom: 8px;" placeholder="Вставте ключ сюди">
+            <input type="text" id="llm-api-key" data-enter="saveLlmSettingsFromForm" class="ios-input secret-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-bwignore style="margin-bottom: 8px;" placeholder="Вставте ключ сюди">
             <p id="llm-key-note" style="color: var(--text-tertiary); font-size: 12px; margin: 0 0 16px 0;">Ключ зберігається лише в цьому браузері.</p>
         </div>
         <p id="llm-key-status" style="color: var(--text-secondary); font-size: 13px; margin: 0 0 16px 0;"></p>
@@ -1078,7 +1078,7 @@
                     <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">Куди ми йдемо та як швидко?</p>
                 </div>
                 <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Цільовий чистий дохід на місяць</label>
-                <input type="text" id="growth-target-income" class="ios-input" placeholder="Напр. $5000" style="margin-bottom: 16px; font-size: 16px; padding: 20px;">
+                <input type="text" id="growth-target-income" data-enter="nextGrowthStep" class="ios-input" placeholder="Напр. $5000" style="margin-bottom: 16px; font-size: 16px; padding: 20px;">
 
                 <label style="font-size: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px;">Як виглядає життя в точці Б <span style="opacity:0.6;font-weight:600;text-transform:none;">(необов'язково)</span></label>
                 <textarea id="growth-life-b" class="ios-input" placeholder="Напр. той самий ритм, але без боргів; або 4 години на день і своя справа" style="margin-bottom: 24px; font-size: 16px; padding: 16px; height: 88px; resize: none;"></textarea>
@@ -1339,7 +1339,7 @@
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px;">
-            <input type="email" id="login-email" class="ios-input" placeholder="Ваш Email" autocomplete="email">
+            <input type="email" id="login-email" data-enter="sendAuthOtp" class="ios-input" placeholder="Ваш Email" autocomplete="email">
             <div id="login-error" style="color: var(--sys-red); font-size: 14px; text-align: center; display: none; font-weight: 600;"></div>
         </div>
         
@@ -1435,8 +1435,8 @@
         <input type="hidden" id="new-user-type" value="personal">
 
         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
-            <input type="text" id="new-user-name" class="ios-input" placeholder="Ім'я / Назва">
-            <input type="text" id="new-user-surname" class="ios-input" placeholder="Прізвище / Сфера">
+            <input type="text" id="new-user-name" data-enter="submitNewProfile" class="ios-input" placeholder="Ім'я / Назва">
+            <input type="text" id="new-user-surname" data-enter="submitNewProfile" class="ios-input" placeholder="Прізвище / Сфера">
         </div>
         
         <div id="create-error" style="color: white; font-size: 14px; margin-bottom: 20px; text-align: center; display: none; font-weight: 700; background: linear-gradient(135deg, #ff453a, #d70015); padding: 14px; border-radius: 14px; box-shadow: 0 4px 12px rgba(255,69,58,0.3);"></div>
@@ -1463,7 +1463,7 @@
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px;">
-            <input type="text" id="otp-input" class="ios-input otp-input" placeholder="000000" maxlength="6" inputmode="numeric" data-input-action="sanitizeOtpInput">
+            <input type="text" id="otp-input" data-enter="verifyAuthOtp" class="ios-input otp-input" placeholder="000000" maxlength="6" inputmode="numeric" data-input-action="sanitizeOtpInput">
             <div id="otp-error" style="color: var(--sys-red); font-size: 14px; text-align: center; display: none; font-weight: 600;"></div>
         </div>
         
