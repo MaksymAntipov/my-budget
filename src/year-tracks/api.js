@@ -1,6 +1,8 @@
+import { postDoc, writeRev } from '../doc-rev.js';
 import { emptyDoc, normalizeDoc } from './model.js';
 
 const LS_PREFIX = 'budget_year_tracks_';
+const revKey = (userId) => `${LS_PREFIX}rev_${userId}`;
 
 function lsKey(userId) {
   return LS_PREFIX + userId;
@@ -43,6 +45,7 @@ export async function fetchDocFromServer({ apiUrl, userId, authenticated }) {
       return loadDocLocal(userId) || emptyDoc();
     }
     const data = await response.json();
+    writeRev(revKey(userId), data.rev);
     if (data.yearTracks) {
       const doc = normalizeDoc(
         typeof data.yearTracks === 'string' ? JSON.parse(data.yearTracks) : data.yearTracks,
@@ -67,16 +70,5 @@ export async function saveDocToServer({ apiUrl, userId, authenticated, doc }) {
     return { ok: true, localOnly: true };
   }
 
-  try {
-    const response = await fetch(`${apiUrl}/api/year-tracks`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, yearTracks: doc }),
-    });
-    if (!response.ok) return { ok: false, localOnly: true };
-    return { ok: true };
-  } catch {
-    return { ok: false, localOnly: true };
-  }
+  return postDoc(`${apiUrl}/api/year-tracks`, { userId, yearTracks: doc }, revKey(userId));
 }

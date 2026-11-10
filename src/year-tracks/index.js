@@ -1,4 +1,5 @@
 import './styles.css';
+import { STALE_DOC_MESSAGE } from '../doc-rev.js';
 import {
   currentYear,
   createTrack,
@@ -621,6 +622,21 @@ async function flushSave() {
     authenticated: session.authenticated !== false && Boolean(session.userId),
     doc,
   });
+
+  if (result.stale) {
+    // Another device saved first: take its version instead of overwriting it.
+    dirty = false;
+    doc = ensureBoard(normalizeDoc(await fetchDocFromServer({
+      apiUrl: session.apiUrl || '',
+      userId: session.userId,
+      authenticated: true,
+    })), year).doc;
+    selectedTrackId = null;
+    selectedStageId = null;
+    saveStatus = STALE_DOC_MESSAGE;
+    paint();
+    return;
+  }
 
   if (result.ok && !result.localOnly) dirty = false;
 

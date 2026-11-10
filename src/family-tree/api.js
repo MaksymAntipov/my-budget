@@ -1,6 +1,8 @@
+import { postDoc, writeRev } from '../doc-rev.js';
 import { emptyTree, normalizeTree } from './model.js';
 
 const LS_PREFIX = 'budget_family_tree_';
+const revKey = (userId) => `${LS_PREFIX}rev_${userId}`;
 
 function lsKey(userId) {
   return LS_PREFIX + userId;
@@ -42,6 +44,7 @@ export async function fetchTreeFromServer({ apiUrl, userId, authenticated }) {
       return loadTreeLocal(userId) || emptyTree();
     }
     const data = await response.json();
+    writeRev(revKey(userId), data.rev);
     if (data.familyTree) {
       const tree = normalizeTree(
         typeof data.familyTree === 'string' ? JSON.parse(data.familyTree) : data.familyTree,
@@ -66,16 +69,5 @@ export async function saveTreeToServer({ apiUrl, userId, authenticated, tree }) 
     return { ok: true, localOnly: true };
   }
 
-  try {
-    const response = await fetch(`${apiUrl}/api/family-tree`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, familyTree: tree }),
-    });
-    if (!response.ok) return { ok: false, localOnly: true };
-    return { ok: true };
-  } catch {
-    return { ok: false, localOnly: true };
-  }
+  return postDoc(`${apiUrl}/api/family-tree`, { userId, familyTree: tree }, revKey(userId));
 }

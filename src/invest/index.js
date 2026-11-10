@@ -1,4 +1,5 @@
 import './styles.css';
+import { STALE_DOC_MESSAGE } from '../doc-rev.js';
 import { escapeHtml } from '../utils.js';
 import { fetchNbuBonds, fetchPurchases, savePurchases } from './api.js';
 import { createInvestForm } from './form.js';
@@ -113,6 +114,12 @@ async function persist() {
   saveState = 'Зберігаю…';
   paint();
   const result = await savePurchases({ ...session, purchases });
+  if (result.stale) {
+    purchases = await fetchPurchases(session);
+    saveState = STALE_DOC_MESSAGE;
+    paint();
+    return;
+  }
   saveState = result.ok && !result.localOnly ? 'Збережено' : result.ok ? 'Збережено на цьому пристрої' : 'Не вдалося зберегти — спробую ще раз при наступній зміні';
   paint();
 }

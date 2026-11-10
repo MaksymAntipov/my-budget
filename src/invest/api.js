@@ -1,6 +1,8 @@
+import { postDoc, writeRev } from '../doc-rev.js';
 import { indexNbuBonds, normalizeDoc } from './model.js';
 
 const LS_PREFIX = 'budget_invest_';
+const revKey = (userId) => `${LS_PREFIX}rev_${userId}`;
 const NBU_BONDS_KEY = 'budget_invest_nbu_bonds';
 const NBU_BONDS_TTL_MS = 12 * 60 * 60 * 1000;
 const NBU_BONDS_URL = 'https://bank.gov.ua/depo_securities?json';
@@ -38,6 +40,7 @@ export async function fetchPurchases({ apiUrl, userId, authenticated }) {
     const response = await fetch(`${apiUrl}/api/invest?userId=${encodeURIComponent(userId)}`, { credentials: 'include' });
     if (response.ok) {
       const data = await response.json();
+      writeRev(revKey(userId), data.rev);
       if (data.invest) {
         const purchases = normalizeDoc(typeof data.invest === 'string' ? JSON.parse(data.invest) : data.invest);
         saveDocLocal(userId, purchases);
@@ -53,22 +56,12 @@ export async function fetchPurchases({ apiUrl, userId, authenticated }) {
 
 /**
  * @param {{ apiUrl: string, userId: string, authenticated?: boolean, purchases: object[] }} opts
- * @returns {Promise<{ ok: boolean, localOnly?: boolean }>}
+ * @returns {Promise<{ ok: boolean, stale?: boolean, localOnly?: boolean }>}
  */
 export async function savePurchases({ apiUrl, userId, authenticated, purchases }) {
   saveDocLocal(userId, purchases);
   if (!apiUrl || !userId || authenticated === false) return { ok: true, localOnly: true };
-  try {
-    const response = await fetch(`${apiUrl}/api/invest`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, invest: { version: 1, purchases } }),
-    });
-    return response.ok ? { ok: true } : { ok: false, localOnly: true };
-  } catch {
-    return { ok: false, localOnly: true };
-  }
+  return postDoc(`${apiUrl}/api/invest`, { userId, invest: { version: 1, purchases } }, revKey(userId));
 }
 
 let bondsPromise = null;

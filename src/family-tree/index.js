@@ -1,4 +1,5 @@
 import './styles.css';
+import { STALE_DOC_MESSAGE } from '../doc-rev.js';
 import { emptyTree, ensureSelfPerson, createPerson, normalizeTree } from './model.js';
 import { fetchTreeFromServer, saveTreeToServer } from './api.js';
 import { renderFamilyTreeApp } from './render.js';
@@ -385,6 +386,20 @@ async function flushSave() {
     authenticated: session.authenticated !== false && Boolean(session.userId),
     tree,
   });
+
+  if (result.stale) {
+    // Another device saved first: take its version instead of overwriting it.
+    dirty = false;
+    tree = ensureSelfPerson(await fetchTreeFromServer({
+      apiUrl: session.apiUrl || '',
+      userId: session.userId,
+      authenticated: true,
+    }), { name: session.name, surname: session.surname });
+    if (!tree.people.some((p) => p.id === selectedId)) selectedId = tree.rootPersonId || tree.people[0]?.id || null;
+    saveStatus = STALE_DOC_MESSAGE;
+    paint();
+    return;
+  }
 
   if (result.ok && !result.localOnly) dirty = false;
 
