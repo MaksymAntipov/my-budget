@@ -216,7 +216,7 @@
                                 Годин роботи на день:
                             </span>
                             <span class="hours-control">
-                                <input type="number" id="business-hours-input" min="0.5" max="24" step="0.5" value="8" data-input-action="updateBusinessHours" style="width: 64px; height: 36px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); border-radius: 12px; padding: 0 10px; text-align: center; font-size: 16px; font-weight: 700; outline: none; transition: 0.3s;">
+                                <input type="number" inputmode="decimal" id="business-hours-input" min="0.5" max="24" step="0.5" value="8" data-input-action="updateBusinessHours" style="width: 64px; height: 36px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); border-radius: 12px; padding: 0 10px; text-align: center; font-size: 16px; font-weight: 700; outline: none; transition: 0.3s;">
                                 <button type="button" class="rate-info" data-stop-propagation="1" aria-label="Як рахується день і година">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                                     <span id="rate-calc-hint" class="rate-info__tip"></span>
@@ -531,7 +531,7 @@
     <div class="modal-content" style="max-width: 520px;" data-stop-propagation="1">
         <div class="modal-header">
             <h3 style="margin: 0;">Монобанк</h3>
-            <button type="button" class="btn-close-modal" data-action="closeMonobankModal">✕</button>
+            <button aria-label="Закрити" type="button" class="btn-close-modal" data-action="closeMonobankModal">✕</button>
         </div>
         <p id="mono-status-text" style="color: var(--text-secondary); font-size: 14px; line-height: 1.45; margin: 0 0 16px 0;">Токен зберігається лише для цього профілю.</p>
         <div id="mono-cards-block" hidden>
@@ -564,7 +564,7 @@
                 <h3>Правила категорій</h3>
                 <div class="mr-subtitle">Оберіть категорію для кожного магазину</div>
             </div>
-            <button type="button" class="btn-close-modal" data-action="closeMonoRules">✕</button>
+            <button aria-label="Закрити" type="button" class="btn-close-modal" data-action="closeMonoRules">✕</button>
         </div>
         <input type="search" id="mono-rules-search" class="ios-input mr-search" placeholder="Пошук магазину" autocomplete="off" aria-label="Пошук магазину" data-input-action="filterMonoRules" hidden>
         <div id="mono-rules-body" class="modal-items-container mr-rules-body"></div>
@@ -583,7 +583,7 @@
                 <h3 id="mono-pick-title">Перенести операцію</h3>
                 <div id="mono-pick-subtitle" class="mr-subtitle"></div>
             </div>
-            <button type="button" class="btn-close-modal" data-action="closeMonoPicker">✕</button>
+            <button aria-label="Закрити" type="button" class="btn-close-modal" data-action="closeMonoPicker">✕</button>
         </div>
         <div id="mono-pick-context"></div>
         <div id="mono-pick-list" class="modal-items-container mr-list" role="radiogroup" aria-labelledby="mono-pick-title"></div>
@@ -605,7 +605,7 @@
     <div class="modal-content" style="max-width: 440px;" data-stop-propagation="1">
         <div class="modal-header">
             <h3 style="margin: 0;">Telegram</h3>
-            <button type="button" class="btn-close-modal" data-action="closeTelegramModal">✕</button>
+            <button aria-label="Закрити" type="button" class="btn-close-modal" data-action="closeTelegramModal">✕</button>
         </div>
         <p id="telegram-status-text" style="color: var(--text-secondary); font-size: 14px; line-height: 1.45; margin: 0 0 16px 0;">Бот Скрині напише один раз, коли категорія вперше вийде за ліміт цього місяця.</p>
         <p id="telegram-form-error"></p>
@@ -636,7 +636,7 @@
     <div class="modal-content" style="max-width: 420px;" data-stop-propagation="1">
         <div class="modal-header">
             <h3 style="margin: 0;" id="transfer-modal-title">Відкласти в конверт</h3>
-            <button class="btn-close-modal" data-action="closeTransferModal">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closeTransferModal">✕</button>
         </div>
         <p style="color: var(--text-secondary); font-size: 16px; font-weight: 500; margin-top: -12px; margin-bottom: 24px;">Вкажіть суму, яку хочете відкласти, та виберіть конверт.</p>
         
@@ -650,7 +650,7 @@
         
         <div class="usd-input-wrapper" style="margin-bottom: 28px;">
             <span style="color: var(--sys-green); font-size: 24px;">₴</span>
-            <input type="number" id="transfer-amount" data-enter="executeTransfer" style="color: var(--sys-green); font-size: 28px;" placeholder="0">
+            <input type="number" inputmode="decimal" id="transfer-amount" data-enter="executeTransfer" style="color: var(--sys-green); font-size: 28px;" placeholder="0">
         </div>
         <button class="btn-init-primary btn-green" style="margin: 0; height: 60px; font-size: 18px; border: none; color: white;" data-action="executeTransfer">Готово</button>
     </div>
@@ -660,7 +660,7 @@
     <div class="modal-content" style="max-width: 520px;" data-stop-propagation="1">
         <div class="modal-header">
             <h3 style="margin: 0;" id="jars-modal-title">Мої конверти</h3>
-            <button class="btn-close-modal" data-action="closeEnvelopesModal">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closeEnvelopesModal">✕</button>
         </div>
         
         <div id="jars-list" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; max-height: 45vh; overflow-y: auto; padding-right: 8px;"></div>
@@ -675,7 +675,7 @@
                     <div class="custom-dropdown-options" id="new-jar-type-options"></div>
                 </div>
             </div>
-            <input type="number" id="new-jar-goal" data-enter="createNewEnvelope" class="ios-input" placeholder="Ціль (сума, необов'язково)" style="margin-bottom: 20px; height: 56px;">
+            <input type="number" inputmode="decimal" id="new-jar-goal" data-enter="createNewEnvelope" class="ios-input" placeholder="Ціль (сума, необов'язково)" style="margin-bottom: 20px; height: 56px;">
             <button class="btn-init-primary" style="margin: 0; height: 56px;" data-action="createNewEnvelope">Створити</button>
         </div>
     </div>
@@ -687,7 +687,7 @@
             <h3 style="margin: 0; color: var(--sys-red);" id="debts-modal-title">Боргові зобов'язання</h3>
             <div style="display: flex; gap: 8px;">
                 <button class="btn-init-secondary" style="margin: 0; width: auto; padding: 6px 12px; height: 36px; font-size: 13px; border-radius: 12px; border-color: rgba(255, 69, 58, 0.3); color: var(--sys-red);" data-action="openScheduleModal">🗓 Графік</button>
-                <button class="btn-close-modal" data-action="closeDebtsModal">✕</button>
+                <button aria-label="Закрити" class="btn-close-modal" data-action="closeDebtsModal">✕</button>
             </div>
         </div>
         
@@ -699,8 +699,8 @@
             <input type="text" id="new-debt-name" data-enter="createNewDebt" class="ios-input" placeholder="Назва (наприклад, MacBook)" style="margin-bottom: 12px; height: 56px;">
             
             <div class="debt-form-row" style="display: flex; gap: 12px; margin-bottom: 20px;">
-                <input type="number" id="new-debt-amount" data-enter="createNewDebt" class="ios-input" placeholder="Сума боргу" style="flex: 2; height: 56px;">
-                <input type="number" id="new-debt-interest" data-enter="createNewDebt" class="ios-input" placeholder="% в міс." style="flex: 1; height: 56px;">
+                <input type="number" inputmode="decimal" id="new-debt-amount" data-enter="createNewDebt" class="ios-input" placeholder="Сума боргу" style="flex: 2; height: 56px;">
+                <input type="number" inputmode="decimal" id="new-debt-interest" data-enter="createNewDebt" class="ios-input" placeholder="% в міс." style="flex: 1; height: 56px;">
                 <div class="custom-dropdown" style="flex: 1;" data-stop-propagation="1" data-toggle-open="1">
                     <div class="custom-dropdown-selected" id="new-debt-currency" style="height: 56px; padding: 0 32px 0 16px; border-radius: 14px;">UAH</div>
                     <div class="custom-dropdown-options">
@@ -720,13 +720,13 @@
     <div class="modal-content" style="max-width: 420px;" data-stop-propagation="1">
         <div class="modal-header">
             <h3 style="margin: 0; color: var(--sys-red);">Внести платіж</h3>
-            <button class="btn-close-modal" data-action="closePayDebtModal">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closePayDebtModal">✕</button>
         </div>
         <p style="color: var(--text-secondary); margin-top: -12px; margin-bottom: 24px;">Введіть суму платежу у валюті боргу. У бюджет витрата піде в гривневому еквіваленті за курсом НБУ.</p>
         <input type="hidden" id="pay-debt-id">
         <div class="usd-input-wrapper" style="margin-bottom: 28px;">
             <span id="pay-debt-currency-symbol" style="color: var(--sys-red); font-size: 24px;">₴</span>
-            <input type="number" id="pay-debt-amount" data-enter="executeDebtPayment" style="color: var(--sys-red); font-size: 28px;" placeholder="0">
+            <input type="number" inputmode="decimal" id="pay-debt-amount" data-enter="executeDebtPayment" style="color: var(--sys-red); font-size: 28px;" placeholder="0">
         </div>
         <button class="btn-init-primary" style="margin: 0; height: 60px; font-size: 18px; background: linear-gradient(135deg, var(--sys-red), #d70015); color: white; border: none; box-shadow: 0 8px 16px rgba(255, 69, 58, 0.3);" data-action="executeDebtPayment">Погасити</button>
     </div>
@@ -750,7 +750,7 @@
                     <span id="modal-invoices-card" class="payroll-modal-stat__value tabular" style="color: var(--sys-blue);">0.00 ₴</span>
                 </div>
             </div>
-            <button class="btn-close-modal" data-action="closeInvoicesModal" type="button">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closeInvoicesModal" type="button">✕</button>
         </div>
 
         <div class="type-selector" style="margin-bottom: 16px; flex-shrink: 0;">
@@ -774,7 +774,7 @@
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
                     <input type="date" id="new-invoice-date" data-enter="addInvoice" class="ios-input" style="width: 168px; flex: 0 0 168px; height: 48px; padding: 0 12px; color: white;">
-                    <input type="number" id="new-invoice-amount" data-enter="addInvoice" class="ios-input tabular" placeholder="Сума (₴)" style="width: 140px; flex: 0 0 140px; height: 48px; padding: 0 12px;">
+                    <input type="number" inputmode="decimal" id="new-invoice-amount" data-enter="addInvoice" class="ios-input tabular" placeholder="Сума (₴)" style="width: 140px; flex: 0 0 140px; height: 48px; padding: 0 12px;">
                 </div>
                 <div class="invoice-add-card__row invoice-add-card__row--actions">
                     <div class="type-selector invoice-pay-toggle" style="flex: 0 1 240px; margin: 0; background: rgba(0,0,0,0.2);">
@@ -823,7 +823,7 @@
                     <span id="modal-payroll-remaining" class="payroll-modal-stat__value payroll-modal-stat__value--remain tabular">0.00 ₴</span>
                 </div>
             </div>
-            <button class="btn-close-modal" data-action="closePayrollModal" type="button">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closePayrollModal" type="button">✕</button>
         </div>
 
         <div id="payroll-list" class="payroll-list"></div>
@@ -871,28 +871,28 @@
             <div id="emp-hourly-fields" style="display: flex; gap: 12px;">
                 <div style="flex: 1;">
                     <label class="employee-field-label" id="emp-edit-rate-label">Ставка / год (₴)</label>
-                    <input type="number" id="emp-edit-rate" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
+                    <input type="number" inputmode="decimal" id="emp-edit-rate" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
                 </div>
                 <div id="emp-hours-wrap" style="flex: 1;">
                     <label class="employee-field-label">Відпрацьовано годин</label>
-                    <input type="number" id="emp-edit-hours" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
+                    <input type="number" inputmode="decimal" id="emp-edit-hours" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
                 </div>
             </div>
 
             <div style="display: flex; gap: 12px;">
                 <div style="flex: 1;">
                     <label class="employee-field-label" style="color: var(--sys-green);">Премія (₴)</label>
-                    <input type="number" id="emp-edit-bonus" data-enter="saveEmployee" class="ios-input tabular" placeholder="0" style="color: var(--sys-green); border-color: rgba(46,160,67,0.3);">
+                    <input type="number" inputmode="decimal" id="emp-edit-bonus" data-enter="saveEmployee" class="ios-input tabular" placeholder="0" style="color: var(--sys-green); border-color: rgba(46,160,67,0.3);">
                 </div>
                 <div style="flex: 1;">
                     <label class="employee-field-label" style="color: var(--sys-red);">Штраф (₴)</label>
-                    <input type="number" id="emp-edit-penalty" data-enter="saveEmployee" class="ios-input tabular" placeholder="0" style="color: var(--sys-red); border-color: rgba(255,69,58,0.3);">
+                    <input type="number" inputmode="decimal" id="emp-edit-penalty" data-enter="saveEmployee" class="ios-input tabular" placeholder="0" style="color: var(--sys-red); border-color: rgba(255,69,58,0.3);">
                 </div>
             </div>
 
             <div>
                 <label class="employee-field-label">Вже виплачено (₴)</label>
-                <input type="number" id="emp-edit-paid" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
+                <input type="number" inputmode="decimal" id="emp-edit-paid" data-enter="saveEmployee" class="ios-input tabular" placeholder="0">
                 <div style="font-size: 12px; color: var(--text-tertiary); margin-top: 6px; font-weight: 500;">Аванс або часткова виплата — одна сума. Залишок = нараховано − вже виплачено.</div>
             </div>
 
@@ -910,7 +910,7 @@
     <div class="modal-content" data-stop-propagation="1">
         <div class="modal-header" style="margin-bottom: 16px;">
             <h3 style="margin: 0;">Куди йдуть гроші</h3>
-            <button class="btn-close-modal" data-action="closeSankeyModal">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closeSankeyModal">✕</button>
         </div>
         <div class="sankey-modal-body">
             <div id="sankey_full" style="width: 100%;"></div>
@@ -922,7 +922,7 @@
     <div class="modal-content" style="max-width: 850px; width: 95%; padding: 32px;" data-stop-propagation="1">
         <div class="modal-header" style="margin-bottom: 24px;">
             <h3 style="margin: 0;">Динаміка бюджету</h3>
-            <button class="btn-close-modal" data-action="closeAnalyticsModal">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closeAnalyticsModal">✕</button>
         </div>
         
         <div class="chart-container" style="height: 50vh; min-height: 400px; width: 100%; margin: 0; transition: none;">
@@ -949,7 +949,7 @@
                         <path d="M20.25 12v2.4"></path>
                     </svg>
                 </button>
-                <button type="button" class="btn-close-modal" data-action="closeAiChat">✕</button>
+                <button aria-label="Закрити" type="button" class="btn-close-modal" data-action="closeAiChat">✕</button>
             </div>
         </div>
         <div class="ai-chat-toolbar">
@@ -971,7 +971,7 @@
     <div class="modal-content" style="max-width: 460px;" data-stop-propagation="1">
         <div class="modal-header" style="margin-bottom: 16px;">
             <h3 style="margin: 0; color: #bf5af2;">Ключ ШІ</h3>
-            <button class="btn-close-modal" data-action="closeLlmSettings">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closeLlmSettings">✕</button>
         </div>
         <p id="llm-settings-intro" style="color: var(--text-secondary); font-size: 14px; line-height: 1.45; margin: 0 0 16px 0;">
             Вставте ключ, оберіть провайдера і модель. Зберігається лише один ключ — у цьому браузері.
@@ -1030,7 +1030,7 @@
             <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #32d74b;">
                 🎯 Стратегія росту
             </h3>
-            <button class="btn-close-modal" data-action="closeGrowthModal">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closeGrowthModal">✕</button>
         </div>
         
         <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 24px; overflow: hidden;">
@@ -1557,7 +1557,7 @@
     <div class="modal-content" style="max-width: 900px; width: 95%; padding: 24px;" data-stop-propagation="1">
         <div class="modal-header" style="margin-bottom: 16px;">
             <h3 style="margin: 0;">Графік платежів</h3>
-            <button class="btn-close-modal" data-action="closeScheduleModal">✕</button>
+            <button aria-label="Закрити" class="btn-close-modal" data-action="closeScheduleModal">✕</button>
         </div>
         <div style="margin-bottom: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(10,132,255,0.08); border: 1px solid rgba(10,132,255,0.18); color: var(--text-secondary); font-size: 13px; line-height: 1.45; font-weight: 600;">
             Галочка в графіку — план. Фактичні платежі фіксуйте у витратах («Погашення боргів»).

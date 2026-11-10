@@ -48,7 +48,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: true,
+    // No public source maps: prod serves only the built code.
+    sourcemap: false,
     rollupOptions: {
       input: Object.fromEntries(
         ['index.html', ...SITE_PAGES].map((page) => [page.replace(/(\/index)?\.html$/, '') || 'main', resolve(import.meta.dirname, page)]),

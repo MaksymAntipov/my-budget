@@ -719,3 +719,5 @@ body:has(.mono-queue.active:not([hidden])) .mono-snacks { top: 112px; }
 .install-promo-later[hidden] { display: none; }
 /* The card takes the floating button's place while it is up. */
 body:has(.install-promo:not([hidden])) .mobile-fab { display: none !important; }
+/* iOS zooms the page on focus when an input's text is under 16px. */
+html.is-compact .schedule-input, html.is-compact .mr-search { font-size: 16px; }

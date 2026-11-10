@@ -1520,6 +1520,17 @@ async function performLogin(user, { openHub = false } = {}) {
         renderFinancialPlanBlock();
     }
 
+    /** Local copies of the family tree, year tracks and investments (and their revisions) hold personal data. */
+    function clearModuleCopies() {
+        const prefixes = ['budget_family_tree_', 'budget_year_tracks_', 'budget_invest_'];
+        try {
+            Object.keys(localStorage)
+                // The NBU bond list is public reference data, not the user's.
+                .filter((key) => key !== 'budget_invest_nbu_bonds' && prefixes.some((prefix) => key.startsWith(prefix)))
+                .forEach((key) => localStorage.removeItem(key));
+        } catch (e) {}
+    }
+
     function isDataLoaded() {
         return Boolean(currentUser) && dataLoadedFor === currentUser.id;
     }
@@ -1885,6 +1896,7 @@ function logout() {
         localStorage.removeItem('budget_saved_user_info');
         localStorage.removeItem('budget_available_profiles');
         try { localStorage.removeItem(VIEW_PERIOD_KEY); } catch (e) {}
+        clearModuleCopies();
         
         closeProfileSwitcher();
         closeSkryniaSwitcher();
@@ -2920,11 +2932,11 @@ if (isBiz) {
                                 <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Обіг</div>
                                 <div id="inc-percent-${escapeAttr(String(inc.id))}" style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 6px;">0,0%</div>
                             </div>
-                            <input type="number" class="tabular income-amount" value="${inc.amount || ''}" placeholder="0" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
+                            <input type="number" inputmode="decimal" class="tabular income-amount" value="${inc.amount || ''}" placeholder="0" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: white; padding: 0;">
                         </div>
                         <div style="flex: 1; background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(10, 132, 255, 0.05)); padding: 12px 16px; border-radius: 16px; border: 1px solid rgba(10, 132, 255, 0.2); transition: 0.3s;">
                             <div style="font-size: 12px; color: var(--sys-blue); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Факт. залишок</div>
-                            <input type="number" class="tabular income-actual" value="${inc.actual_balance || ''}" placeholder="0" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: var(--sys-blue); padding: 0;">
+                            <input type="number" inputmode="decimal" class="tabular income-actual" value="${inc.actual_balance || ''}" placeholder="0" style="width: 100%; background: transparent; border: none; outline: none; font-size: 22px; font-weight: 700; color: var(--sys-blue); padding: 0;">
                         </div>
                     </div>
                 `;
@@ -4163,9 +4175,9 @@ function getHistoricalIncome(year, month) {
                 <div class="sub-item-row">
                     ${checkboxHtml}
                     <input type="text" class="sub-item-name" value="${escapeHtml(item.name || '')}" title="${escapeHtml(item.name || '')}" placeholder="Назва статті" data-input-action="updateSubItemName" data-args="${escapeAttr(JSON.stringify([item.id]))}">
-                    <input type="number" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" data-input-action="updateSubItemAmount" data-args="${escapeAttr(JSON.stringify([item.id]))}">
+                    <input type="number" inputmode="decimal" class="sub-item-amount ${paidClass}" id="sub-amount-${item.id}" value="${item.amount || ''}" placeholder="0" data-input-action="updateSubItemAmount" data-args="${escapeAttr(JSON.stringify([item.id]))}">
                     ${moveHtml}
-                    <button class="btn-sub-delete" data-action="deleteSubItem" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                    <button aria-label="Видалити статтю" class="btn-sub-delete" data-action="deleteSubItem" data-args="${escapeAttr(JSON.stringify([item.id]))}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
             `;
             list.appendChild(div);
@@ -4669,7 +4681,7 @@ function renderEnvelopes() {
 
         const jarAmountInput = (jarId, action, value, color) =>
             `<div style="display: flex; align-items: center; gap: 6px;">
-                <input type="number" min="0" step="0.01" value="${value || 0}"
+                <input type="number" inputmode="decimal" min="0" step="0.01" value="${value || 0}"
                     data-change-action="${action}"
                     data-args="${escapeAttr(JSON.stringify([jarId]))}"
                     style="${jarInputStyle(color)}">
@@ -4682,7 +4694,7 @@ function renderEnvelopes() {
             const isPersonal = currentUser && currentUser.account_type !== 'business';
             
             // Кнопка видалення у стилі карток боргів (хрестик у квадраті)
-            const deleteBtn = jar.isMain ? '' : `<button data-action="deleteEnvelope" data-args="${escapeAttr(JSON.stringify([jar.id]))}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;">✕</button>`;
+            const deleteBtn = jar.isMain ? '' : `<button aria-label="Видалити конверт" data-action="deleteEnvelope" data-args="${escapeAttr(JSON.stringify([jar.id]))}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;">✕</button>`;
             
             // Бейджик для основного рахунку
             const mainBadge = jar.isMain ? `<span style="font-size: 11px; background: rgba(10, 132, 255, 0.15); padding: 2px 6px; border-radius: 6px; color: var(--sys-blue); flex-shrink: 0;">Основний</span>` : '';
@@ -5197,7 +5209,7 @@ function renderEnvelopes() {
                             <span style="font-size: 11px; background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); padding: 2px 6px; border-radius: 6px; color: var(--text-primary);">${escapeHtml(debt.currency)}</span>${interestTag}<span data-debt-interest-estimate>${interestEstimateTag}</span>
                         </div>
                     </div>
-                    <button data-action="deleteDebt" data-args="${escapeAttr(JSON.stringify([debt.id]))}" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;">✕</button>
+                    <button aria-label="Видалити борг" data-action="deleteDebt" data-args="${escapeAttr(JSON.stringify([debt.id]))}" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-tertiary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;">✕</button>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 8px;">
                     <div style="overflow: hidden; padding-right: 8px; min-width: 0; flex: 1;">
@@ -5206,7 +5218,7 @@ function renderEnvelopes() {
                             <span data-debt-remaining style="${isPaidOff ? 'color: var(--sys-green);' : 'color: var(--text-primary)'}">${formatMoney(historicalRemaining)} ${currencySymbol}</span>
                             <span style="color: var(--text-tertiary); font-weight: 500;">/</span>
                             <div style="display: flex; align-items: center; gap: 6px;">
-                                <input type="number" min="0" step="0.01" value="${debt.total_amount || 0}" aria-label="Сума боргу"
+                                <input type="number" inputmode="decimal" min="0" step="0.01" value="${debt.total_amount || 0}" aria-label="Сума боргу"
                                     data-change-action="updateDebtTotal"
                                     data-args="${escapeAttr(JSON.stringify([debt.id]))}"
                                     style="${debtInputStyle}">
@@ -5230,7 +5242,7 @@ function renderEnvelopes() {
                 const currencySymbol = debt.currency === 'USD' ? '$' : '₴';
                 let deleteBtnHtml = '';
                 if (historicalRemaining === debt.total_amount) {
-                    deleteBtnHtml = `<button data-action="hardDeleteDebt" data-args="${escapeAttr(JSON.stringify([debt.id]))}" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-secondary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;">✕</button>`;
+                    deleteBtnHtml = `<button aria-label="Видалити борг" data-action="hardDeleteDebt" data-args="${escapeAttr(JSON.stringify([debt.id]))}" style="background: var(--btn-secondary-bg); border: 1px solid var(--glass-border); color: var(--text-secondary); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; margin-left: 12px;">✕</button>`;
                 }
                 list.innerHTML += `
                 <div style="background: var(--item-bg); border: 1px solid var(--glass-border); border-radius: 16px; opacity: 0.7; padding: 12px 16px;">
@@ -6034,7 +6046,7 @@ let cogsAmount = 0;
                                 <input type="checkbox" class="schedule-checkbox" ${checkedAttr} 
                                        title="Позначити у плані графіка (не фіксує фактичну оплату)"
                                        data-change-action="toggleSchedulePaid" data-args="${escapeAttr(JSON.stringify([debt.id, m.key]))}">
-                                <input type="number" class="${inputClass}" value="${planVal}" placeholder="0" 
+                                <input type="number" inputmode="decimal" class="${inputClass}" value="${planVal}" placeholder="0" 
                                        data-input-action="updateScheduleAmount" data-args="${escapeAttr(JSON.stringify([debt.id, m.key]))}">
                             </div>
                          </td>`;
@@ -6558,7 +6570,7 @@ function addInvoice() {
                     </td>
                     <td class="payroll-th-num">
                         <label class="invoice-amount-edit">
-                            <input type="number" min="0.01" step="0.01" class="invoice-amount-input tabular" value="${amountVal}" data-change-action="updateInvoiceAmount" data-args="${escapeAttr(JSON.stringify([String(inv.id)]))}">
+                            <input type="number" inputmode="decimal" min="0.01" step="0.01" class="invoice-amount-input tabular" value="${amountVal}" data-change-action="updateInvoiceAmount" data-args="${escapeAttr(JSON.stringify([String(inv.id)]))}">
                             <span>₴</span>
                         </label>
                     </td>
