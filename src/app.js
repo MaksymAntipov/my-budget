@@ -1383,7 +1383,9 @@ async function fetchAvailableProfiles() {
     async function switchProfile(user) {
         if (!user || !currentUser || user.id === currentUser.id) return;
         closeProfileSwitcher();
-        await flushPendingSaves();
+        // An edit the server did not take would be dropped by the switch: stay here, the
+        // «Не збережено» banner with its retry is already on screen.
+        if (!(await flushPendingSaves()) && saveFailed) return;
         appData = {};
         expenses = [];
         await performLogin(user, { openHub: false });
