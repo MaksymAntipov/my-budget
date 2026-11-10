@@ -96,6 +96,7 @@ function buildSystemPrompt() {
  *   buildGrowthPrompt: (type: string) => Promise<string>,
  *   getAiFocusCatalog: () => { currentYear: number, currentMonth: number, initializedMonths: Array<{year:number, month:number}>, names: string[] },
  *   hasGrowthProfile: () => boolean,
+ *   hasBudgetData?: () => boolean,
  *   hasTracks?: () => boolean,
  *   openGrowthModal: () => void,
  * }} */
@@ -589,6 +590,12 @@ export async function startAiBriefing(kind) {
   }
   const overlay = document.getElementById('ai-chat-overlay');
   overlay?.classList.add('active');
+
+  // Nothing to analyse yet: say what to add instead of spending a request on «даних замало» six times.
+  if (kind !== 'growth' && deps.hasBudgetData && !deps.hasBudgetData()) {
+    appendSystemNote('Поки немає що аналізувати. Додайте доходи й витрати хоча б за один місяць або підключіть банк — і Скриня розбере ваш капітал.');
+    return;
+  }
 
   const packed = await loadBriefingContext(kind);
   if (!packed) return;

@@ -14,6 +14,7 @@ import { API_URL } from './config.js';
 import { livenSparkline } from './sparkline-live/index.js';
 import { track } from './analytics/index.js';
 import { pushSyncAction } from './push/model.js';
+import { hasBudgetData } from './ai/readiness.js';
 import {
   IGNORED_TARGET,
   categoryKey,
@@ -322,6 +323,10 @@ function loadAuthStats() { /* /api/stats removed */ }
             buildGrowthPrompt,
             getAiFocusCatalog,
             hasGrowthProfile: () => Boolean(currentUser?.growthProfile?.job),
+            hasBudgetData: () => hasBudgetData(appData, {
+                jars: globalData.jars?.[currentUser?.id] || [],
+                debts: globalData.debts?.[currentUser?.id] || [],
+            }),
             hasTracks: hasTracksModule,
             openGrowthModal,
         });
@@ -3776,7 +3781,8 @@ function getHistoricalIncome(year, month) {
 
         expenses.forEach(exp => {
             if (isUnassigned(exp)) {
-                list.appendChild(renderUnassignedCard(exp));
+                // Shown only while there is something to sort: an empty inbox with zeros is noise.
+                if ((exp.items || []).length) list.appendChild(renderUnassignedCard(exp));
                 return;
             }
             const totalAmount = getCategoryTotal(exp);
