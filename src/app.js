@@ -279,7 +279,9 @@ function loadAuthStats() { /* /api/stats removed */ }
                         keepalive: true
                     })
                         .then((response) => handleSaveResponse(response, year, month, seq))
-                        .catch(() => {});
+                        // Keepalive bodies over ~64 KB are refused outright; the edit is still pending,
+                        // so send it the normal way (it reports its own failure and retries).
+                        .catch(() => enqueueSave(year, month));
                 } catch (e) {}
             }
         }
@@ -779,7 +781,7 @@ async function fetchAvailableProfiles() {
 
     /** Previous / next month from the compact header, across year boundaries. */
     async function shiftMonth(delta) {
-        await saveData(true);
+        await flushPendingSaves();
         let month = currentMonth + delta;
         let year = currentYear;
         if (month < 0) { month = 11; year -= 1; }
@@ -1381,7 +1383,7 @@ async function fetchAvailableProfiles() {
     async function switchProfile(user) {
         if (!user || !currentUser || user.id === currentUser.id) return;
         closeProfileSwitcher();
-        await saveData(true);
+        await flushPendingSaves();
         appData = {};
         expenses = [];
         await performLogin(user, { openHub: false });
@@ -1527,6 +1529,8 @@ async function performLogin(user, { openHub = false } = {}) {
         try {
             const response = await apiFetch(`/api/data?userId=${encodeURIComponent(userId)}`);
             const data = await response.json();
+            // The profile was switched while this was loading: a late answer must not replace its data.
+            if (currentUser?.id !== userId) return;
 
             if (response.status === 401) {
                 logout();
@@ -2081,7 +2085,7 @@ function logout() {
     }
 
     async function changeYear(delta) {
-        await saveData(true);
+        await flushPendingSaves();
         currentYear += delta;
         if (!appData[currentYear]) appData[currentYear] = {};
         if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = createEmptyMonth();
@@ -2093,7 +2097,7 @@ function logout() {
 
     async function selectMonth(m, btnElement) {
         if (m === currentMonth) return;
-        await saveData(true);
+        await flushPendingSaves();
         currentMonth = m;
         if (!appData[currentYear][currentMonth]) appData[currentYear][currentMonth] = createEmptyMonth();
         persistViewedPeriod();
@@ -9139,8 +9143,11 @@ function generatePayrollSparklineHTML(currentTotal) {
         return many;
     }
 
-    /** Rules re-route months on the server, so local edits must reach it first. */
-    async function flushSavesBeforeMonoRules() {
+    /**
+     * Sends only the months that hold unsaved edits. Navigation uses it instead of saveData(true):
+     * a save with nothing changed still bumps the data version and makes another device's edit stale.
+     */
+    async function flushPendingSaves() {
         if (saveTimeout) {
             clearTimeout(saveTimeout);
             saveTimeout = null;
@@ -9155,6 +9162,11 @@ function generatePayrollSparklineHTML(currentTotal) {
         }
         await saveQueue;
         return pendingSaves.size === 0;
+    }
+
+    /** Rules re-route months on the server, so local edits must reach it first. */
+    function flushSavesBeforeMonoRules() {
+        return flushPendingSaves();
     }
 
     function applyMonoRulesResponse(data) {
