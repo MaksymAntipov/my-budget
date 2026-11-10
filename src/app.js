@@ -1594,10 +1594,16 @@ if (!globalData.debts) globalData.debts = {};
                 data.monthsData.forEach(row => {
                     if (!appData[row.year]) appData[row.year] = {};
                     
-                    const parsedIncomes = JSON.parse(row.incomes_json || '[]');
-                    const parsedExpenses = JSON.parse(row.expenses_json || '[]');
-                    let monoIgnored = [];
-                    try { monoIgnored = JSON.parse(row.mono_ignored_json || '[]'); } catch (e) {}
+                    // One unreadable field must not keep the whole profile from loading.
+                    const readJson = (text, fallback) => {
+                        try { return text ? JSON.parse(text) : fallback; } catch (e) {
+                            console.warn(`Пошкоджені дані місяця ${row.year}-${row.month}`, e);
+                            return fallback;
+                        }
+                    };
+                    const parsedIncomes = readJson(row.incomes_json, []);
+                    const parsedExpenses = readJson(row.expenses_json, []);
+                    const monoIgnored = readJson(row.mono_ignored_json, []);
                     ensureCategoryKeys(parsedExpenses, newId);
 
                  appData[row.year][row.month] = {
@@ -1607,8 +1613,8 @@ if (!globalData.debts) globalData.debts = {};
                         incomes: ensureIncomeIds(parsedIncomes),
                         expenses: parsedExpenses,
                         monoIgnored: Array.isArray(monoIgnored) ? monoIgnored : [],
-                        cogs: JSON.parse(row.cogs_json || '{"type":"percent","value":0}'),
-                        payroll: row.payroll_json ? JSON.parse(row.payroll_json) : []
+                        cogs: readJson(row.cogs_json, { type: 'percent', value: 0 }),
+                        payroll: readJson(row.payroll_json, [])
                     };
                 });
             }
@@ -1785,7 +1791,7 @@ async function flushSaveToServer(year, month) {
         const currentMonthData = appData[year]?.[month] || {};
         // Rules point at category keys; every own category needs one before the server sees it.
         ensureCategoryKeys(currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []), newId);
-        syncPercentLimits(currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []), getMonthIncomeUah(year, month));
+        syncPercentLimits(currentMonthData.expenses || (year === currentYear && month === currentMonth ? expenses : []), getMonthIncomeUah(year, month), monthIncomeKnown(year, month));
         const jars = globalData.jars[currentUser.id] || [];
         const debtsLoaded = Array.isArray(globalData.debts[currentUser.id]);
         const suppliersLoaded = Array.isArray(globalData.suppliers[currentUser.id]);
@@ -3150,9 +3156,17 @@ function convertCurrency() {
         return Number.isFinite(limit) && limit > 0 ? 'fixed' : 'none';
     }
 
+    /** False when the month has a USD income and the NBU rate did not load: its ₴ total is then not known. */
+    function monthIncomeKnown(year, month) {
+        if (currentExchangeRate > 0) return true;
+        return !(appData[year]?.[month]?.incomes || []).some((inc) => inc.currency === 'USD' && parseFloat(inc.amount) > 0);
+    }
+
     /** The cap in ₴. A percent limit follows the month's income: 0 ₴ while there is no income. */
-    function categoryLimitNumber(category, incomeUah = getMonthIncomeUah(currentYear, currentMonth)) {
+    function categoryLimitNumber(category, incomeUah = getMonthIncomeUah(currentYear, currentMonth), incomeKnown = monthIncomeKnown(currentYear, currentMonth)) {
         const mode = categoryLimitMode(category);
+        // Without the rate a USD income counts as 0 ₴; the last saved ₴ value beats a false «over the limit».
+        if (mode === 'percent' && !incomeKnown) return Number(category.limit) || 0;
         if (mode === 'percent') return roundMoney((Math.max(0, incomeUah) * Number(category.limitPct)) / 100);
         if (mode === 'fixed') return Number(category.limit);
         return 0;
@@ -3164,7 +3178,8 @@ function convertCurrency() {
     }
 
     /** Stores each percent limit's current ₴ value, so the server's limit alerts need no exchange rate. */
-    function syncPercentLimits(list, incomeUah) {
+    function syncPercentLimits(list, incomeUah, incomeKnown = true) {
+        if (!incomeKnown) return;
         (list || []).forEach((category) => {
             if (categoryLimitMode(category) === 'percent') category.limit = categoryLimitNumber(category, incomeUah);
         });
