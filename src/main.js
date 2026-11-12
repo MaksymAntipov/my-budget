@@ -1,3 +1,4 @@
+import './error-report/auto.js';
 import './styles/app.css';
 import './styles/mobile.css';
 import './site/header.css';
