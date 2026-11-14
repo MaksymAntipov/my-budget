@@ -1298,6 +1298,15 @@
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .modal-overlay.active { opacity: 1; visibility: visible; }
+        /* Full-screen modules cover the budget completely. With the shared translucent, blurred backdrop the page
+           under them showed through for a frame whenever their content was not drawn yet during a fast scroll
+           or a rubber-band overscroll; an opaque backdrop leaves nothing to show through (and nothing to blur). */
+        #family-tree-modal.modal-overlay, #year-tracks-modal.modal-overlay, #invest-modal.modal-overlay, #runway-modal.modal-overlay {
+            background: var(--bg-color, #0f0f10);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+            overscroll-behavior: contain;
+        }
         /* Closing: the card shrinks away first and the backdrop clears right after it,
            instead of everything vanishing with the backdrop. Opening keeps the spring. */
         .modal-overlay:not(.active) { pointer-events: none; transition: opacity 0.22s ease 0.08s, visibility 0s linear 0.3s; }

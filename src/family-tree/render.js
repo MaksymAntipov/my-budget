@@ -12,6 +12,36 @@ import {
 import { computeFamilyLayout } from './layout.js';
 import { bindTouchGestures } from '../canvas-touch.js';
 
+// Which sections of the person form are folded: a per-browser habit, kept between visits.
+const SECTIONS_KEY = 'budget_family_tree_sections';
+const collapsedSections = new Set(readCollapsedSections());
+
+function readCollapsedSections() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SECTIONS_KEY) || '[]');
+    return Array.isArray(saved) ? saved.filter((key) => typeof key === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function setSectionCollapsed(key, collapsed) {
+  if (collapsed) collapsedSections.add(key);
+  else collapsedSections.delete(key);
+  try {
+    localStorage.setItem(SECTIONS_KEY, JSON.stringify([...collapsedSections]));
+  } catch {
+    /* private mode: the fold lasts until the page is closed */
+  }
+}
+
+/** Opening tag and title of a foldable form section; the caller closes the <div>. */
+function sectionStart(key, title) {
+  const collapsed = collapsedSections.has(key);
+  return `<div class="ft-section ${collapsed ? 'is-collapsed' : ''}" data-ft-section="${escapeHtml(key)}">
+        <button type="button" class="ft-section-title" data-ft-section-toggle aria-expanded="${collapsed ? 'false' : 'true'}">${escapeHtml(title)}</button>`;
+}
+
 /**
  * @param {HTMLElement} root
  * @param {{
@@ -354,8 +384,7 @@ function renderForm(person, tree) {
       ${renderDateFields('Дата смерті', 'deathDate', person.deathDate)}
       ${renderDateFields('Дата шлюбу', 'marriageDate', person.marriageDate)}
 
-      <div class="ft-section">
-        <div class="ft-section-title">Географія (якір для архівів)</div>
+      ${sectionStart('geo', 'Географія (якір для архівів)')}
         <label class="ft-field">
           <span>Село / місто народження</span>
           <input type="text" data-ft-field="birthSettlement" value="${escapeHtml(person.birthSettlement)}" placeholder="Обовʼязково для РАЦС / ДАДО" autocomplete="off" />
@@ -390,8 +419,7 @@ function renderForm(person, tree) {
         </label>
       </div>
 
-      <div class="ft-section">
-        <div class="ft-section-title">Документи РАЦС</div>
+      ${sectionStart('docs', 'Документи РАЦС')}
         ${renderSelectField('docBirthStatus', 'Свідоцтво про народження', person.docBirthStatus, DOC_STATUS_LABELS)}
         <label class="ft-field">
           <span>Акт народження (№ / рік)</span>
@@ -409,8 +437,7 @@ function renderForm(person, tree) {
         </label>
       </div>
 
-      <div class="ft-section">
-        <div class="ft-section-title">Війна / архіви</div>
+      ${sectionStart('war', 'Війна / архіви')}
         <label class="ft-field">
           <span>Місце призову</span>
           <input type="text" data-ft-field="militaryDraftPlace" value="${escapeHtml(person.militaryDraftPlace)}" autocomplete="off" />
@@ -514,6 +541,16 @@ function bindForm(root, person, tree, { onUpdatePerson, onDeletePerson, onAddRel
     });
   }
 
+  root.querySelectorAll('[data-ft-section-toggle]').forEach((title) => {
+    title.addEventListener('click', () => {
+      const section = title.closest('[data-ft-section]');
+      if (!section) return;
+      const collapsed = section.classList.toggle('is-collapsed');
+      title.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      setSectionCollapsed(section.getAttribute('data-ft-section') || '', collapsed);
+    });
+  });
+
   root.querySelectorAll('[data-ft-select]').forEach((wrap) => {
     const field = wrap.getAttribute('data-ft-select');
     const trigger = wrap.querySelector('[data-ft-select-trigger]');
@@ -528,6 +565,8 @@ function bindForm(root, person, tree, { onUpdatePerson, onDeletePerson, onAddRel
       if (willOpen) {
         menu.removeAttribute('hidden');
         wrap.classList.add('is-open');
+        // The panel keeps scrolling while a list is open: bring a list near the bottom edge fully into view.
+        menu.scrollIntoView({ block: 'nearest' });
       }
     });
 

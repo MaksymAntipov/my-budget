@@ -414,10 +414,6 @@
   color: var(--text-secondary, #aaa);
 }
 
-.ft-panel:has(.ft-select.is-open) {
-  overflow: visible;
-}
-
 .ft-panel-empty {
   color: var(--text-secondary, #aaa);
   font-size: 14px;
@@ -444,12 +440,61 @@
   min-width: 0;
 }
 
+/* The title folds its section: a full-width button with a chevron. */
 .ft-section-title {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  text-align: left;
   color: var(--sys-blue, #0a84ff);
+}
+
+.ft-section-title::after {
+  content: '';
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.2s;
+}
+
+.ft-section.is-collapsed .ft-section-title::after {
+  transform: translateY(1px) rotate(-45deg);
+}
+
+.ft-section.is-collapsed > :not(.ft-section-title) {
+  display: none;
+}
+
+.ft-section.is-collapsed {
+  padding-bottom: 12px;
+}
+
+html.is-compact .ft-section-title {
+  min-height: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ft-section-title::after {
+    transition: none;
+  }
 }
 
 .ft-form-head {
