@@ -1298,6 +1298,14 @@
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .modal-overlay.active { opacity: 1; visibility: visible; }
+        /* The page under an open overlay stands still. Its endless animations (flow lines, card shine, live
+           sparklines) made the browser blur the whole backdrop anew on every frame, and whenever a frame was
+           late the budget showed through unblurred. Paused, the backdrop is blurred once and stays. */
+        body:has(.modal-overlay.active) #app-container *,
+        body:has(.modal-overlay.active) #app-container *::before,
+        body:has(.modal-overlay.active) #app-container *::after {
+            animation-play-state: paused !important;
+        }
         /* Full-screen modules cover the budget completely. With the shared translucent, blurred backdrop the page
            under them showed through for a frame whenever their content was not drawn yet during a fast scroll
            or a rubber-band overscroll; an opaque backdrop leaves nothing to show through (and nothing to blur). */
@@ -2806,6 +2814,17 @@
             font-size: 22px;
             animation: ai-gem-pulse 1.5s ease-in-out infinite;
         }
+        /* The glow is its own layer that only fades: an animated `filter` on the gem repainted the blurred
+           overlay around it on every frame. */
+        .ai-skrynia-loader::before {
+            content: '';
+            position: absolute;
+            inset: 6px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(191, 90, 242, 0.5), rgba(191, 90, 242, 0) 70%);
+            opacity: 0;
+            animation: ai-gem-glow 1.5s ease-in-out infinite;
+        }
         .ai-chat-wait-text {
             font-size: 13px;
             font-weight: 700;
@@ -2826,8 +2845,12 @@
             to { transform: rotate(360deg); }
         }
         @keyframes ai-gem-pulse {
-            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(191, 90, 242, 0)); }
-            50% { transform: scale(1.08); filter: drop-shadow(0 0 10px rgba(191, 90, 242, 0.55)); }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        @keyframes ai-gem-glow {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
         }
         @keyframes ai-caret-blink {
             50% { opacity: 0; }
